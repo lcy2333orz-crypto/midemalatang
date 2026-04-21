@@ -1,0 +1,70 @@
+[gd_scene format=3 uid="uid://crf0qojcidfon"]
+
+[ext_resource type="Script" uid="uid://dvvm22d5sg1wn" path="res://title_menu.gd" id="1_cgpkj"]
+
+[node name="TitleMenu" type="Control" unique_id=1167946792]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_cgpkj")
+
+[node name="Background" type="ColorRect" parent="." unique_id=1106859494]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(1, 1, 1, 0.3019608)
+
+[node name="MenuBox" type="VBoxContainer" parent="." unique_id=1308468116]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 52.0
+offset_bottom = 116.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="StartButton" type="Button" parent="MenuBox" unique_id=733328707]
+layout_mode = 2
+text = "开始游戏"
+
+[node name="SettingsButton" type="Button" parent="MenuBox" unique_id=1220344443]
+layout_mode = 2
+text = "设置"
+
+[node name="CreditsButton" type="Button" parent="MenuBox" unique_id=1963380202]
+layout_mode = 2
+text = "开发名单"
+
+[node name="QuitButton" type="Button" parent="MenuBox" unique_id=2045792607]
+layout_mode = 2
+text = "退出游戏"
+
+[node name="TitleLabel" type="Label" parent="." unique_id=1084226910]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 23.0
+grow_horizontal = 2
+text = "麻辣烫"
+horizontal_alignment = 1
+
+[node name="MessageLabel" type="Label" parent="." unique_id=315500335]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -23.0
+grow_horizontal = 2
+grow_vertical = 0

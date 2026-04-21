@@ -1,0 +1,28 @@
+[gd_scene format=3 uid="uid://c8eg3meju24nj"]
+
+[ext_resource type="Script" uid="uid://dyd32penfbhe0" path="res://player.gd" id="1_4flbx"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_sh265"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_4flbx"]
+
+[node name="Player" type="CharacterBody2D" unique_id=1448892241 groups=["player"]]
+collision_mask = 0
+script = ExtResource("1_4flbx")
+
+[node name="Visual" type="Node2D" parent="." unique_id=555223347]
+
+[node name="Polygon2D" type="Polygon2D" parent="Visual" unique_id=291250026]
+color = Color(1, 0.6666667, 0.03529412, 1)
+polygon = PackedVector2Array(-20, -24, 20, -24, 20, 24, -20, 24)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=809143548]
+shape = SubResource("CapsuleShape2D_sh265")
+
+[node name="InteractionArea" type="Area2D" parent="." unique_id=2119536382]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="InteractionArea" unique_id=1776706250]
+shape = SubResource("CircleShape2D_4flbx")
+
+[node name="FacingMarker" type="Marker2D" parent="." unique_id=1461576942]
+position = Vector2(0, -30)

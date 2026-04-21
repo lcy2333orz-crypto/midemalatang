@@ -1,0 +1,65 @@
+[gd_scene format=3 uid="uid://dvl5qcp7tifdy"]
+
+[ext_resource type="Script" uid="uid://bjn6xerveqo5x" path="res://home_menu.gd" id="1_j6liv"]
+
+[node name="HomeMenu" type="Control" unique_id=1050238115]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_j6liv")
+
+[node name="Background" type="ColorRect" parent="." unique_id=802591514]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(1219, 637)
+color = Color(1, 1, 1, 0.24705882)
+
+[node name="TitleLabel" type="Label" parent="." unique_id=1009561269]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 23.0
+grow_horizontal = 2
+
+[node name="MenuBox" type="VBoxContainer" parent="." unique_id=679632289]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -44.0
+offset_top = -68.0
+offset_right = 44.0
+offset_bottom = 68.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(44, 68)
+
+[node name="StageSelectButton" type="Button" parent="MenuBox" unique_id=1928994622]
+layout_mode = 2
+text = "进入选关"
+
+[node name="NotebookButton" type="Button" parent="MenuBox" unique_id=1268852906]
+layout_mode = 2
+text = "猫的手账本"
+
+[node name="MapButton" type="Button" parent="MenuBox" unique_id=57279014]
+layout_mode = 2
+text = "地图"
+
+[node name="BackButton" type="Button" parent="MenuBox" unique_id=1965406007]
+layout_mode = 2
+text = "返回标题"
+
+[node name="MessageLabel" type="Label" parent="." unique_id=1048508172]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0

@@ -1,0 +1,276 @@
+[gd_scene format=3 uid="uid://cx2o1airlm22"]
+
+[ext_resource type="Script" uid="uid://b10ky6ti6tnqq" path="res://station_area.gd" id="1_0xm2m"]
+[ext_resource type="PackedScene" uid="uid://c8eg3meju24nj" path="res://player.tscn" id="1_ig7tw"]
+[ext_resource type="PackedScene" uid="uid://dxv8fg3rkxamc" path="res://customer.tscn" id="3_h2yge"]
+[ext_resource type="Script" uid="uid://c2ciya17b656e" path="res://ui_layer.gd" id="3_lquwl"]
+[ext_resource type="Script" uid="uid://c682ebjbspsim" path="res://game_manager.gd" id="4_1bvp3"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_7dm0k"]
+size = Vector2(180, 120)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ig7tw"]
+size = Vector2(140, 95)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_0xm2m"]
+size = Vector2(120, 80)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_1bvp3"]
+size = Vector2(120, 80)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_lquwl"]
+size = Vector2(160, 120)
+
+[node name="Main" type="Node2D" unique_id=963038254]
+
+[node name="World" type="Node2D" parent="." unique_id=1749142121]
+
+[node name="Spawns" type="Node2D" parent="." unique_id=902001230]
+
+[node name="PlayerSpawn" type="Marker2D" parent="Spawns" unique_id=341334920]
+position = Vector2(480, 420)
+
+[node name="CustomerSpawn" type="Marker2D" parent="Spawns" unique_id=1112229354]
+position = Vector2(100, 220)
+
+[node name="QueueSpot1" type="Marker2D" parent="Spawns" unique_id=335344092]
+position = Vector2(280, 220)
+
+[node name="QueueSpot2" type="Marker2D" parent="Spawns" unique_id=2103792036]
+position = Vector2(200, 220)
+
+[node name="QueueSpot3" type="Marker2D" parent="Spawns" unique_id=1534848966]
+position = Vector2(120, 220)
+
+[node name="ExitPoint" type="Marker2D" parent="Spawns" unique_id=1300883298 groups=["exit_point"]]
+position = Vector2(820, 220)
+
+[node name="Stations" type="Node2D" parent="." unique_id=389743625]
+
+[node name="Counter" type="Node2D" parent="Stations" unique_id=671557791]
+position = Vector2(280, 220)
+
+[node name="Visual" type="Node2D" parent="Stations/Counter" unique_id=1403062318]
+
+[node name="Polygon2D" type="Polygon2D" parent="Stations/Counter/Visual" unique_id=1023071863]
+color = Color(0.9882602, 0, 0.081072785, 1)
+polygon = PackedVector2Array(-60, -40, 60, -40, 60, 40, -60, 40)
+
+[node name="InteractionArea" type="Area2D" parent="Stations/Counter" unique_id=850828707]
+collision_layer = 2
+script = ExtResource("1_0xm2m")
+station_name = "Counter"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/Counter/InteractionArea" unique_id=1486275963]
+shape = SubResource("RectangleShape2D_7dm0k")
+
+[node name="LabelPoint" type="Marker2D" parent="Stations/Counter" unique_id=1699715487]
+
+[node name="Cooker" type="Node2D" parent="Stations" unique_id=1584601145]
+position = Vector2(480, 220)
+
+[node name="Visual" type="Node2D" parent="Stations/Cooker" unique_id=545458128]
+
+[node name="Polygon2D" type="Polygon2D" parent="Stations/Cooker/Visual" unique_id=1769552252]
+color = Color(0.7058824, 0, 0.8156863, 1)
+polygon = PackedVector2Array(-60, -40, 60, -40, 60, 40, -60, 40)
+uv = PackedVector2Array(-60, -40, 60, -40, 60, 40, -60, 40)
+
+[node name="InteractionArea" type="Area2D" parent="Stations/Cooker" unique_id=887792751]
+collision_layer = 2
+script = ExtResource("1_0xm2m")
+station_name = "Cooker"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/Cooker/InteractionArea" unique_id=411231298]
+shape = SubResource("RectangleShape2D_ig7tw")
+
+[node name="LabelPoint" type="Marker2D" parent="Stations/Cooker" unique_id=681115274]
+
+[node name="DeliveryPoint" type="Node2D" parent="Stations" unique_id=1177242921 groups=["delivery_point"]]
+position = Vector2(680, 220)
+
+[node name="Visual" type="Node2D" parent="Stations/DeliveryPoint" unique_id=1006287538]
+
+[node name="Polygon2D" type="Polygon2D" parent="Stations/DeliveryPoint/Visual" unique_id=970355434]
+color = Color(1, 1, 0.09019608, 1)
+polygon = PackedVector2Array(-60, -40, 60, -40, 60, 40, -60, 40)
+
+[node name="InteractionArea" type="Area2D" parent="Stations/DeliveryPoint" unique_id=772690486]
+collision_layer = 2
+script = ExtResource("1_0xm2m")
+station_name = "DeliveryPoint"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/DeliveryPoint/InteractionArea" unique_id=1470093100]
+shape = SubResource("RectangleShape2D_0xm2m")
+
+[node name="LabelPoint" type="Marker2D" parent="Stations/DeliveryPoint" unique_id=1486560963]
+
+[node name="StorageArea" type="Node2D" parent="Stations" unique_id=1616193361]
+position = Vector2(650, 380)
+
+[node name="Visual" type="Node2D" parent="Stations/StorageArea" unique_id=1445830613]
+
+[node name="Polygon2D" type="Polygon2D" parent="Stations/StorageArea/Visual" unique_id=2126737722]
+color = Color(0.078431375, 1, 1, 1)
+polygon = PackedVector2Array(-60, -40, 60, -40, 60, 40, -60, 40)
+
+[node name="InteractionArea" type="Area2D" parent="Stations/StorageArea" unique_id=853223621]
+script = ExtResource("1_0xm2m")
+station_name = "StorageArea"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/StorageArea/InteractionArea" unique_id=1010917241]
+shape = SubResource("RectangleShape2D_1bvp3")
+
+[node name="LabelPoint" type="Marker2D" parent="Stations/StorageArea" unique_id=871541465]
+
+[node name="EmergencyShop" type="Node2D" parent="Stations" unique_id=514943712]
+
+[node name="Visual" type="Node2D" parent="Stations/EmergencyShop" unique_id=1278424446]
+
+[node name="Polygon2D" type="Polygon2D" parent="Stations/EmergencyShop/Visual" unique_id=1622561792]
+color = Color(0.50980395, 0, 1, 1)
+polygon = PackedVector2Array(-60, -40, 60, -40, 60, 40, -60, 40)
+
+[node name="InteractionArea" type="Area2D" parent="Stations/EmergencyShop" unique_id=930475026]
+script = ExtResource("1_0xm2m")
+station_name = "EmergencyShop"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/EmergencyShop/InteractionArea" unique_id=1255579822]
+shape = SubResource("RectangleShape2D_lquwl")
+
+[node name="LabelPoint" type="Marker2D" parent="Stations/EmergencyShop" unique_id=7260532]
+
+[node name="Characters" type="Node2D" parent="." unique_id=1772073976]
+
+[node name="Player" parent="Characters" unique_id=1448892241 groups=["player"] instance=ExtResource("1_ig7tw")]
+
+[node name="Orders" type="Node" parent="." unique_id=1001496981]
+
+[node name="UI" type="CanvasLayer" parent="." unique_id=1351740684 groups=["game_ui"]]
+script = ExtResource("3_lquwl")
+
+[node name="MoneyLabel" type="Label" parent="UI" unique_id=84277642]
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 91.0
+offset_bottom = 43.0
+text = "Money: 0"
+
+[node name="PatienceLabel" type="Label" parent="UI" unique_id=1315849924]
+offset_left = 20.0
+offset_top = 50.0
+offset_right = 91.0
+offset_bottom = 73.0
+text = "Patience:"
+
+[node name="OrderPanel" type="Panel" parent="UI" unique_id=160189828]
+visible = false
+offset_left = 760.0
+offset_top = 20.0
+offset_right = 1040.0
+offset_bottom = 160.0
+
+[node name="TitleLabel" type="Label" parent="UI/OrderPanel" unique_id=1451522633]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 58.0
+offset_bottom = 33.0
+text = "订单："
+
+[node name="MainFoodLabel" type="Label" parent="UI/OrderPanel" unique_id=300668828]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 40.0
+offset_right = 58.0
+offset_bottom = 63.0
+text = "主食："
+
+[node name="IngredientsLabel" type="Label" parent="UI/OrderPanel" unique_id=74236396]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 70.0
+offset_right = 58.0
+offset_bottom = 93.0
+text = "食材："
+
+[node name="StockPanel" type="Panel" parent="UI" unique_id=1468619675]
+visible = false
+offset_left = 20.0
+offset_top = 500.0
+offset_right = 340.0
+offset_bottom = 600.0
+
+[node name="CookedStockLabel" type="Label" parent="UI/StockPanel" unique_id=77310716]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 90.0
+offset_bottom = 33.0
+text = "熟食库存："
+
+[node name="RawStockLabel" type="Label" parent="UI/StockPanel" unique_id=1677683250]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 45.0
+offset_right = 106.0
+offset_bottom = 68.0
+text = "生食材库存："
+
+[node name="PendingOrdersPanel" type="Panel" parent="UI" unique_id=1312284459]
+offset_left = 760.0
+offset_top = 180.0
+offset_right = 1060.0
+offset_bottom = 400.0
+
+[node name="OrdersLabel" type="Label" parent="UI/PendingOrdersPanel" unique_id=1034642893]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 290.0
+offset_bottom = 210.0
+text = "待处理订单"
+autowrap_mode = 2
+
+[node name="OpenBusinessButton" type="Button" parent="UI" unique_id=1002375507]
+offset_right = 8.0
+offset_bottom = 8.0
+
+[node name="BusinessStateLabel" type="Label" parent="UI" unique_id=1435539602]
+offset_right = 40.0
+offset_bottom = 23.0
+
+[node name="GameManager" type="Node" parent="." unique_id=1062233427 groups=["game_manager"]]
+script = ExtResource("4_1bvp3")
+customer_scene = ExtResource("3_h2yge")
+
+[node name="SpawnTimer" type="Timer" parent="GameManager" unique_id=1579172830]
+one_shot = true
+
+[node name="CookTimer" type="Timer" parent="GameManager" unique_id=813525389]
+wait_time = 2.0
+one_shot = true
+
+[node name="MetaProgress" type="Node" parent="." unique_id=2088587694]
+
+[node name="StoryData" type="Node" parent="." unique_id=1850782346]
+
+[node name="LayoutSlots" type="Node2D" parent="." unique_id=806798287]
+
+[node name="SlotA" type="Marker2D" parent="LayoutSlots" unique_id=1077234080]
+position = Vector2(220, 180)
+
+[node name="SlotB" type="Marker2D" parent="LayoutSlots" unique_id=2033913141]
+position = Vector2(420, 180)
+
+[node name="SlotC" type="Marker2D" parent="LayoutSlots" unique_id=344607718]
+position = Vector2(220, 320)
+
+[node name="SlotD" type="Marker2D" parent="LayoutSlots" unique_id=1316249324]
+position = Vector2(420, 320)
+
+[node name="SlotE" type="Marker2D" parent="LayoutSlots" unique_id=819792884]
+position = Vector2(620, 180)
+
+[node name="SlotF" type="Marker2D" parent="LayoutSlots" unique_id=1389469593]
+position = Vector2(620, 320)

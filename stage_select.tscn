@@ -1,0 +1,67 @@
+[gd_scene format=3 uid="uid://m3ktxf1h1a07"]
+
+[ext_resource type="Script" uid="uid://bvuyyoutswavb" path="res://stage_select.gd" id="1_d2q2k"]
+
+[node name="StageSelect" type="Control" unique_id=1258329786]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_d2q2k")
+
+[node name="Background" type="ColorRect" parent="." unique_id=1910701393]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(1, 1, 1, 0.27450982)
+
+[node name="TitleLabel" type="Label" parent="." unique_id=2111211030]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 23.0
+grow_horizontal = 2
+text = "选择关卡"
+
+[node name="MenuBox" type="VBoxContainer" parent="." unique_id=845805413]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -36.0
+offset_top = -50.5
+offset_right = 36.0
+offset_bottom = 50.5
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(36, 50.5)
+
+[node name="Stage1Button" type="Button" parent="MenuBox" unique_id=612672463]
+layout_mode = 2
+text = "关卡1"
+
+[node name="Stage2Button" type="Button" parent="MenuBox" unique_id=1917636749]
+layout_mode = 2
+text = "关卡2"
+
+[node name="BackButton" type="Button" parent="MenuBox" unique_id=428705542]
+layout_mode = 2
+text = "返回主页"
+
+[node name="MessageLabel" type="Label" parent="." unique_id=1208302758]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -23.0
+grow_horizontal = 2
+grow_vertical = 0
+text = "请选择一个关卡"

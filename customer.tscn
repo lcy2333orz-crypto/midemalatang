@@ -1,0 +1,21 @@
+[gd_scene format=3 uid="uid://dxv8fg3rkxamc"]
+
+[ext_resource type="Script" uid="uid://drn0oy1mm5q0v" path="res://customer.gd" id="1_7tiyv"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_8l5f2"]
+
+[node name="Customer" type="CharacterBody2D" unique_id=818483824 groups=["customers"]]
+collision_layer = 5
+collision_mask = 0
+script = ExtResource("1_7tiyv")
+
+[node name="Visual" type="Node2D" parent="." unique_id=40139982]
+
+[node name="Polygon2D" type="Polygon2D" parent="Visual" unique_id=1980067266]
+color = Color(0.27450982, 1, 0.09803922, 1)
+polygon = PackedVector2Array(-20, -24, 20, -24, 20, 24, -20, 24)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=74245734]
+shape = SubResource("CapsuleShape2D_8l5f2")
+
+[node name="TargetMarker" type="Marker2D" parent="." unique_id=533992166]
