@@ -1,5 +1,6 @@
 extends Control
 
+@onready var title_label: Label = $TitleLabel
 @onready var start_button: Button = $MenuBox/StartButton
 @onready var settings_button: Button = $MenuBox/SettingsButton
 @onready var credits_button: Button = $MenuBox/CreditsButton
@@ -12,16 +13,22 @@ func _ready() -> void:
 	credits_button.pressed.connect(_on_credits_button_pressed)
 	quit_button.pressed.connect(_on_quit_button_pressed)
 
+	title_label.text = TextDB.get_text("UI_GAME_TITLE")
+	start_button.text = TextDB.get_text("UI_TITLE_START")
+	settings_button.text = TextDB.get_text("UI_TITLE_SETTINGS")
+	credits_button.text = TextDB.get_text("UI_TITLE_CREDITS")
+	quit_button.text = TextDB.get_text("UI_TITLE_QUIT")
+
 	message_label.text = ""
 
 func _on_start_button_pressed() -> void:
 	get_tree().change_scene_to_file("res://home_menu.tscn")
 
 func _on_settings_button_pressed() -> void:
-	message_label.text = "设置界面暂未制作。"
+	message_label.text = TextDB.get_text("UI_TITLE_SETTINGS_NOT_READY")
 
 func _on_credits_button_pressed() -> void:
-	message_label.text = "开发名单暂未制作。"
+	message_label.text = TextDB.get_text("UI_TITLE_CREDITS_NOT_READY")
 
 func _on_quit_button_pressed() -> void:
 	get_tree().quit()

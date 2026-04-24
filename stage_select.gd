@@ -1,5 +1,6 @@
 extends Control
 
+@onready var title_label: Label = $TitleLabel
 @onready var stage1_button: Button = $MenuBox/Stage1Button
 @onready var stage2_button: Button = $MenuBox/Stage2Button
 @onready var back_button: Button = $MenuBox/BackButton
@@ -10,7 +11,12 @@ func _ready() -> void:
 	stage2_button.pressed.connect(_on_stage2_button_pressed)
 	back_button.pressed.connect(_on_back_button_pressed)
 
-	message_label.text = "请选择一个关卡。"
+	title_label.text = TextDB.get_text("UI_STAGE_SELECT_TITLE")
+	stage1_button.text = TextDB.get_text("UI_STAGE_1")
+	stage2_button.text = TextDB.get_text("UI_STAGE_2")
+	back_button.text = TextDB.get_text("UI_STAGE_BACK")
+
+	message_label.text = TextDB.get_text("UI_STAGE_SELECT_HINT")
 
 func _on_stage1_button_pressed() -> void:
 	RunSetupData.setup_stage_run("stage_1", 7)

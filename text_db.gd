@@ -1,0 +1,235 @@
+extends Node
+
+var current_language: String = "zh"
+
+var texts := {
+	"zh": {
+		"UI_MONEY": "Money: %d",
+		"UI_PATIENCE": "Patience: %d / %d",
+		"UI_PATIENCE_EMPTY": "Patience:",
+		"UI_ORDER_TITLE": "订单: %s",
+		"UI_MAIN_FOOD": "主食: %s",
+		"UI_INGREDIENTS": "食材: %s",
+
+		"UI_ORDER_EMPTY": "订单：",
+		"UI_MAIN_FOOD_EMPTY": "主食：",
+		"UI_INGREDIENTS_EMPTY": "食材：",
+		"UI_COOKED_STOCK_EMPTY": "熟食库存：",
+		"UI_RAW_STOCK_EMPTY": "生食材库存：",
+		"UI_PENDING_ORDERS_EMPTY": "待处理订单",
+
+		"UI_COOKED_STOCK_LINE": "熟食库存：%s",
+		"UI_RAW_STOCK_LINE": "生食材库存：%s",
+		
+		"UI_DAY_STATE_NOT_OPEN": "今日剩余：%d秒（未开业）",
+		"UI_DAY_STATE_OPEN": "营业剩余：%d秒",
+		"UI_DAY_STATE_CLOSING": "营业状态：已打烊（收尾中）",
+		"UI_DAY_STATE_FINISHED": "营业状态：今日已结束",
+		
+		"UI_ITEM_COUNT": "%s x%d",
+
+		"UI_PENDING_ORDER_SUMMARY": "%s | 主食:%s | %s | 耐心:%s",
+		"UI_PENDING_ORDER_STATUS": "[%s] %s",
+		"UI_PENDING_ORDER_STATUS_WITH_POT": "[%s-锅%d] %s",
+		"UI_PENDING_ORDER_STATUS_WITH_POT_TARGET": "[%s-锅%d-%s] %s",
+		"UI_PENDING_ORDER_STATUS_WITH_TARGET": "[%s-%s] %s",
+
+		"UI_ORDER_NAME_MALATANG": "麻辣烫",
+
+		"UI_ITEM_NONE": "无",
+		"UI_ITEM_GLASS_NOODLE": "粉丝",
+		"UI_ITEM_NOODLE": "面",
+		"UI_ITEM_SPINACH": "菠菜",
+		"UI_ITEM_POTATO_SLICE": "土豆片",
+		"UI_ITEM_TOFU_PUFF": "豆腐泡",
+
+		"UI_STATUS_WAITING_RESTOCK": "待补货",
+		"UI_STATUS_READY_DELIVERY": "待交付",
+		"UI_STATUS_COOKING": "烹饪中",
+		"UI_STATUS_WAITING_COOK": "待烹饪",
+
+		"UI_TITLE_START": "开始游戏",
+		"UI_TITLE_SETTINGS": "设置",
+		"UI_TITLE_CREDITS": "开发名单",
+		"UI_TITLE_QUIT": "退出游戏",
+		"UI_GAME_TITLE": "麻辣烫",
+		"UI_TITLE_SETTINGS_NOT_READY": "设置界面暂未制作。",
+		"UI_TITLE_CREDITS_NOT_READY": "开发名单暂未制作。",
+
+		"UI_HOME_ENTER_STAGE": "进入选关",
+		"UI_HOME_NOTEBOOK": "猫的手账本",
+		"UI_HOME_MAP": "地图",
+		"UI_HOME_BACK": "返回标题",
+		"UI_HOME_MAIN_HINT": "这里是功能主界面。",
+		"UI_HOME_NOTEBOOK_NOT_READY": "猫的手账本暂未制作。",
+		"UI_HOME_MAP_NOT_READY": "地图系统暂未制作。",
+
+		"UI_STAGE_SELECT_TITLE": "选择关卡",
+		"UI_STAGE_1": "关卡1",
+		"UI_STAGE_2": "关卡2",
+		"UI_STAGE_BACK": "返回主页",
+		"UI_STAGE_SELECT_HINT": "请选择一个关卡。",
+
+		"UI_SETTLEMENT_TITLE": "本轮结算",
+		"UI_SETTLEMENT_TODAY_INCOME": "今日收入：%d",
+		"UI_SETTLEMENT_ROUND_INCOME": "本轮收入：%d",
+		"UI_SETTLEMENT_WASTE": "报废价值：%d",
+		"UI_SETTLEMENT_PROFIT": "本轮利润：%d",
+		"UI_SETTLEMENT_CURRENT_MONEY": "当前资金：%d",
+		"UI_SETTLEMENT_COOKED_STOCK": "剩余熟食：%s",
+		"UI_SETTLEMENT_RAW_STOCK": "剩余生食材：%s",
+		"UI_SETTLEMENT_RETRY": "再开一天",
+		"UI_SETTLEMENT_BACK_HOME": "返回主页",
+
+		"UI_DAY_SETTLEMENT_TITLE": "第%d天结算",
+		"UI_RUN_SETTLEMENT_TITLE": "本轮结算",
+		"UI_SETTLEMENT_NEXT_DAY": "进入下一天",
+		"UI_SETTLEMENT_ABORT_RUN": "放弃本轮并返回主页",
+		"UI_SETTLEMENT_RESTART_RUN": "再次挑战本关",
+		"UI_SETTLEMENT_TOTAL_DAYS": "总经营天数：%d",
+
+		"UI_PREP_TITLE": "开业前整备",
+		"UI_PREP_CONFIRM": "确认开业",
+		"UI_PREP_STAGE_NONE": "当前关卡：未选择",
+		"UI_PREP_STAGE_CURRENT": "当前关卡：%s",
+		"UI_PREP_LINE_1": "当前为占位版整备。",
+		"UI_PREP_LINE_2": "这一步先不手动摆放设施，而是进入关卡时写入一套默认布局。",
+		"UI_PREP_LINE_3": "后面再把这里升级成真正的摆放界面。",
+		"UI_PREP_LAYOUT_PREVIEW": "默认布局预览："
+	},
+	"en": {
+		"UI_MONEY": "Money: %d",
+		"UI_PATIENCE": "Patience: %d / %d",
+		"UI_PATIENCE_EMPTY": "Patience:",
+		"UI_ORDER_TITLE": "Order: %s",
+		"UI_MAIN_FOOD": "Main Food: %s",
+		"UI_INGREDIENTS": "Ingredients: %s",
+
+		"UI_ORDER_EMPTY": "Order:",
+		"UI_MAIN_FOOD_EMPTY": "Main Food:",
+		"UI_INGREDIENTS_EMPTY": "Ingredients:",
+		"UI_COOKED_STOCK_EMPTY": "Cooked Stock:",
+		"UI_RAW_STOCK_EMPTY": "Raw Stock:",
+		"UI_PENDING_ORDERS_EMPTY": "Pending Orders",
+
+		"UI_COOKED_STOCK_LINE": "Cooked Stock: %s",
+		"UI_RAW_STOCK_LINE": "Raw Stock: %s",
+		
+		"UI_DAY_STATE_NOT_OPEN": "Day Time Left: %d s (Not Open)",
+		"UI_DAY_STATE_OPEN": "Time Left: %d s",
+		"UI_DAY_STATE_CLOSING": "Business: Closed (Wrapping Up)",
+		"UI_DAY_STATE_FINISHED": "Business: Day Finished",
+		
+		"UI_ITEM_COUNT": "%s x%d",
+
+		"UI_PENDING_ORDER_SUMMARY": "%s | Main Food:%s | %s | Patience:%s",
+		"UI_PENDING_ORDER_STATUS": "[%s] %s",
+		"UI_PENDING_ORDER_STATUS_WITH_POT": "[%s-Pot%d] %s",
+		"UI_PENDING_ORDER_STATUS_WITH_POT_TARGET": "[%s-Pot%d-%s] %s",
+		"UI_PENDING_ORDER_STATUS_WITH_TARGET": "[%s-%s] %s",
+
+		"UI_ORDER_NAME_MALATANG": "Malatang",
+
+		"UI_ITEM_NONE": "None",
+		"UI_ITEM_GLASS_NOODLE": "Glass Noodles",
+		"UI_ITEM_NOODLE": "Noodles",
+		"UI_ITEM_SPINACH": "Spinach",
+		"UI_ITEM_POTATO_SLICE": "Potato Slices",
+		"UI_ITEM_TOFU_PUFF": "Tofu Puffs",
+
+		"UI_STATUS_WAITING_RESTOCK": "Restock Needed",
+		"UI_STATUS_READY_DELIVERY": "Ready to Deliver",
+		"UI_STATUS_COOKING": "Cooking",
+		"UI_STATUS_WAITING_COOK": "Waiting to Cook",
+
+		"UI_TITLE_START": "Start Game",
+		"UI_TITLE_SETTINGS": "Settings",
+		"UI_TITLE_CREDITS": "Credits",
+		"UI_TITLE_QUIT": "Quit",
+		"UI_GAME_TITLE": "Malatang",
+		"UI_TITLE_SETTINGS_NOT_READY": "Settings screen is not ready yet.",
+		"UI_TITLE_CREDITS_NOT_READY": "Credits screen is not ready yet.",
+
+		"UI_HOME_ENTER_STAGE": "Stage Select",
+		"UI_HOME_NOTEBOOK": "Cat Notebook",
+		"UI_HOME_MAP": "Map",
+		"UI_HOME_BACK": "Back to Title",
+		"UI_HOME_MAIN_HINT": "This is the main function screen.",
+		"UI_HOME_NOTEBOOK_NOT_READY": "Cat Notebook is not ready yet.",
+		"UI_HOME_MAP_NOT_READY": "Map system is not ready yet.",
+
+		"UI_STAGE_SELECT_TITLE": "Select Stage",
+		"UI_STAGE_1": "Stage 1",
+		"UI_STAGE_2": "Stage 2",
+		"UI_STAGE_BACK": "Back to Home",
+		"UI_STAGE_SELECT_HINT": "Please select a stage.",
+		
+		"UI_SETTLEMENT_TITLE": "Round Summary",
+		"UI_SETTLEMENT_TODAY_INCOME": "Today Income: %d",
+		"UI_SETTLEMENT_ROUND_INCOME": "Round Income: %d",
+		"UI_SETTLEMENT_WASTE": "Waste Value: %d",
+		"UI_SETTLEMENT_PROFIT": "Round Profit: %d",
+		"UI_SETTLEMENT_CURRENT_MONEY": "Current Money: %d",
+		"UI_SETTLEMENT_COOKED_STOCK": "Remaining Cooked Stock: %s",
+		"UI_SETTLEMENT_RAW_STOCK": "Remaining Raw Stock: %s",
+		"UI_SETTLEMENT_RETRY": "Open Another Day",
+		"UI_SETTLEMENT_BACK_HOME": "Back to Home",
+
+		"UI_DAY_SETTLEMENT_TITLE": "Day %d Summary",
+		"UI_RUN_SETTLEMENT_TITLE": "Run Summary",
+		"UI_SETTLEMENT_NEXT_DAY": "Next Day",
+		"UI_SETTLEMENT_ABORT_RUN": "Quit Run and Return Home",
+		"UI_SETTLEMENT_RESTART_RUN": "Retry This Stage",
+		"UI_SETTLEMENT_TOTAL_DAYS": "Total Days: %d",
+
+		"UI_PREP_TITLE": "Pre-Opening Setup",
+		"UI_PREP_CONFIRM": "Confirm Opening",
+		"UI_PREP_STAGE_NONE": "Current Stage: Not Selected",
+		"UI_PREP_STAGE_CURRENT": "Current Stage: %s",
+		"UI_PREP_LINE_1": "This is the placeholder setup screen.",
+		"UI_PREP_LINE_2": "For now, station layout is written automatically when entering the run.",
+		"UI_PREP_LINE_3": "Later this will be upgraded into a real placement screen.",
+		"UI_PREP_LAYOUT_PREVIEW": "Default Layout Preview:"
+	}
+}
+
+var item_key_map := {
+	"none": "UI_ITEM_NONE",
+	"glass_noodle": "UI_ITEM_GLASS_NOODLE",
+	"noodle": "UI_ITEM_NOODLE",
+	"spinach": "UI_ITEM_SPINACH",
+	"potato_slice": "UI_ITEM_POTATO_SLICE",
+	"tofu_puff": "UI_ITEM_TOFU_PUFF"
+}
+
+var status_key_map := {
+	"waiting_restock": "UI_STATUS_WAITING_RESTOCK",
+	"ready_delivery": "UI_STATUS_READY_DELIVERY",
+	"cooking": "UI_STATUS_COOKING",
+	"waiting_cook": "UI_STATUS_WAITING_COOK"
+}
+
+func set_language(language_code: String) -> void:
+	if texts.has(language_code):
+		current_language = language_code
+
+func get_text(key: String) -> String:
+	var lang_table: Dictionary = texts.get(current_language, {})
+	if lang_table.has(key):
+		return str(lang_table[key])
+
+	var zh_table: Dictionary = texts.get("zh", {})
+	if zh_table.has(key):
+		return str(zh_table[key])
+
+	return key
+
+func get_item_name(item_id: String) -> String:
+	if item_key_map.has(item_id):
+		return get_text(item_key_map[item_id])
+	return item_id
+
+func get_status_name(status_id: String) -> String:
+	if status_key_map.has(status_id):
+		return get_text(status_key_map[status_id])
+	return status_id

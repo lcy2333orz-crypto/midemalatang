@@ -45,19 +45,19 @@ pivot_offset = Vector2(44, 68)
 
 [node name="StageSelectButton" type="Button" parent="MenuBox" unique_id=1928994622]
 layout_mode = 2
-text = "进入选关"
+text = "\"\""
 
 [node name="NotebookButton" type="Button" parent="MenuBox" unique_id=1268852906]
 layout_mode = 2
-text = "猫的手账本"
+text = "\"\""
 
 [node name="MapButton" type="Button" parent="MenuBox" unique_id=57279014]
 layout_mode = 2
-text = "地图"
+text = "\"\""
 
 [node name="BackButton" type="Button" parent="MenuBox" unique_id=1965406007]
 layout_mode = 2
-text = "返回标题"
+text = "\"\""
 
 [node name="MessageLabel" type="Label" parent="." unique_id=1048508172]
 layout_mode = 0

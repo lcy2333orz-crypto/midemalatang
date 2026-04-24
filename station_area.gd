@@ -25,12 +25,10 @@ func interact() -> void:
 				print("No customer at counter.")
 			return
 
-		# 第一次 E：展示订单
 		if not customer.order_revealed:
 			game_manager.begin_checkout_for_customer(customer)
 			return
 
-		# 第二次 E：尝试正式收银 / 接单（当前先用正确报价占位）
 		if not customer.is_checked_out:
 			var evaluation = game_manager.evaluate_order_before_checkout(customer)
 
@@ -75,14 +73,7 @@ func interact() -> void:
 			print("No deliverable customer.")
 			return
 
-		customer.mark_order_served()
-		game_manager.remove_customer_from_pending(customer)
-
-		var exit_point = get_tree().get_first_node_in_group("exit_point")
-		if exit_point:
-			customer.go_to_exit(exit_point.global_position)
-
-		print("Delivered order to customer.")
+		game_manager.complete_delivery_for_customer(customer)
 		return
 
 	if station_name == "StorageArea":
@@ -115,6 +106,10 @@ func toggle_business() -> void:
 	var game_manager = get_tree().get_first_node_in_group("game_manager")
 	if game_manager == null:
 		print("No game manager found.")
+		return
+
+	if game_manager.is_round_closing or game_manager.has_round_finished:
+		print("Round is closing or already finished. Business cannot be reopened.")
 		return
 
 	if game_manager.is_open_for_business:

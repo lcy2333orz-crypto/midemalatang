@@ -2,6 +2,7 @@ extends CanvasLayer
 
 @onready var money_label: Label = $MoneyLabel
 @onready var patience_label: Label = $PatienceLabel
+@onready var business_state_label: Label = $BusinessStateLabel
 
 @onready var order_panel: Panel = $OrderPanel
 @onready var title_label: Label = $OrderPanel/TitleLabel
@@ -13,11 +14,22 @@ extends CanvasLayer
 @onready var raw_stock_label: Label = $StockPanel/RawStockLabel
 
 @onready var pending_orders_panel: Panel = $PendingOrdersPanel
-@onready var orders_label: Label = $PendingOrdersPanel/OrdersLabel
+@onready var cards_container: HBoxContainer = $PendingOrdersPanel/CardsContainer
 
 var stock_visibility_token: int = 0
+var pending_order_card_scene: PackedScene = preload("res://pending_order_card.tscn")
 
 func _ready() -> void:
+	money_label.text = TextDB.get_text("UI_MONEY") % 0
+	patience_label.text = TextDB.get_text("UI_PATIENCE_EMPTY")
+	business_state_label.text = TextDB.get_text("UI_DAY_STATE_NOT_OPEN") % 0
+
+	title_label.text = TextDB.get_text("UI_ORDER_EMPTY")
+	main_food_label.text = TextDB.get_text("UI_MAIN_FOOD_EMPTY")
+	ingredients_label.text = TextDB.get_text("UI_INGREDIENTS_EMPTY")
+	cooked_stock_label.text = TextDB.get_text("UI_COOKED_STOCK_EMPTY")
+	raw_stock_label.text = TextDB.get_text("UI_RAW_STOCK_EMPTY")
+
 	hide_order()
 	stock_panel.visible = false
 	update_money(0)
@@ -25,16 +37,19 @@ func _ready() -> void:
 	hide_pending_orders()
 
 func update_money(amount: int) -> void:
-	money_label.text = "Money: %d" % amount
+	money_label.text = TextDB.get_text("UI_MONEY") % amount
 
 func show_order(order_name: String, main_food: String, ingredients_text: String) -> void:
 	order_panel.visible = true
-	title_label.text = "订单: %s" % order_name
-	main_food_label.text = "主食: %s" % main_food
-	ingredients_label.text = "食材: %s" % ingredients_text
+	title_label.text = TextDB.get_text("UI_ORDER_TITLE") % order_name
+	main_food_label.text = TextDB.get_text("UI_MAIN_FOOD") % main_food
+	ingredients_label.text = TextDB.get_text("UI_INGREDIENTS") % ingredients_text
 
 func hide_order() -> void:
 	order_panel.visible = false
+	title_label.text = TextDB.get_text("UI_ORDER_EMPTY")
+	main_food_label.text = TextDB.get_text("UI_MAIN_FOOD_EMPTY")
+	ingredients_label.text = TextDB.get_text("UI_INGREDIENTS_EMPTY")
 
 func show_stock(cooked_text: String, raw_text: String) -> void:
 	stock_visibility_token += 1
@@ -54,18 +69,50 @@ func _delayed_hide_stock(token: int) -> void:
 		return
 
 	stock_panel.visible = false
+	cooked_stock_label.text = TextDB.get_text("UI_COOKED_STOCK_EMPTY")
+	raw_stock_label.text = TextDB.get_text("UI_RAW_STOCK_EMPTY")
 
 func show_patience(current_value: float, max_value: float) -> void:
 	patience_label.visible = true
-	patience_label.text = "Patience: %d / %d" % [int(ceil(current_value)), int(max_value)]
+	patience_label.text = TextDB.get_text("UI_PATIENCE") % [int(ceil(current_value)), int(max_value)]
 
 func hide_patience() -> void:
 	patience_label.visible = false
+	patience_label.text = TextDB.get_text("UI_PATIENCE_EMPTY")
 
-func show_pending_orders(order_text: String) -> void:
+func show_pending_orders(order_cards: Array) -> void:
+	_clear_pending_order_cards()
+
+	if order_cards.is_empty():
+		hide_pending_orders()
+		return
+
 	pending_orders_panel.visible = true
-	orders_label.text = order_text
+
+	for card_data in order_cards:
+		var card = pending_order_card_scene.instantiate()
+		cards_container.add_child(card)
+		card.apply_data(card_data)
 
 func hide_pending_orders() -> void:
 	pending_orders_panel.visible = false
-	orders_label.text = ""
+	_clear_pending_order_cards()
+
+func _clear_pending_order_cards() -> void:
+	for child in cards_container.get_children():
+		child.queue_free()
+
+func update_business_state(day_time_left: float, is_open: bool, is_closing: bool, is_finished: bool) -> void:
+	if is_finished:
+		business_state_label.text = TextDB.get_text("UI_DAY_STATE_FINISHED")
+		return
+
+	if is_open:
+		business_state_label.text = TextDB.get_text("UI_DAY_STATE_OPEN") % int(ceil(day_time_left))
+		return
+
+	if is_closing:
+		business_state_label.text = TextDB.get_text("UI_DAY_STATE_CLOSING")
+		return
+
+	business_state_label.text = TextDB.get_text("UI_DAY_STATE_NOT_OPEN") % int(ceil(day_time_left))

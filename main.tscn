@@ -86,7 +86,7 @@ shape = SubResource("RectangleShape2D_ig7tw")
 
 [node name="LabelPoint" type="Marker2D" parent="Stations/Cooker" unique_id=681115274]
 
-[node name="DeliveryPoint" type="Node2D" parent="Stations" unique_id=1177242921 groups=["delivery_point"]]
+[node name="DeliveryPoint" type="Node2D" parent="Stations" unique_id=1177242921 groups=["delivery_spot"]]
 position = Vector2(680, 220)
 
 [node name="Visual" type="Node2D" parent="Stations/DeliveryPoint" unique_id=1006287538]
@@ -142,7 +142,8 @@ shape = SubResource("RectangleShape2D_lquwl")
 
 [node name="Characters" type="Node2D" parent="." unique_id=1772073976]
 
-[node name="Player" parent="Characters" unique_id=1448892241 groups=["player"] instance=ExtResource("1_ig7tw")]
+[node name="Player" parent="Characters" unique_id=1448892241 instance=ExtResource("1_ig7tw")]
+position = Vector2(326, 526)
 
 [node name="Orders" type="Node" parent="." unique_id=1001496981]
 
@@ -154,14 +155,14 @@ offset_left = 20.0
 offset_top = 20.0
 offset_right = 91.0
 offset_bottom = 43.0
-text = "Money: 0"
+text = "\"\""
 
 [node name="PatienceLabel" type="Label" parent="UI" unique_id=1315849924]
 offset_left = 20.0
 offset_top = 50.0
 offset_right = 91.0
 offset_bottom = 73.0
-text = "Patience:"
+text = "\"\""
 
 [node name="OrderPanel" type="Panel" parent="UI" unique_id=160189828]
 visible = false
@@ -176,7 +177,7 @@ offset_left = 10.0
 offset_top = 10.0
 offset_right = 58.0
 offset_bottom = 33.0
-text = "订单："
+text = "\"\""
 
 [node name="MainFoodLabel" type="Label" parent="UI/OrderPanel" unique_id=300668828]
 layout_mode = 0
@@ -184,7 +185,7 @@ offset_left = 10.0
 offset_top = 40.0
 offset_right = 58.0
 offset_bottom = 63.0
-text = "主食："
+text = "\"\""
 
 [node name="IngredientsLabel" type="Label" parent="UI/OrderPanel" unique_id=74236396]
 layout_mode = 0
@@ -192,7 +193,7 @@ offset_left = 10.0
 offset_top = 70.0
 offset_right = 58.0
 offset_bottom = 93.0
-text = "食材："
+text = "\"\""
 
 [node name="StockPanel" type="Panel" parent="UI" unique_id=1468619675]
 visible = false
@@ -207,7 +208,7 @@ offset_left = 10.0
 offset_top = 10.0
 offset_right = 90.0
 offset_bottom = 33.0
-text = "熟食库存："
+text = "\"\""
 
 [node name="RawStockLabel" type="Label" parent="UI/StockPanel" unique_id=1677683250]
 layout_mode = 0
@@ -215,22 +216,22 @@ offset_left = 10.0
 offset_top = 45.0
 offset_right = 106.0
 offset_bottom = 68.0
-text = "生食材库存："
+text = "\"\""
 
 [node name="PendingOrdersPanel" type="Panel" parent="UI" unique_id=1312284459]
-offset_left = 760.0
-offset_top = 180.0
-offset_right = 1060.0
-offset_bottom = 400.0
+custom_minimum_size = Vector2(180, 110)
+anchors_preset = 10
+anchor_right = 1.0
+grow_horizontal = 2
 
-[node name="OrdersLabel" type="Label" parent="UI/PendingOrdersPanel" unique_id=1034642893]
-layout_mode = 0
-offset_left = 10.0
-offset_top = 10.0
-offset_right = 290.0
-offset_bottom = 210.0
-text = "待处理订单"
-autowrap_mode = 2
+[node name="CardsContainer" type="HBoxContainer" parent="UI/PendingOrdersPanel" unique_id=482244785]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
 
 [node name="OpenBusinessButton" type="Button" parent="UI" unique_id=1002375507]
 offset_right = 8.0

@@ -36,19 +36,19 @@ grow_vertical = 2
 
 [node name="StartButton" type="Button" parent="MenuBox" unique_id=733328707]
 layout_mode = 2
-text = "开始游戏"
+text = "\"\""
 
 [node name="SettingsButton" type="Button" parent="MenuBox" unique_id=1220344443]
 layout_mode = 2
-text = "设置"
+text = "\"\""
 
 [node name="CreditsButton" type="Button" parent="MenuBox" unique_id=1963380202]
 layout_mode = 2
-text = "开发名单"
+text = "\"\""
 
 [node name="QuitButton" type="Button" parent="MenuBox" unique_id=2045792607]
 layout_mode = 2
-text = "退出游戏"
+text = "\"\""
 
 [node name="TitleLabel" type="Label" parent="." unique_id=1084226910]
 layout_mode = 1
@@ -56,7 +56,7 @@ anchors_preset = 10
 anchor_right = 1.0
 offset_bottom = 23.0
 grow_horizontal = 2
-text = "麻辣烫"
+text = "\"\""
 horizontal_alignment = 1
 
 [node name="MessageLabel" type="Label" parent="." unique_id=315500335]

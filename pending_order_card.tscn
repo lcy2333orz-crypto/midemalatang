@@ -1,0 +1,37 @@
+[gd_scene format=3 uid="uid://vb7i5kmec4as"]
+
+[ext_resource type="Script" uid="uid://bgago6mmrpgu7" path="res://pending_order_card.gd" id="1_v3r1o"]
+
+[node name="PendingOrderCard" type="Panel" unique_id=1593253297]
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_v3r1o")
+
+[node name="VBox" type="VBoxContainer" parent="." unique_id=1112011201]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+theme_override_constants/separation = 4
+
+[node name="StatusLabel" type="Label" parent="VBox" unique_id=2039726692]
+visible = false
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+text = "\"\""
+
+[node name="MainFoodLabel" type="Label" parent="VBox" unique_id=1188470578]
+layout_mode = 2
+text = "\"\""
+
+[node name="IngredientsLabel" type="Label" parent="VBox" unique_id=1100768969]
+layout_mode = 2
+text = "\"\""
+
+[node name="PatienceLabel" type="Label" parent="VBox" unique_id=1807294998]
+layout_mode = 2
+text = "\"\""
+
+[node name="ExtraLabel" type="Label" parent="VBox" unique_id=1449893000]
+visible = false
+layout_mode = 2
+text = "\"\""

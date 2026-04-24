@@ -1,0 +1,81 @@
+[gd_scene format=3 uid="uid://crsmhl4higunm"]
+
+[ext_resource type="Script" uid="uid://5c0a0bivdp4r" path="res://settlement_result.gd" id="1_q51vo"]
+
+[node name="SettlementResult" type="Control" unique_id=1815144626]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_q51vo")
+
+[node name="TitleLabel" type="Label" parent="." unique_id=550828105]
+layout_mode = 0
+offset_left = 420.0
+offset_top = 80.0
+offset_right = 760.0
+offset_bottom = 130.0
+
+[node name="SummaryBox" type="VBoxContainer" parent="." unique_id=957722502]
+layout_mode = 0
+offset_left = 280.0
+offset_top = 170.0
+offset_right = 840.0
+offset_bottom = 420.0
+
+[node name="TodayIncomeLabel" type="Label" parent="SummaryBox" unique_id=1446443049]
+layout_mode = 2
+
+[node name="RoundIncomeLabel" type="Label" parent="SummaryBox" unique_id=95153502]
+layout_mode = 2
+
+[node name="WasteLabel" type="Label" parent="SummaryBox" unique_id=1085036967]
+layout_mode = 2
+
+[node name="ProfitLabel" type="Label" parent="SummaryBox" unique_id=1037629645]
+layout_mode = 2
+
+[node name="MoneyLabel" type="Label" parent="SummaryBox" unique_id=1966864091]
+layout_mode = 2
+
+[node name="CookedStockLabel" type="Label" parent="SummaryBox" unique_id=914465589]
+layout_mode = 2
+
+[node name="RawStockLabel" type="Label" parent="SummaryBox" unique_id=2075300778]
+layout_mode = 2
+
+[node name="ButtonBox" type="HBoxContainer" parent="." unique_id=621148346]
+layout_mode = 0
+offset_left = 360.0
+offset_top = 480.0
+offset_right = 660.0
+offset_bottom = 530.0
+
+[node name="RetryButton" type="Button" parent="ButtonBox" unique_id=1127491637]
+layout_mode = 2
+
+[node name="BackHomeButton" type="Button" parent="ButtonBox" unique_id=91184818]
+layout_mode = 2
+
+[node name="CardContainer" type="HBoxContainer" parent="." unique_id=1602116892]
+layout_mode = 0
+offset_left = 180.0
+offset_top = 380.0
+offset_right = 880.0
+offset_bottom = 500.0
+
+[node name="Card1" type="Button" parent="CardContainer" unique_id=1154909042]
+layout_mode = 2
+
+[node name="Card2" type="Button" parent="CardContainer" unique_id=1535014285]
+layout_mode = 2
+
+[node name="Card3" type="Button" parent="CardContainer" unique_id=444353388]
+layout_mode = 2
+
+[node name="NightQueueLabel" type="Label" parent="." unique_id=172703044]
+layout_mode = 0
+offset_left = 120.0
+offset_top = 320.0
+offset_right = 920.0
+offset_bottom = 360.0

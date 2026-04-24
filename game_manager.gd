@@ -11,17 +11,23 @@ var round_index: int = 1
 var today_income: int = 0
 
 var is_open_for_business: bool = false
+var is_round_closing: bool = false
+var has_round_finished: bool = false
+
+var day_duration_seconds: float = 15.0
+var day_time_left: float = 90.0
+var auto_close_triggered: bool = false
 
 var planned_raw_stock: Dictionary = {
-	"菠菜": 4,
-	"土豆片": 4,
-	"豆腐泡": 4
+	"spinach": 4,
+	"potato_slice": 4,
+	"tofu_puff": 4
 }
 
 var planned_cooked_stock: Dictionary = {
-	"菠菜": 2,
-	"土豆片": 2,
-	"豆腐泡": 2
+	"spinach": 2,
+	"potato_slice": 2,
+	"tofu_puff": 2
 }
 
 var raw_stock: Dictionary = {}
@@ -85,29 +91,60 @@ func _ready() -> void:
 	start_round()
 
 func _process(delta: float) -> void:
+	update_day_timer(delta)
 	update_cooker_slots(delta)
+
+	if is_round_closing and not has_round_finished:
+		try_finish_day()
 
 	var game_ui = get_tree().get_first_node_in_group("game_ui")
 	if game_ui == null:
 		return
 
+	game_ui.update_business_state(day_time_left, is_open_for_business, is_round_closing, has_round_finished)
 	game_ui.hide_patience()
 
-	if order_panel_blocked_for_this_run:
-		game_ui.hide_pending_orders()
-		return
-
-	var pending_texts: Array[String] = []
+	var order_cards: Array = []
 
 	for customer in pending_customers:
 		if customer != null and is_instance_valid(customer):
 			if not customer.order_served:
-				pending_texts.append(get_pending_order_display_text(customer))
+				order_cards.append(get_pending_order_card_data(customer))
 
-	if pending_texts.is_empty():
+	if order_cards.is_empty():
 		game_ui.hide_pending_orders()
 	else:
-		game_ui.show_pending_orders("\n\n".join(pending_texts))
+		game_ui.show_pending_orders(order_cards)
+
+func update_day_timer(delta: float) -> void:
+	if has_round_finished:
+		return
+
+	if is_round_closing:
+		return
+
+	day_time_left = max(day_time_left - delta, 0.0)
+
+	if day_time_left <= 0.0 and not auto_close_triggered:
+		auto_close_triggered = true
+		print("=== 营业时间已到，自动打烊 ===")
+
+		if is_open_for_business:
+			close_business()
+		else:
+			force_close_day_before_opening()
+
+func force_close_day_before_opening() -> void:
+	is_open_for_business = false
+	is_round_closing = true
+	day_time_left = 0.0
+
+	if spawn_timer != null and is_instance_valid(spawn_timer):
+		spawn_timer.stop()
+
+	print("=== 今日时间已耗尽，未开业也进入结算 ===")
+
+	try_finish_day()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("round_summary"):
@@ -116,7 +153,6 @@ func _unhandled_input(event: InputEvent) -> void:
 func _apply_upgrade_flags() -> void:
 	has_second_cooker = ProgressData.has_second_cooker
 	order_panel_upgrade_level = ProgressData.order_panel_upgrade_level
-	order_panel_blocked_for_this_run = RunSetupData.order_panel_blocked_for_this_run
 
 	if has_second_cooker:
 		unlocked_cooker_slots = 2
@@ -129,12 +165,24 @@ func start_round() -> void:
 	initialize_cooker_slots()
 	apply_station_layout_from_run_setup()
 
-	round_income = 0
+	money = RunSetupData.run_money
+	round_income = RunSetupData.run_total_income
 	today_income = 0
-	is_open_for_business = false
 
-	print("=== 本轮开始 ===")
-	print("Round index: ", round_index)
+	is_open_for_business = false
+	is_round_closing = false
+	has_round_finished = false
+
+	day_time_left = day_duration_seconds
+	auto_close_triggered = false
+
+	RunSetupData.today_special_customer_results = []
+	RunSetupData.generated_night_queue = []
+
+	RunSetupData.setup_daily_special_customer_plan()
+
+	print("=== 当前天开始 ===")
+	print("Day: ", RunSetupData.current_day_in_run, "/", RunSetupData.total_days_in_run)
 	print("Selected stage id: ", RunSetupData.selected_stage_id)
 	print("Selected difficulty days: ", RunSetupData.selected_difficulty_days)
 	print("Station layout from RunSetupData: ", RunSetupData.station_layout)
@@ -147,15 +195,115 @@ func start_round() -> void:
 		game_ui.hide_stock()
 		game_ui.hide_patience()
 		game_ui.hide_pending_orders()
+		game_ui.update_business_state(day_time_left, is_open_for_business, is_round_closing, has_round_finished)
 
 	queued_customers.clear()
 	pending_customers.clear()
 
+	if spawn_timer != null and is_instance_valid(spawn_timer):
+		spawn_timer.stop()
+
 	print("当前未开业，不生成普通顾客。")
 
+func _apply_special_customer_plan_to_customer(customer: Node) -> void:
+	if customer == null or not is_instance_valid(customer):
+		return
+
+	if RunSetupData.current_day_special_spawn_plan.is_empty():
+		return
+
+	var next_plan = RunSetupData.current_day_special_spawn_plan.pop_front()
+
+	if typeof(next_plan) != TYPE_DICTIONARY:
+		return
+
+	var special_type: String = str(next_plan.get("type", ""))
+	var special_name: String = str(next_plan.get("name", ""))
+
+	if special_type == "" or special_name == "":
+		return
+
+	if customer.has_method("setup_special_customer"):
+		customer.setup_special_customer(special_type, special_name)
+		print("Applied special customer plan: ", special_type, " / ", special_name)
+
+func prepare_stock_for_waiting_order(customer: Node, fulfillment_status: String) -> void:
+	if customer == null or not is_instance_valid(customer):
+		return
+
+	var ingredients: Dictionary = customer.get_ingredients()
+	var reserved_cooked: Dictionary = {}
+	var reserved_raw_to_cook: Dictionary = {}
+
+	if fulfillment_status == "instant":
+		deduct_cooked_stock(ingredients)
+		customer.set_meta("reserved_cooked_ingredients", ingredients.duplicate(true))
+		customer.set_meta("ingredients_to_cook", {})
+		customer.set_meta("ingredients_deducted_at_checkout", true)
+		return
+
+	if fulfillment_status == "waitable":
+		print("Reserving stock for waiting order...")
+		print("Before cooked stock: ", cooked_stock)
+		print("Before raw stock: ", raw_stock)
+
+		for ingredient_name in ingredients.keys():
+			var needed_amount: int = int(ingredients[ingredient_name])
+			var available_cooked: int = int(max(cooked_stock.get(ingredient_name, 0), 0))
+
+			var reserve_cooked_amount: int = min(available_cooked, needed_amount)
+			var missing_amount: int = max(needed_amount - reserve_cooked_amount, 0)
+
+			if reserve_cooked_amount > 0:
+				reserved_cooked[ingredient_name] = reserve_cooked_amount
+				cooked_stock[ingredient_name] = available_cooked - reserve_cooked_amount
+
+			if missing_amount > 0:
+				reserved_raw_to_cook[ingredient_name] = missing_amount
+
+				if not raw_stock.has(ingredient_name):
+					raw_stock[ingredient_name] = 0
+
+				raw_stock[ingredient_name] = max(int(raw_stock[ingredient_name]) - missing_amount, 0)
+
+		customer.set_meta("reserved_cooked_ingredients", reserved_cooked)
+		customer.set_meta("ingredients_to_cook", reserved_raw_to_cook)
+		customer.set_meta("ingredients_deducted_at_checkout", true)
+
+		print("Reserved cooked ingredients: ", reserved_cooked)
+		print("Reserved raw ingredients for cooking: ", reserved_raw_to_cook)
+		print("After cooked stock: ", cooked_stock)
+		print("After raw stock: ", raw_stock)
+		return
+
+	customer.set_meta("reserved_cooked_ingredients", {})
+	customer.set_meta("ingredients_to_cook", {})
+	customer.set_meta("ingredients_deducted_at_checkout", false)
+
+func get_customer_ingredients_to_cook(customer: Node) -> Dictionary:
+	if customer == null or not is_instance_valid(customer):
+		return {}
+
+	if customer.has_meta("ingredients_to_cook"):
+		var value = customer.get_meta("ingredients_to_cook")
+		if typeof(value) == TYPE_DICTIONARY:
+			return value
+
+	return {}
+
+	customer.set_meta("reserved_cooked_ingredients", {})
+	customer.set_meta("ingredients_to_cook", {})
+	customer.set_meta("ingredients_deducted_at_checkout", false)
+
 func initialize_round_stocks() -> void:
-	raw_stock = planned_raw_stock.duplicate(true)
-	cooked_stock = planned_cooked_stock.duplicate(true)
+	if RunSetupData.current_raw_stock.is_empty():
+		RunSetupData.current_raw_stock = planned_raw_stock.duplicate(true)
+
+	if RunSetupData.current_cooked_stock.is_empty():
+		RunSetupData.current_cooked_stock = planned_cooked_stock.duplicate(true)
+
+	raw_stock = RunSetupData.current_raw_stock.duplicate(true)
+	cooked_stock = RunSetupData.current_cooked_stock.duplicate(true)
 
 func initialize_cooker_slots() -> void:
 	cooker_slots.clear()
@@ -226,12 +374,9 @@ func update_cooker_slots(delta: float) -> void:
 
 		var customer = slot["customer"]
 		if customer != null and is_instance_valid(customer):
-			if customer.needs_ingredient_cooking:
-				consume_raw_stock_for_order(customer.get_ingredients())
-				add_cooked_stock_for_order(customer.get_ingredients())
-
 			customer.mark_food_ready()
 			print("Cooking finished in slot ", i, ". Order is ready for delivery.")
+			print("This cooked food belongs to this customer and is not added to public cooked_stock.")
 			print_stocks()
 
 		slot["is_busy"] = false
@@ -259,6 +404,10 @@ func open_business() -> void:
 	if is_open_for_business:
 		return
 
+	if is_round_closing or has_round_finished:
+		print("Round is closing or already finished. Cannot open business again.")
+		return
+
 	is_open_for_business = true
 	print("=== 开始营业 ===")
 
@@ -269,17 +418,17 @@ func close_business() -> void:
 		return
 
 	is_open_for_business = false
+	is_round_closing = true
+
+	if spawn_timer != null and is_instance_valid(spawn_timer):
+		spawn_timer.stop()
+
 	print("=== 已打烊 ===")
 
+	try_finish_day()
+
 func can_spawn_customers_now() -> bool:
-	if is_open_for_business:
-		return true
-
-	# 未来“粉丝提前等待”在这里放开
-	if RunSetupData.pre_open_fan_enabled:
-		return true
-
-	return false
+	return is_open_for_business
 
 func start_initial_customer_wave() -> void:
 	if not can_spawn_customers_now():
@@ -312,10 +461,47 @@ func spawn_customer() -> void:
 	customer_instance.global_position = customer_spawn.global_position
 	print("customer initial pos: ", customer_instance.global_position)
 
+	_apply_special_customer_plan_to_customer(customer_instance)
+
 	queued_customers.append(customer_instance)
 	refresh_queue_positions()
 
 	customer_instance.tree_exited.connect(_on_customer_exited.bind(customer_instance))
+
+
+
+func record_special_customer_result(customer: Node, result: String) -> void:
+	if customer == null or not is_instance_valid(customer):
+		return
+
+	if not bool(customer.get("is_special_customer")):
+		return
+
+	if bool(customer.get("special_result_recorded")):
+		return
+
+	var special_type: String = str(customer.get("special_customer_type"))
+	var special_name: String = str(customer.get("special_customer_name"))
+
+	RunSetupData.today_special_customer_results.append({
+		"type": special_type,
+		"name": special_name,
+		"result": result
+	})
+
+	customer.set("special_result_recorded", true)
+
+	print("Recorded special customer result: ", {
+		"type": special_type,
+		"name": special_name,
+		"result": result
+	})
+
+func handle_customer_order_completed(customer: Node) -> void:
+	record_special_customer_result(customer, "good")
+
+func handle_customer_patience_timeout(customer: Node) -> void:
+	record_special_customer_result(customer, "bad")
 
 func get_counter_customer() -> Node:
 	while not queued_customers.is_empty():
@@ -366,7 +552,7 @@ func evaluate_order_before_checkout(customer: Node) -> Dictionary:
 		return result
 
 	var fulfillment_status: String = get_order_fulfillment_status(customer.get_ingredients())
-	var has_main_food: bool = customer.get_main_food() != "无"
+	var has_main_food: bool = customer.get_main_food_id() != "none"
 	var needs_waiting: bool = has_main_food or fulfillment_status != "instant"
 	var needs_main_food_cooking: bool = has_main_food
 	var needs_ingredient_cooking: bool = fulfillment_status == "waitable"
@@ -457,18 +643,25 @@ func route_customer_after_payment(customer: Node, evaluation: Dictionary) -> Str
 	var needs_ingredient_cooking: bool = bool(evaluation.get("needs_ingredient_cooking", false))
 	var needs_emergency_purchase: bool = bool(evaluation.get("needs_emergency_purchase", false))
 
-	if fulfillment_status == "instant" and not needs_waiting:
-		deduct_cooked_stock(customer.get_ingredients())
+	if fulfillment_status == "instant":
+		prepare_stock_for_waiting_order(customer, fulfillment_status)
 
-		customer.mark_order_served()
+		if not needs_waiting:
+			customer.mark_order_served()
 
-		var exit_point = get_tree().get_first_node_in_group("exit_point")
-		if exit_point:
-			customer.go_to_exit(exit_point.global_position)
+			if has_method("handle_customer_order_completed"):
+				handle_customer_order_completed(customer)
 
-		release_counter_customer(customer)
-		print("Customer paid and took food immediately.")
-		return "instant_leave"
+			var exit_point = get_tree().get_first_node_in_group("exit_point")
+			if exit_point:
+				customer.go_to_exit(exit_point.global_position)
+
+			release_counter_customer(customer)
+			print("Customer paid and took food immediately.")
+			return "instant_leave"
+
+	if fulfillment_status == "waitable":
+		prepare_stock_for_waiting_order(customer, fulfillment_status)
 
 	customer.needs_main_food_cooking = needs_main_food_cooking
 	customer.needs_ingredient_cooking = needs_ingredient_cooking
@@ -479,6 +672,8 @@ func route_customer_after_payment(customer: Node, evaluation: Dictionary) -> Str
 	var delivery_spot = get_tree().get_first_node_in_group("delivery_spot")
 	if delivery_spot:
 		customer.go_to_delivery(delivery_spot.global_position)
+	else:
+		print("No delivery spot found. Customer stays in current position.")
 
 	add_pending_customer(customer)
 
@@ -488,6 +683,53 @@ func route_customer_after_payment(customer: Node, evaluation: Dictionary) -> Str
 
 	print("Customer paid and is now waiting for food.")
 	return "waiting_delivery"
+
+func complete_delivery_for_customer(customer: Node) -> bool:
+	if customer == null or not is_instance_valid(customer):
+		print("Cannot deliver: invalid customer.")
+		return false
+
+	if not customer.can_be_delivered():
+		print("Cannot deliver: customer order is not ready.")
+		return false
+
+	customer.mark_order_served()
+
+	if has_method("handle_customer_order_completed"):
+		handle_customer_order_completed(customer)
+
+	remove_customer_from_pending(customer)
+
+	var exit_point = get_tree().get_first_node_in_group("exit_point")
+	if exit_point:
+		customer.go_to_exit(exit_point.global_position)
+
+	print("Delivered order to customer.")
+	return true
+
+func build_night_queue_from_today_results() -> Array:
+	var queue: Array = [
+		{"type": "insight", "name": "小猫领悟", "result": "neutral"}
+	]
+
+	for entry in RunSetupData.today_special_customer_results:
+		var result_text: String = str(entry.get("result", "neutral"))
+		var entry_name: String = str(entry.get("name", "特殊客人"))
+
+		if result_text == "good":
+			queue.append({
+				"type": "good",
+				"name": entry_name,
+				"result": "good"
+			})
+		elif result_text == "bad":
+			queue.append({
+				"type": "bad",
+				"name": entry_name,
+				"result": "bad"
+			})
+
+	return queue
 
 func handle_stock_shortage_for_customer(customer: Node) -> Dictionary:
 	var result := {
@@ -515,6 +757,9 @@ func apply_adjusted_order_to_customer(customer: Node, adjusted_order: Dictionary
 
 	customer.set_ingredients(adjusted_order)
 	customer.order_revealed = true
+
+	if customer.has_method("mark_back_to_counter_waiting"):
+		customer.mark_back_to_counter_waiting()
 
 	var game_ui = get_tree().get_first_node_in_group("game_ui")
 	if game_ui:
@@ -761,15 +1006,12 @@ func consume_raw_stock_for_order(ingredients: Dictionary) -> void:
 	print("Before raw stock: ", raw_stock)
 
 	for ingredient_name in ingredients.keys():
-		var amount: int = ingredients[ingredient_name]
-
-		var cooked_amount: int = max(cooked_stock.get(ingredient_name, 0), 0)
-		var missing_amount: int = max(amount - cooked_amount, 0)
+		var amount: int = int(ingredients[ingredient_name])
 
 		if not raw_stock.has(ingredient_name):
 			raw_stock[ingredient_name] = 0
 
-		raw_stock[ingredient_name] = max(raw_stock[ingredient_name] - missing_amount, 0)
+		raw_stock[ingredient_name] = max(int(raw_stock[ingredient_name]) - amount, 0)
 
 	print("After raw stock: ", raw_stock)
 
@@ -778,33 +1020,40 @@ func add_cooked_stock_for_order(ingredients: Dictionary) -> void:
 	print("Before cooked stock: ", cooked_stock)
 
 	for ingredient_name in ingredients.keys():
-		var amount: int = ingredients[ingredient_name]
-
-		var cooked_amount: int = max(cooked_stock.get(ingredient_name, 0), 0)
-		var missing_amount: int = max(amount - cooked_amount, 0)
+		var amount: int = int(ingredients[ingredient_name])
 
 		if not cooked_stock.has(ingredient_name):
 			cooked_stock[ingredient_name] = 0
 
-		cooked_stock[ingredient_name] += missing_amount
+		cooked_stock[ingredient_name] = int(cooked_stock[ingredient_name]) + amount
 
 	print("After cooked stock: ", cooked_stock)
 
 func get_cooked_stock_text() -> String:
-	var parts: Array[String] = []
+	var lines: Array[String] = []
 
-	for ingredient_name in cooked_stock.keys():
-		parts.append("熟%s: %d" % [ingredient_name, cooked_stock[ingredient_name]])
+	for key in cooked_stock.keys():
+		var amount = int(cooked_stock.get(key, 0))
+		if amount > 0:
+			lines.append("%s x%d" % [TextDB.get_item_name(key), amount])
 
-	return ", ".join(parts)
+	if lines.is_empty():
+		return TextDB.get_text("UI_ITEM_NONE")
+
+	return ", ".join(lines)
 
 func get_raw_stock_text() -> String:
-	var parts: Array[String] = []
+	var lines: Array[String] = []
 
-	for ingredient_name in raw_stock.keys():
-		parts.append("生%s: %d" % [ingredient_name, raw_stock[ingredient_name]])
+	for key in raw_stock.keys():
+		var amount = int(raw_stock.get(key, 0))
+		if amount > 0:
+			lines.append("%s x%d" % [TextDB.get_item_name(key), amount])
 
-	return ", ".join(parts)
+	if lines.is_empty():
+		return TextDB.get_text("UI_ITEM_NONE")
+
+	return ", ".join(lines)
 
 func can_make_ingredient(ingredient_name: String, amount: int) -> bool:
 	var cooked_amount: int = max(cooked_stock.get(ingredient_name, 0), 0)
@@ -881,44 +1130,65 @@ func get_pending_order_display_text(customer: Node) -> String:
 	if order_panel_upgrade_level <= 0:
 		return base_text
 
-	var status_text: String = get_pending_order_status_text(customer)
+	var status_id: String = get_pending_order_status_id(customer)
+	var status_text: String = TextDB.get_status_name(status_id)
 
 	if order_panel_upgrade_level == 1:
-		return "[%s] %s" % [status_text, base_text]
+		return TextDB.get_text("UI_PENDING_ORDER_STATUS") % [status_text, base_text]
 
 	if order_panel_upgrade_level == 2:
-		if status_text == "烹饪中":
+		if status_id == "cooking":
 			var cooker_slot_index: int = get_customer_cooker_slot_index(customer)
 			if cooker_slot_index != -1:
-				return "[%s-锅%d] %s" % [status_text, cooker_slot_index + 1, base_text]
-		return "[%s] %s" % [status_text, base_text]
+				return TextDB.get_text("UI_PENDING_ORDER_STATUS_WITH_POT") % [status_text, cooker_slot_index + 1, base_text]
+		return TextDB.get_text("UI_PENDING_ORDER_STATUS") % [status_text, base_text]
 
 	var extra_target_text: String = get_pending_order_delivery_target_text(customer)
 
-	if status_text == "烹饪中":
+	if status_id == "cooking":
 		var cooker_slot_index_2: int = get_customer_cooker_slot_index(customer)
 		if cooker_slot_index_2 != -1:
 			if extra_target_text != "":
-				return "[%s-锅%d-%s] %s" % [status_text, cooker_slot_index_2 + 1, extra_target_text, base_text]
-			return "[%s-锅%d] %s" % [status_text, cooker_slot_index_2 + 1, base_text]
+				return TextDB.get_text("UI_PENDING_ORDER_STATUS_WITH_POT_TARGET") % [status_text, cooker_slot_index_2 + 1, extra_target_text, base_text]
+			return TextDB.get_text("UI_PENDING_ORDER_STATUS_WITH_POT") % [status_text, cooker_slot_index_2 + 1, base_text]
 
 	if extra_target_text != "":
-		return "[%s-%s] %s" % [status_text, extra_target_text, base_text]
+		return TextDB.get_text("UI_PENDING_ORDER_STATUS_WITH_TARGET") % [status_text, extra_target_text, base_text]
 
-	return "[%s] %s" % [status_text, base_text]
+	return TextDB.get_text("UI_PENDING_ORDER_STATUS") % [status_text, base_text]
 
-func get_pending_order_status_text(customer: Node) -> String:
+func get_pending_order_card_data(customer: Node) -> Dictionary:
+	var patience_text := "%d/%d" % [
+		int(ceil(customer.get_display_patience_current())),
+		int(customer.get_display_patience_max())
+	]
+
+	var status_text := ""
+	var extra_text := ""
+
+	if order_panel_upgrade_level >= 1:
+		var status_id: String = get_pending_order_status_id(customer)
+		status_text = TextDB.get_status_name(status_id)
+
+	return {
+		"status_text": status_text,
+		"main_food_text": customer.get_main_food(),
+		"ingredients_text": customer.get_ingredients_text(),
+		"patience_text": patience_text,
+		"extra_text": extra_text
+	}
+
+func get_pending_order_status_id(customer: Node) -> String:
 	if customer.needs_emergency_purchase:
-		return "待补货"
+		return "waiting_restock"
 
 	if customer.can_be_delivered():
-		return "待交付"
+		return "ready_delivery"
 
-	var cooker_slot_index := get_customer_cooker_slot_index(customer)
-	if cooker_slot_index != -1:
-		return "烹饪中"
+	if is_customer_in_any_cooker(customer):
+		return "cooking"
 
-	return "待烹饪"
+	return "waiting_cook"
 
 func get_pending_order_delivery_target_text(_customer: Node) -> String:
 	return ""
@@ -982,3 +1252,86 @@ func print_round_summary() -> void:
 	print("Current money: ", money)
 	print("Remaining cooked stock: ", cooked_stock)
 	print("Remaining raw stock: ", raw_stock)
+
+func try_finish_day() -> void:
+	if not is_round_closing:
+		return
+
+	if has_round_finished:
+		return
+
+	if not can_finish_day_now():
+		return
+
+	finish_day()
+
+func can_finish_day_now() -> bool:
+	for slot in cooker_slots:
+		if bool(slot.get("is_busy", false)):
+			return false
+
+	var customers = get_tree().get_nodes_in_group("customers")
+	for customer in customers:
+		if customer != null and is_instance_valid(customer):
+			return false
+
+	return true
+
+func finish_day() -> void:
+	has_round_finished = true
+
+	RunSetupData.run_money = money
+	RunSetupData.run_total_income = round_income
+	RunSetupData.current_raw_stock = raw_stock.duplicate(true)
+	RunSetupData.current_cooked_stock = cooked_stock.duplicate(true)
+	RunSetupData.generated_night_queue = build_night_queue_from_today_results()
+
+	var day_summary := {
+		"day_index": RunSetupData.current_day_in_run,
+		"total_days": RunSetupData.total_days_in_run,
+		"today_income": today_income,
+		"run_income": round_income,
+		"current_money": money,
+		"cooked_stock_text": get_cooked_stock_text(),
+		"raw_stock_text": get_raw_stock_text()
+	}
+
+	RunSetupData.last_day_summary = day_summary
+
+	if RunSetupData.current_day_in_run >= RunSetupData.total_days_in_run:
+		finish_run()
+		return
+
+	RunSetupData.settlement_view_mode = "day"
+
+	print("=== 第 %d 天结束 ===" % RunSetupData.current_day_in_run)
+	print("Today income: ", today_income)
+	print("Run income so far: ", round_income)
+	print("Current money: ", money)
+	print("Remaining cooked stock: ", cooked_stock)
+	print("Remaining raw stock: ", raw_stock)
+	print("Generated night queue: ", RunSetupData.generated_night_queue)
+
+	get_tree().call_deferred("change_scene_to_file", "res://settlement_result.tscn")
+
+func finish_run() -> void:
+	RunSetupData.settlement_view_mode = "run"
+
+	var run_summary := {
+		"total_days": RunSetupData.total_days_in_run,
+		"run_income": round_income,
+		"current_money": money,
+		"cooked_stock_text": get_cooked_stock_text(),
+		"raw_stock_text": get_raw_stock_text()
+	}
+
+	RunSetupData.last_run_summary = run_summary
+
+	print("=== 本轮完成 ===")
+	print("Total days: ", RunSetupData.total_days_in_run)
+	print("Run income: ", round_income)
+	print("Current money: ", money)
+	print("Remaining cooked stock: ", cooked_stock)
+	print("Remaining raw stock: ", raw_stock)
+
+	get_tree().call_deferred("change_scene_to_file", "res://settlement_result.tscn")

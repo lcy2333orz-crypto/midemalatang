@@ -10,14 +10,27 @@ enum CustomerState {
 	MOVING_TO_EXIT
 }
 
+const ITEM_NONE := "none"
+const ITEM_GLASS_NOODLE := "glass_noodle"
+const ITEM_NOODLE := "noodle"
+const ITEM_SPINACH := "spinach"
+const ITEM_POTATO_SLICE := "potato_slice"
+const ITEM_TOFU_PUFF := "tofu_puff"
+
 @export var move_speed: float = 120.0
 @export var target_position: Vector2 = Vector2.ZERO
 
 var current_state: CustomerState = CustomerState.MOVING_TO_QUEUE
-var order_name: String = "麻辣烫"
-var main_food: String = "无"
+var order_name_key: String = "UI_ORDER_NAME_MALATANG"
+var main_food_id: String = ITEM_NONE
 var needs_waiting: bool = false
 var ingredients: Dictionary = {}
+
+# ===== 特殊顾客接口（当前先只留通用字段） =====
+var is_special_customer: bool = false
+var special_customer_type: String = ""
+var special_customer_name: String = ""
+var special_result_recorded: bool = false
 
 var is_waiting_for_food: bool = false
 var is_ready_for_delivery: bool = false
@@ -31,7 +44,6 @@ var needs_emergency_purchase: bool = false
 var is_checked_out: bool = false
 var order_revealed: bool = false
 
-# 付款与报价相关字段
 var paid_price: int = 0
 var true_price_at_checkout: int = 0
 var price_reaction_result: String = "accept"
@@ -216,30 +228,30 @@ func go_to_exit(exit_position: Vector2) -> void:
 func randomize_order() -> void:
 	randomize_main_food()
 	randomize_ingredients()
-	needs_waiting = main_food != "无"
+	needs_waiting = has_main_food()
 
 func randomize_main_food() -> void:
 	var roll := randi() % 3
 
 	match roll:
 		0:
-			main_food = "无"
+			main_food_id = ITEM_NONE
 		1:
-			main_food = "粉丝"
+			main_food_id = ITEM_GLASS_NOODLE
 		2:
-			main_food = "面"
+			main_food_id = ITEM_NOODLE
 
 func randomize_ingredients() -> void:
-	var ingredient_pool: Array[String] = ["菠菜", "土豆片", "豆腐泡"]
+	var ingredient_pool: Array[String] = [ITEM_SPINACH, ITEM_POTATO_SLICE, ITEM_TOFU_PUFF]
 	ingredient_pool.shuffle()
 
 	var ingredient_count := randi_range(1, 2)
 	ingredients.clear()
 
 	for i in range(ingredient_count):
-		var ingredient_name = ingredient_pool[i]
-		var quantity = randi_range(1, 2)
-		ingredients[ingredient_name] = quantity
+		var ingredient_id: String = ingredient_pool[i]
+		var quantity := randi_range(1, 2)
+		ingredients[ingredient_id] = quantity
 
 func mark_checkout_started() -> void:
 	current_state = CustomerState.ORDER_NEGOTIATING
@@ -292,15 +304,15 @@ func has_any_ingredients() -> bool:
 func get_total_item_count() -> int:
 	var total := 0
 
-	for ingredient_name in ingredients.keys():
-		total += ingredients[ingredient_name]
+	for ingredient_id in ingredients.keys():
+		total += int(ingredients[ingredient_id])
 
 	return total
 
 func get_order_price() -> int:
 	var price := get_total_item_count()
 
-	if main_food != "无":
+	if has_main_food():
 		price += 1
 
 	return price
@@ -327,18 +339,24 @@ func get_display_patience_max() -> float:
 
 func get_pending_order_summary() -> String:
 	var patience_text := "%d/%d" % [int(ceil(delivery_patience_current)), int(delivery_patience_max)]
-	return "%s | 主食:%s | %s | 耐心:%s" % [
-		order_name,
-		main_food,
+	return TextDB.get_text("UI_PENDING_ORDER_SUMMARY") % [
+		get_order_name(),
+		get_main_food(),
 		get_ingredients_text(),
 		patience_text
 	]
 
 func get_order_name() -> String:
-	return order_name
+	return TextDB.get_text(order_name_key)
 
 func get_main_food() -> String:
-	return main_food
+	return TextDB.get_item_name(main_food_id)
+
+func get_main_food_id() -> String:
+	return main_food_id
+
+func has_main_food() -> bool:
+	return main_food_id != ITEM_NONE
 
 func get_needs_waiting() -> bool:
 	return needs_waiting
@@ -349,7 +367,24 @@ func get_ingredients() -> Dictionary:
 func get_ingredients_text() -> String:
 	var parts: Array[String] = []
 
-	for ingredient_name in ingredients.keys():
-		parts.append("%s x%d" % [ingredient_name, ingredients[ingredient_name]])
+	for ingredient_id in ingredients.keys():
+		parts.append(
+			TextDB.get_text("UI_ITEM_COUNT") % [
+				TextDB.get_item_name(str(ingredient_id)),
+				int(ingredients[ingredient_id])
+			]
+		)
 
 	return ", ".join(parts)
+
+func setup_special_customer(special_type: String, display_name: String) -> void:
+	is_special_customer = true
+	special_customer_type = special_type
+	special_customer_name = display_name
+	special_result_recorded = false
+
+func clear_special_customer() -> void:
+	is_special_customer = false
+	special_customer_type = ""
+	special_customer_name = ""
+	special_result_recorded = false
