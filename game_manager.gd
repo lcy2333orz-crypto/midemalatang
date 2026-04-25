@@ -498,9 +498,21 @@ func record_special_customer_result(customer: Node, result: String) -> void:
 	})
 
 func handle_customer_order_completed(customer: Node) -> void:
+	if customer == null or not is_instance_valid(customer):
+		return
+
+	var delta := get_reputation_delta_for_customer(customer, "served")
+	change_shop_reputation(delta, "%s served" % get_customer_group(customer))
+
 	record_special_customer_result(customer, "good")
 
 func handle_customer_patience_timeout(customer: Node) -> void:
+	if customer == null or not is_instance_valid(customer):
+		return
+
+	var delta := get_reputation_delta_for_customer(customer, "failed")
+	change_shop_reputation(delta, "%s patience timeout" % get_customer_group(customer))
+
 	record_special_customer_result(customer, "bad")
 
 func get_counter_customer() -> Node:
@@ -684,6 +696,19 @@ func route_customer_after_payment(customer: Node, evaluation: Dictionary) -> Str
 	print("Customer paid and is now waiting for food.")
 	return "waiting_delivery"
 
+func refresh_money_and_reputation_ui() -> void:
+	var game_ui = get_tree().get_first_node_in_group("game_ui")
+	if game_ui:
+		game_ui.update_money(money)
+
+func change_shop_reputation(delta: int, reason: String = "") -> void:
+	var old_value: int = RunSetupData.shop_reputation
+	RunSetupData.shop_reputation = clamp(RunSetupData.shop_reputation + delta, 0, 100)
+
+	print("Reputation changed: ", old_value, " -> ", RunSetupData.shop_reputation, " | delta: ", delta, " | reason: ", reason)
+
+	refresh_money_and_reputation_ui()
+
 func complete_delivery_for_customer(customer: Node) -> bool:
 	if customer == null or not is_instance_valid(customer):
 		print("Cannot deliver: invalid customer.")
@@ -775,16 +800,59 @@ func reject_customer_before_checkout(customer: Node) -> void:
 	if customer == null or not is_instance_valid(customer):
 		return
 
-	var game_ui = get_tree().get_first_node_in_group("game_ui")
-	if game_ui:
-		game_ui.hide_order()
+	var delta := get_reputation_delta_for_customer(customer, "failed")
+	change_shop_reputation(delta, "%s rejected before checkout" % get_customer_group(customer))
 
 	var exit_point = get_tree().get_first_node_in_group("exit_point")
 	if exit_point:
 		customer.go_to_exit(exit_point.global_position)
 
 	release_counter_customer(customer)
+
 	print("Customer leaves before checkout.")
+
+func get_customer_group(customer: Node) -> String:
+	if customer == null or not is_instance_valid(customer):
+		return "invalid"
+
+	if customer.has_method("get_customer_group"):
+		return customer.get_customer_group()
+
+	if bool(customer.get("is_special_customer")):
+		return "special"
+
+	return "normal"
+
+func get_customer_type(customer: Node) -> String:
+	if customer == null or not is_instance_valid(customer):
+		return "invalid"
+
+	if customer.has_method("get_customer_type"):
+		return customer.get_customer_type()
+
+	if bool(customer.get("is_special_customer")):
+		return str(customer.get("special_customer_type"))
+
+	return "normal_default"
+
+func get_reputation_delta_for_customer(customer: Node, event_name: String) -> int:
+	var group := get_customer_group(customer)
+	var customer_type := get_customer_type(customer)
+
+	if event_name == "served":
+		if group == "special":
+			return 3
+
+		return 1
+
+	if event_name == "failed":
+		if group == "special":
+			return -5
+
+		return -2
+
+	print("Unknown reputation event: ", event_name, " | group: ", group, " | type: ", customer_type)
+	return 0
 
 func resolve_price_reaction(_customer: Node, _quoted_price: int, _true_price: int) -> String:
 	# 先留接口：以后在这里接“多收费 / 少收费 / 顾客性格 / 卡牌Buff”

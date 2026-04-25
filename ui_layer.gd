@@ -36,8 +36,11 @@ func _ready() -> void:
 	hide_patience()
 	hide_pending_orders()
 
-func update_money(amount: int) -> void:
-	money_label.text = TextDB.get_text("UI_MONEY") % amount
+func update_money(value: int) -> void:
+	money_label.text = "金钱：%d\n口碑：%d" % [
+		value,
+		RunSetupData.shop_reputation
+	]
 
 func show_order(order_name: String, main_food: String, ingredients_text: String) -> void:
 	order_panel.visible = true

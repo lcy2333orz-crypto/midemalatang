@@ -383,8 +383,69 @@ func setup_special_customer(special_type: String, display_name: String) -> void:
 	special_customer_name = display_name
 	special_result_recorded = false
 
+	modulate = Color(1.0, 0.92, 0.65, 1.0)
+
+	_create_or_update_special_badge()
+
+	print("This customer is SPECIAL: ", get_customer_display_name(), " / type: ", get_customer_type())
+
 func clear_special_customer() -> void:
 	is_special_customer = false
 	special_customer_type = ""
 	special_customer_name = ""
 	special_result_recorded = false
+
+	modulate = Color(1.0, 1.0, 1.0, 1.0)
+
+	var badge = get_node_or_null("SpecialBadgeLabel")
+	if badge:
+		badge.queue_free()
+
+func _create_or_update_special_badge() -> void:
+	var badge = get_node_or_null("SpecialBadgeLabel")
+
+	if badge == null:
+		badge = Label.new()
+		badge.name = "SpecialBadgeLabel"
+		add_child(badge)
+
+	badge.text = "★ %s" % special_customer_name
+	badge.position = Vector2(-28, -52)
+	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	badge.size = Vector2(56, 20)
+	badge.z_index = 20
+
+	badge.add_theme_font_size_override("font_size", 13)
+	badge.add_theme_color_override("font_color", Color(1.0, 0.95, 0.35, 1.0))
+	badge.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.85))
+	badge.add_theme_constant_override("shadow_offset_x", 1)
+	badge.add_theme_constant_override("shadow_offset_y", 1)
+
+	badge.visible = true
+
+func get_customer_group() -> String:
+	if is_special_customer:
+		return "special"
+
+	return "normal"
+
+
+func get_customer_type() -> String:
+	if is_special_customer:
+		if special_customer_type != "":
+			return special_customer_type
+
+		return "special_unknown"
+
+	return "normal_default"
+
+
+func get_customer_display_name() -> String:
+	if is_special_customer:
+		if special_customer_name != "":
+			return special_customer_name
+
+		return "特殊客人"
+
+	return "普通客人"
