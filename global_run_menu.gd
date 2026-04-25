@@ -150,22 +150,7 @@ func _refresh_buff_text() -> void:
 	if buff_label == null:
 		return
 
-	if RunSetupData.active_effects.is_empty():
-		buff_label.text = "当前没有已获得效果。\n\n按 Tab 或点击按钮关闭。"
-		return
-
-	var lines: Array[String] = []
-	lines.append("已获得效果：")
-
-	for effect_data in RunSetupData.active_effects:
-		if typeof(effect_data) != TYPE_DICTIONARY:
-			continue
-
-		var source := str(effect_data.get("source", "未知来源"))
-		var effect := str(effect_data.get("effect", "未知效果"))
-
-		lines.append(" - [%s] %s" % [source, effect])
-
+	var lines := EffectManager.get_active_effect_lines()
 	lines.append("")
 	lines.append("按 Tab 或点击按钮关闭。")
 

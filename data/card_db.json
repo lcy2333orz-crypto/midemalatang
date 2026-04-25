@@ -3,57 +3,81 @@
 	"insight": [
 	  {
 		"id": "claw_dance",
-		"name": "爪爪飞舞"
+		"name": "爪爪飞舞",
+		"description": "效果待定。",
+		"modifiers": {}
 	  },
 	  {
 		"id": "slow_down_meow",
-		"name": "慢慢来喵"
+		"name": "慢慢来喵",
+		"description": "效果待定。",
+		"modifiers": {}
 	  },
 	  {
 		"id": "prepare_first",
-		"name": "先备一点"
+		"name": "先备一点",
+		"description": "效果待定。",
+		"modifiers": {}
 	  }
 	],
 	"good": [
 	  {
 		"id": "busy_stall",
-		"name": "热闹摊口"
+		"name": "热闹摊口",
+		"description": "效果待定。",
+		"modifiers": {}
 	  },
 	  {
 		"id": "clean_plate",
-		"name": "一点不剩"
+		"name": "一点不剩",
+		"description": "效果待定。",
+		"modifiers": {}
 	  },
 	  {
 		"id": "sneak_around",
-		"name": "钻来钻去"
+		"name": "钻来钻去",
+		"description": "效果待定。",
+		"modifiers": {}
 	  }
 	],
 	"bad": [
 	  {
 		"id": "messy_rhythm",
-		"name": "乱成一团"
+		"name": "乱成一团",
+		"description": "效果待定。",
+		"modifiers": {}
 	  },
 	  {
 		"id": "impatient_customers",
-		"name": "顾客不耐烦"
+		"name": "顾客不耐烦",
+		"description": "效果待定。",
+		"modifiers": {}
 	  },
 	  {
 		"id": "slower_rhythm",
-		"name": "节奏变慢"
+		"name": "节奏变慢",
+		"description": "效果待定。",
+		"modifiers": {}
 	  }
 	],
 	"fallback": [
 	  {
 		"id": "tidy_up",
-		"name": "整理一下"
+		"name": "整理一下",
+		"description": "效果待定。",
+		"modifiers": {}
 	  },
 	  {
 		"id": "take_a_breath",
-		"name": "缓一口气"
+		"name": "缓一口气",
+		"description": "效果待定。",
+		"modifiers": {}
 	  },
 	  {
 		"id": "cheer_up_again",
-		"name": "重新打起精神"
+		"name": "重新打起精神",
+		"description": "效果待定。",
+		"modifiers": {}
 	  }
 	]
   }
