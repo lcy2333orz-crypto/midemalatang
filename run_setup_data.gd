@@ -35,6 +35,9 @@ var active_effects: Array = []
 # 店铺口碑，范围 0~100
 var shop_reputation: int = 50
 
+# 当天口碑变化，只用于日结显示
+var today_reputation_delta: int = 0
+
 var settlement_view_mode: String = "day"
 
 var last_day_summary: Dictionary = {}
@@ -72,7 +75,9 @@ func reset_run_setup() -> void:
 	generated_night_queue = []
 
 	active_effects = []
+
 	shop_reputation = 50
+	today_reputation_delta = 0
 
 	settlement_view_mode = "day"
 	last_day_summary = {}

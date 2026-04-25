@@ -178,6 +178,7 @@ func start_round() -> void:
 
 	RunSetupData.today_special_customer_results = []
 	RunSetupData.generated_night_queue = []
+	RunSetupData.today_reputation_delta = 0
 
 	RunSetupData.setup_daily_special_customer_plan()
 
@@ -705,7 +706,10 @@ func change_shop_reputation(delta: int, reason: String = "") -> void:
 	var old_value: int = RunSetupData.shop_reputation
 	RunSetupData.shop_reputation = clamp(RunSetupData.shop_reputation + delta, 0, 100)
 
-	print("Reputation changed: ", old_value, " -> ", RunSetupData.shop_reputation, " | delta: ", delta, " | reason: ", reason)
+	var actual_delta: int = RunSetupData.shop_reputation - old_value
+	RunSetupData.today_reputation_delta += actual_delta
+
+	print("Reputation changed: ", old_value, " -> ", RunSetupData.shop_reputation, " | delta: ", actual_delta, " | reason: ", reason)
 
 	refresh_money_and_reputation_ui()
 
@@ -1361,7 +1365,9 @@ func finish_day() -> void:
 		"run_income": round_income,
 		"current_money": money,
 		"cooked_stock_text": get_cooked_stock_text(),
-		"raw_stock_text": get_raw_stock_text()
+		"raw_stock_text": get_raw_stock_text(),
+		"today_reputation_delta": RunSetupData.today_reputation_delta,
+		"shop_reputation": RunSetupData.shop_reputation
 	}
 
 	RunSetupData.last_day_summary = day_summary
@@ -1376,6 +1382,8 @@ func finish_day() -> void:
 	print("Today income: ", today_income)
 	print("Run income so far: ", round_income)
 	print("Current money: ", money)
+	print("Today reputation delta: ", RunSetupData.today_reputation_delta)
+	print("Current reputation: ", RunSetupData.shop_reputation)
 	print("Remaining cooked stock: ", cooked_stock)
 	print("Remaining raw stock: ", raw_stock)
 	print("Generated night queue: ", RunSetupData.generated_night_queue)
@@ -1383,22 +1391,25 @@ func finish_day() -> void:
 	get_tree().call_deferred("change_scene_to_file", "res://settlement_result.tscn")
 
 func finish_run() -> void:
-	RunSetupData.settlement_view_mode = "run"
-
 	var run_summary := {
 		"total_days": RunSetupData.total_days_in_run,
 		"run_income": round_income,
 		"current_money": money,
 		"cooked_stock_text": get_cooked_stock_text(),
-		"raw_stock_text": get_raw_stock_text()
+		"raw_stock_text": get_raw_stock_text(),
+		"today_reputation_delta": RunSetupData.today_reputation_delta,
+		"shop_reputation": RunSetupData.shop_reputation
 	}
 
 	RunSetupData.last_run_summary = run_summary
+	RunSetupData.settlement_view_mode = "run"
 
-	print("=== 本轮完成 ===")
-	print("Total days: ", RunSetupData.total_days_in_run)
-	print("Run income: ", round_income)
+	print("=== 本轮结算 ===")
+	print("Today income: ", today_income)
+	print("Round income: ", round_income)
 	print("Current money: ", money)
+	print("Today reputation delta: ", RunSetupData.today_reputation_delta)
+	print("Current reputation: ", RunSetupData.shop_reputation)
 	print("Remaining cooked stock: ", cooked_stock)
 	print("Remaining raw stock: ", raw_stock)
 

@@ -19,6 +19,7 @@ extends CanvasLayer
 var stock_visibility_token: int = 0
 var pending_order_card_scene: PackedScene = preload("res://pending_order_card.tscn")
 
+
 func _ready() -> void:
 	money_label.text = TextDB.get_text("UI_MONEY") % 0
 	patience_label.text = TextDB.get_text("UI_PATIENCE_EMPTY")
@@ -36,11 +37,13 @@ func _ready() -> void:
 	hide_patience()
 	hide_pending_orders()
 
+
 func update_money(value: int) -> void:
 	money_label.text = "金钱：%d\n口碑：%d" % [
 		value,
 		RunSetupData.shop_reputation
 	]
+
 
 func show_order(order_name: String, main_food: String, ingredients_text: String) -> void:
 	order_panel.visible = true
@@ -48,11 +51,13 @@ func show_order(order_name: String, main_food: String, ingredients_text: String)
 	main_food_label.text = TextDB.get_text("UI_MAIN_FOOD") % main_food
 	ingredients_label.text = TextDB.get_text("UI_INGREDIENTS") % ingredients_text
 
+
 func hide_order() -> void:
 	order_panel.visible = false
 	title_label.text = TextDB.get_text("UI_ORDER_EMPTY")
 	main_food_label.text = TextDB.get_text("UI_MAIN_FOOD_EMPTY")
 	ingredients_label.text = TextDB.get_text("UI_INGREDIENTS_EMPTY")
+
 
 func show_stock(cooked_text: String, raw_text: String) -> void:
 	stock_visibility_token += 1
@@ -60,10 +65,12 @@ func show_stock(cooked_text: String, raw_text: String) -> void:
 	cooked_stock_label.text = cooked_text
 	raw_stock_label.text = raw_text
 
+
 func hide_stock() -> void:
 	stock_visibility_token += 1
 	var my_token := stock_visibility_token
 	_delayed_hide_stock(my_token)
+
 
 func _delayed_hide_stock(token: int) -> void:
 	await get_tree().create_timer(3.0).timeout
@@ -75,13 +82,19 @@ func _delayed_hide_stock(token: int) -> void:
 	cooked_stock_label.text = TextDB.get_text("UI_COOKED_STOCK_EMPTY")
 	raw_stock_label.text = TextDB.get_text("UI_RAW_STOCK_EMPTY")
 
+
 func show_patience(current_value: float, max_value: float) -> void:
 	patience_label.visible = true
-	patience_label.text = TextDB.get_text("UI_PATIENCE") % [int(ceil(current_value)), int(max_value)]
+	patience_label.text = TextDB.get_text("UI_PATIENCE") % [
+		int(ceil(current_value)),
+		int(max_value)
+	]
+
 
 func hide_patience() -> void:
 	patience_label.visible = false
 	patience_label.text = TextDB.get_text("UI_PATIENCE_EMPTY")
+
 
 func show_pending_orders(order_cards: Array) -> void:
 	_clear_pending_order_cards()
@@ -97,13 +110,16 @@ func show_pending_orders(order_cards: Array) -> void:
 		cards_container.add_child(card)
 		card.apply_data(card_data)
 
+
 func hide_pending_orders() -> void:
 	pending_orders_panel.visible = false
 	_clear_pending_order_cards()
 
+
 func _clear_pending_order_cards() -> void:
 	for child in cards_container.get_children():
 		child.queue_free()
+
 
 func update_business_state(day_time_left: float, is_open: bool, is_closing: bool, is_finished: bool) -> void:
 	if is_finished:

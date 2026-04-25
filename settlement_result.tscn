@@ -60,9 +60,9 @@ layout_mode = 2
 [node name="CardContainer" type="HBoxContainer" parent="." unique_id=1602116892]
 layout_mode = 0
 offset_left = 180.0
-offset_top = 380.0
+offset_top = 350.0
 offset_right = 880.0
-offset_bottom = 500.0
+offset_bottom = 470.0
 
 [node name="Card1" type="Button" parent="CardContainer" unique_id=1154909042]
 layout_mode = 2
@@ -76,6 +76,6 @@ layout_mode = 2
 [node name="NightQueueLabel" type="Label" parent="." unique_id=172703044]
 layout_mode = 0
 offset_left = 120.0
-offset_top = 320.0
+offset_top = 300.0
 offset_right = 920.0
-offset_bottom = 360.0
+offset_bottom = 340.0

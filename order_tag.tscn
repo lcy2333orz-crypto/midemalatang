@@ -1,0 +1,58 @@
+[gd_scene format=3 uid="uid://cva68xe3i3u37"]
+
+[sub_resource type="GDScript" id="GDScript_scsj1"]
+script/source = "extends Node2D
+
+@onready var panel: Panel = $Panel
+@onready var main_food_label: Label = $Panel/VBox/MainFoodLabel
+@onready var ingredients_label: Label = $Panel/VBox/IngredientsLabel
+@onready var patience_label: Label = $Panel/VBox/PatienceLabel
+
+var owner_customer: Node = null
+
+func setup(customer: Node) -> void:
+	owner_customer = customer
+	_refresh_all()
+
+func _process(_delta: float) -> void:
+	if owner_customer == null or not is_instance_valid(owner_customer):
+		queue_free()
+		return
+
+	_refresh_all()
+
+func _refresh_all() -> void:
+	if owner_customer == null:
+		return
+
+	main_food_label.text = TextDB.get_text(\"UI_MAIN_FOOD\") % owner_customer.get_main_food()
+	ingredients_label.text = TextDB.get_text(\"UI_INGREDIENTS\") % owner_customer.get_ingredients_text()
+
+	var current_patience: int = int(ceil(owner_customer.get_display_patience_current()))
+	var max_patience: int = int(owner_customer.get_display_patience_max())
+	patience_label.text = TextDB.get_text(\"UI_PATIENCE\") % [current_patience, max_patience]
+"
+
+[node name="OrderTag" type="Node2D" unique_id=1799513870]
+script = SubResource("GDScript_scsj1")
+
+[node name="Panel" type="Panel" parent="." unique_id=985337375]
+offset_right = 140.0
+offset_bottom = 60.0
+
+[node name="VBox" type="VBoxContainer" parent="Panel" unique_id=631206091]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="MainFoodLabel" type="Label" parent="Panel/VBox" unique_id=1705945492]
+layout_mode = 2
+text = "\"\""
+
+[node name="IngredientsLabel" type="Label" parent="Panel/VBox" unique_id=1027400678]
+layout_mode = 2
+text = "\"\""
+
+[node name="PatienceLabel" type="Label" parent="Panel/VBox" unique_id=2011130128]
+layout_mode = 2
+text = "\"\""
