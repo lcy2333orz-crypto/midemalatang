@@ -233,10 +233,6 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 12
 
-[node name="OpenBusinessButton" type="Button" parent="UI" unique_id=1002375507]
-offset_right = 8.0
-offset_bottom = 8.0
-
 [node name="BusinessStateLabel" type="Label" parent="UI" unique_id=1435539602]
 offset_right = 40.0
 offset_bottom = 23.0
@@ -246,10 +242,6 @@ script = ExtResource("4_1bvp3")
 customer_scene = ExtResource("3_h2yge")
 
 [node name="SpawnTimer" type="Timer" parent="GameManager" unique_id=1579172830]
-one_shot = true
-
-[node name="CookTimer" type="Timer" parent="GameManager" unique_id=813525389]
-wait_time = 2.0
 one_shot = true
 
 [node name="MetaProgress" type="Node" parent="." unique_id=2088587694]
