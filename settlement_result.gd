@@ -25,6 +25,8 @@ var night_queue: Array = []
 var current_index: int = 0
 var night_finished: bool = false
 
+var card_db: Dictionary = {}
+
 var card_overlay_bg: ColorRect = null
 var card_choice_title_label: Label = null
 
@@ -32,6 +34,8 @@ var card_choice_title_label: Label = null
 func _ready() -> void:
 	get_tree().paused = false
 	process_mode = Node.PROCESS_MODE_ALWAYS
+
+	load_card_db()
 
 	retry_button.visible = false
 	back_home_button.visible = false
@@ -69,6 +73,87 @@ func _ready() -> void:
 		var card_callable := Callable(self, "_on_card_selected").bind(i)
 		if not card_buttons[i].pressed.is_connected(card_callable):
 			card_buttons[i].pressed.connect(_on_card_selected.bind(i))
+
+func load_card_db() -> void:
+	var file := FileAccess.open("res://data/card_db.json", FileAccess.READ)
+
+	if file == null:
+		push_error("card_db.json not found")
+		card_db = {}
+		return
+
+	var content := file.get_as_text()
+	var json := JSON.new()
+	var result := json.parse(content)
+
+	if result != OK:
+		push_error("card_db.json parse failed: " + json.get_error_message())
+		card_db = {}
+		return
+
+	if typeof(json.data) != TYPE_DICTIONARY:
+		push_error("card_db.json root must be a Dictionary")
+		card_db = {}
+		return
+
+	card_db = json.data
+
+func get_card_options_for_entry(entry: Dictionary) -> Array:
+	var pool_name := "fallback"
+
+	var entry_type := str(entry.get("type", ""))
+	var result := str(entry.get("result", "neutral"))
+
+	if entry_type == "insight":
+		pool_name = "insight"
+	elif result == "good":
+		pool_name = "good"
+	elif result == "bad":
+		pool_name = "bad"
+
+	var pools: Dictionary = card_db.get("pools", {})
+
+	if not pools.has(pool_name):
+		push_warning("Missing card pool: " + pool_name)
+		return _get_fallback_card_options()
+
+	var pool = pools[pool_name]
+
+	if typeof(pool) != TYPE_ARRAY:
+		push_warning("Card pool is not an Array: " + pool_name)
+		return _get_fallback_card_options()
+
+	var options: Array = []
+
+	for card_data in pool:
+		if typeof(card_data) != TYPE_DICTIONARY:
+			continue
+
+		options.append(card_data)
+
+	if options.size() < 3:
+		push_warning("Card pool has fewer than 3 cards: " + pool_name)
+		return _get_fallback_card_options()
+
+	return options.slice(0, 3)
+
+func _get_fallback_card_options() -> Array:
+	return [
+		{
+			"id": "tidy_up",
+			"name": "整理一下"
+		},
+		{
+			"id": "take_a_breath",
+			"name": "缓一口气"
+		},
+		{
+			"id": "cheer_up_again",
+			"name": "重新打起精神"
+		}
+	]
+
+
 
 
 func _show_confirm_button_only() -> void:
@@ -233,7 +318,7 @@ func show_current_choice() -> void:
 		return
 
 	var entry: Dictionary = night_queue[current_index]
-	var options: Array[String] = []
+	var options: Array = get_card_options_for_entry(entry)
 
 	card_overlay_bg.visible = true
 	card_choice_title_label.visible = true
@@ -246,18 +331,11 @@ func show_current_choice() -> void:
 	card_choice_title_label.text = get_night_choice_title(entry)
 	update_night_queue_preview()
 
-	match str(entry.get("type", "")):
-		"insight":
-			options = ["爪爪飞舞", "慢慢来喵", "先备一点"]
-		"good":
-			options = ["热闹摊口", "一点不剩", "钻来钻去"]
-		"bad":
-			options = ["乱成一团", "顾客不耐烦", "节奏变慢"]
-		_:
-			options = ["整理一下", "缓一口气", "重新打起精神"]
-
 	for i in range(3):
-		card_buttons[i].text = options[i]
+		var card_data: Dictionary = options[i]
+		card_buttons[i].text = str(card_data.get("name", "未知卡牌"))
+		card_buttons[i].set_meta("card_id", str(card_data.get("id", "unknown_card")))
+		card_buttons[i].set_meta("card_name", str(card_data.get("name", "未知卡牌")))
 		card_buttons[i].visible = true
 		card_buttons[i].disabled = false
 
@@ -284,15 +362,18 @@ func _on_card_selected(index: int) -> void:
 		return
 
 	var entry: Dictionary = night_queue[current_index]
-	var chosen_text: String = card_buttons[index].text
 
-	print("选了：", chosen_text)
+	var chosen_id := str(card_buttons[index].get_meta("card_id", "unknown_card"))
+	var chosen_name := str(card_buttons[index].get_meta("card_name", card_buttons[index].text))
+
+	print("选了：", chosen_name, " / id=", chosen_id)
 
 	RunSetupData.active_effects.append({
 		"source": entry.get("name", "unknown"),
 		"type": entry.get("type", "unknown"),
 		"result": entry.get("result", "neutral"),
-		"effect": chosen_text
+		"effect_id": chosen_id,
+		"effect": chosen_name
 	})
 
 	print("当前已获得效果列表：", RunSetupData.active_effects)
