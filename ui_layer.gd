@@ -121,9 +121,19 @@ func _clear_pending_order_cards() -> void:
 		child.queue_free()
 
 
-func update_business_state(day_time_left: float, is_open: bool, is_closing: bool, is_finished: bool) -> void:
+func update_business_state(
+	day_time_left: float,
+	is_open: bool,
+	is_closing: bool,
+	is_finished: bool,
+	is_cleanup: bool = false
+) -> void:
 	if is_finished:
 		business_state_label.text = TextDB.get_text("UI_DAY_STATE_FINISHED")
+		return
+
+	if is_cleanup:
+		business_state_label.text = "收摊整理：在收银台按 E 进入结算"
 		return
 
 	if is_open:

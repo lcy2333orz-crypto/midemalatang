@@ -29,13 +29,20 @@ var card_db: Dictionary = {}
 
 var card_overlay_bg: ColorRect = null
 var card_choice_title_label: Label = null
-
+var cat_feed_area: Panel = null
+var cat_reaction_label: Label = null
+var leftover_food_panel: Panel = null
+var leftover_food_container: HBoxContainer = null
+var leftover_cooked_stock_for_cat: Dictionary = {}
+var cat_hand_fed_count: int = 0
 
 func _ready() -> void:
 	get_tree().paused = false
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	add_to_group("settlement_result")
 
-	load_card_db()
+	if has_method("load_card_db"):
+		load_card_db()
 
 	retry_button.visible = false
 	back_home_button.visible = false
@@ -58,6 +65,7 @@ func _ready() -> void:
 	profit_label.visible = true
 
 	_create_card_overlay()
+	_create_cat_feed_widgets()
 	_setup_layout_positions()
 
 	if RunSetupData.settlement_view_mode == "run":
@@ -71,6 +79,7 @@ func _ready() -> void:
 
 	for i in range(3):
 		var card_callable := Callable(self, "_on_card_selected").bind(i)
+
 		if not card_buttons[i].pressed.is_connected(card_callable):
 			card_buttons[i].pressed.connect(_on_card_selected.bind(i))
 
@@ -192,11 +201,62 @@ func _create_card_overlay() -> void:
 	card_choice_title_label.add_theme_font_size_override("font_size", 22)
 	add_child(card_choice_title_label)
 
+func _create_cat_feed_widgets() -> void:
+	cat_feed_area = Panel.new()
+	cat_feed_area.name = "CatFeedArea"
+	cat_feed_area.size = Vector2(150, 120)
+	cat_feed_area.z_index = 2
+	cat_feed_area.mouse_filter = Control.MOUSE_FILTER_STOP
+	cat_feed_area.set_script(preload("res://cat_feed_area.gd"))
+	add_child(cat_feed_area)
+
+	var cat_label := Label.new()
+	cat_label.name = "CatLabel"
+	cat_label.text = "🐱\n小猫"
+	cat_label.position = Vector2(0, 12)
+	cat_label.size = Vector2(150, 70)
+	cat_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cat_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	cat_label.add_theme_font_size_override("font_size", 26)
+	cat_feed_area.add_child(cat_label)
+
+	var cat_hint := Label.new()
+	cat_hint.name = "CatHintLabel"
+	cat_hint.text = "拖熟食来喂\n或点击摸头"
+	cat_hint.position = Vector2(0, 78)
+	cat_hint.size = Vector2(150, 38)
+	cat_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cat_hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	cat_hint.add_theme_font_size_override("font_size", 12)
+	cat_feed_area.add_child(cat_hint)
+
+	cat_reaction_label = Label.new()
+	cat_reaction_label.name = "CatReactionLabel"
+	cat_reaction_label.text = ""
+	cat_reaction_label.size = Vector2(170, 34)
+	cat_reaction_label.z_index = 5
+	cat_reaction_label.visible = false
+	cat_reaction_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cat_reaction_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	cat_reaction_label.add_theme_font_size_override("font_size", 18)
+	add_child(cat_reaction_label)
+
+	leftover_food_panel = Panel.new()
+	leftover_food_panel.name = "LeftoverFoodPanel"
+	leftover_food_panel.size = Vector2(420, 70)
+	leftover_food_panel.z_index = 2
+	add_child(leftover_food_panel)
+
+	leftover_food_container = HBoxContainer.new()
+	leftover_food_container.name = "LeftoverFoodContainer"
+	leftover_food_container.position = Vector2(12, 18)
+	leftover_food_container.size = Vector2(396, 42)
+	leftover_food_panel.add_child(leftover_food_container)
 
 func _setup_layout_positions() -> void:
 	var viewport_size := get_viewport_rect().size
 
-	# ===== 底层：日结信息，正常居中显示 =====
+	# ===== 底层：日结信息 =====
 	title_label.position = Vector2(
 		viewport_size.x * 0.5 - 80,
 		75
@@ -208,6 +268,25 @@ func _setup_layout_positions() -> void:
 		125
 	)
 	$SummaryBox.z_index = 0
+
+	# ===== 夜间喂猫互动区：作为结算背景的一部分 =====
+	if cat_feed_area != null:
+		cat_feed_area.position = Vector2(
+			viewport_size.x * 0.5 + 230,
+			145
+		)
+
+	if cat_reaction_label != null:
+		cat_reaction_label.position = Vector2(
+			viewport_size.x * 0.5 + 220,
+			112
+		)
+
+	if leftover_food_panel != null:
+		leftover_food_panel.position = Vector2(
+			viewport_size.x * 0.5 - 210,
+			420
+		)
 
 	# ===== 上层：全屏抽卡蒙版 =====
 	card_overlay_bg.position = Vector2.ZERO
@@ -248,9 +327,9 @@ func _setup_layout_positions() -> void:
 	# 确认按钮只在抽完卡后显示
 	$ButtonBox.position = Vector2(
 		viewport_size.x * 0.5 - 120,
-		470
+		510
 	)
-	$ButtonBox.z_index = 40
+	$ButtonBox.z_index = 200
 
 
 func _setup_day_settlement() -> void:
@@ -260,7 +339,7 @@ func _setup_day_settlement() -> void:
 	today_income_label.text = TextDB.get_text("UI_SETTLEMENT_TODAY_INCOME") % int(summary.get("today_income", 0))
 	round_income_label.text = TextDB.get_text("UI_SETTLEMENT_ROUND_INCOME") % int(summary.get("run_income", 0))
 	money_label.text = TextDB.get_text("UI_SETTLEMENT_CURRENT_MONEY") % int(summary.get("current_money", 0))
-	cooked_stock_label.text = TextDB.get_text("UI_SETTLEMENT_COOKED_STOCK") % str(summary.get("cooked_stock_text", TextDB.get_text("UI_ITEM_NONE")))
+	cooked_stock_label.text = "剩余熟食（收摊处理）：%s" % str(summary.get("cooked_stock_text", TextDB.get_text("UI_ITEM_NONE")))
 	raw_stock_label.text = TextDB.get_text("UI_SETTLEMENT_RAW_STOCK") % str(summary.get("raw_stock_text", TextDB.get_text("UI_ITEM_NONE")))
 
 	var reputation_delta: int = int(summary.get("today_reputation_delta", 0))
@@ -275,6 +354,8 @@ func _setup_day_settlement() -> void:
 	retry_button.text = "确认"
 	back_home_button.text = TextDB.get_text("UI_SETTLEMENT_ABORT_RUN")
 
+	_setup_cat_leftover_food(summary)
+
 
 func _setup_run_settlement() -> void:
 	var summary: Dictionary = RunSetupData.last_run_summary
@@ -283,7 +364,7 @@ func _setup_run_settlement() -> void:
 	today_income_label.text = TextDB.get_text("UI_SETTLEMENT_TOTAL_DAYS") % int(summary.get("total_days", 0))
 	round_income_label.text = TextDB.get_text("UI_SETTLEMENT_ROUND_INCOME") % int(summary.get("run_income", 0))
 	money_label.text = TextDB.get_text("UI_SETTLEMENT_CURRENT_MONEY") % int(summary.get("current_money", 0))
-	cooked_stock_label.text = TextDB.get_text("UI_SETTLEMENT_COOKED_STOCK") % str(summary.get("cooked_stock_text", TextDB.get_text("UI_ITEM_NONE")))
+	cooked_stock_label.text = "剩余熟食（收摊处理）：%s" % str(summary.get("cooked_stock_text", TextDB.get_text("UI_ITEM_NONE")))
 	raw_stock_label.text = TextDB.get_text("UI_SETTLEMENT_RAW_STOCK") % str(summary.get("raw_stock_text", TextDB.get_text("UI_ITEM_NONE")))
 
 	var reputation_delta: int = int(summary.get("today_reputation_delta", 0))
@@ -298,6 +379,138 @@ func _setup_run_settlement() -> void:
 	retry_button.text = "确认"
 	back_home_button.text = TextDB.get_text("UI_SETTLEMENT_BACK_HOME")
 
+	_setup_cat_leftover_food(summary)
+
+func _setup_cat_leftover_food(summary: Dictionary) -> void:
+	leftover_cooked_stock_for_cat = {}
+	cat_hand_fed_count = 0
+
+	var cooked_data = summary.get("cooked_stock_data", {})
+
+	if typeof(cooked_data) == TYPE_DICTIONARY:
+		for item_id in cooked_data.keys():
+			var amount := int(cooked_data.get(item_id, 0))
+			leftover_cooked_stock_for_cat[str(item_id)] = max(amount, 0)
+
+	_refresh_leftover_food_buttons()
+
+
+func _refresh_leftover_food_buttons() -> void:
+	if leftover_food_container == null:
+		return
+
+	for child in leftover_food_container.get_children():
+		child.queue_free()
+
+	if not _has_leftover_food_for_cat():
+		var empty_label := Label.new()
+		empty_label.text = "今天没有剩余熟食，可以摸摸小猫。"
+		empty_label.size = Vector2(390, 34)
+		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		empty_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		empty_label.add_theme_font_size_override("font_size", 14)
+		leftover_food_container.add_child(empty_label)
+		return
+
+	for item_id in leftover_cooked_stock_for_cat.keys():
+		var amount := int(leftover_cooked_stock_for_cat.get(item_id, 0))
+
+		if amount <= 0:
+			continue
+
+		var button := Button.new()
+		button.set_script(preload("res://draggable_leftover_food_button.gd"))
+		button.custom_minimum_size = Vector2(120, 36)
+		button.size = Vector2(120, 36)
+		button.call("setup", item_id, _get_food_display_name(item_id), amount)
+
+		leftover_food_container.add_child(button)
+
+
+func _has_leftover_food_for_cat() -> bool:
+	for item_id in leftover_cooked_stock_for_cat.keys():
+		if int(leftover_cooked_stock_for_cat.get(item_id, 0)) > 0:
+			return true
+
+	return false
+
+
+func _get_food_display_name(item_id: String) -> String:
+	return TextDB.get_item_name(item_id)
+
+
+func feed_cat_with_leftover_food(item_id: String) -> void:
+	if item_id == "":
+		return
+
+	if not leftover_cooked_stock_for_cat.has(item_id):
+		show_cat_reaction("喵？")
+		return
+
+	var amount := int(leftover_cooked_stock_for_cat.get(item_id, 0))
+
+	if amount <= 0:
+		show_cat_reaction("已经吃完啦")
+		return
+
+	leftover_cooked_stock_for_cat[item_id] = amount - 1
+	cat_hand_fed_count += 1
+
+	var reaction_options: Array[String] = [
+		"喵~",
+		"好吃！",
+		"呼噜呼噜",
+		"满足~",
+		"❤️"
+	]
+
+	show_cat_reaction(reaction_options[randi() % reaction_options.size()])
+	_refresh_leftover_food_buttons()
+
+	if not _has_leftover_food_for_cat():
+		show_cat_reaction("小猫把今天剩下的都解决啦")
+
+
+func pet_settlement_cat() -> void:
+	var pet_options: Array[String] = [
+		"喵~",
+		"蹭蹭",
+		"呼噜~",
+		"❤️",
+		"今天也辛苦啦"
+	]
+
+	show_cat_reaction(pet_options[randi() % pet_options.size()])
+
+
+func show_cat_reaction(text: String) -> void:
+	if cat_reaction_label == null:
+		return
+
+	cat_reaction_label.text = text
+	cat_reaction_label.visible = true
+	cat_reaction_label.modulate.a = 1.0
+	cat_reaction_label.scale = Vector2.ONE
+
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(cat_reaction_label, "position:y", cat_reaction_label.position.y - 12.0, 0.8)
+	tween.tween_property(cat_reaction_label, "modulate:a", 0.0, 0.8)
+	tween.tween_property(cat_reaction_label, "scale", Vector2(1.15, 1.15), 0.8)
+
+	await get_tree().create_timer(0.85).timeout
+
+	if is_instance_valid(cat_reaction_label):
+		cat_reaction_label.visible = false
+		_setup_layout_positions()
+
+
+func clear_leftover_food_for_next_day() -> void:
+	if _has_leftover_food_for_cat():
+		print("剩余熟食被小猫收拾掉了：", leftover_cooked_stock_for_cat)
+
+	leftover_cooked_stock_for_cat = {}
+	_refresh_leftover_food_buttons()
 
 func setup_night_queue() -> void:
 	night_queue = RunSetupData.generated_night_queue.duplicate(true)
@@ -460,13 +673,16 @@ func _on_retry_button_pressed() -> void:
 			print("Cannot continue: night is not finished yet.")
 			return
 
+		clear_leftover_food_for_next_day()
+
 		RunSetupData.current_day_in_run += 1
 		get_tree().change_scene_to_file("res://main.tscn")
 		return
 
+	clear_leftover_food_for_next_day()
+
 	RunSetupData.reset_run_setup()
 	get_tree().change_scene_to_file("res://home_menu.tscn")
-
 
 func _on_back_home_button_pressed() -> void:
 	RunSetupData.reset_run_setup()

@@ -15,12 +15,17 @@ func interact() -> void:
 		return
 
 	if station_name == "Counter":
+		if game_manager.has_method("can_finalize_day_now"):
+			if game_manager.can_finalize_day_now():
+				game_manager.finish_day_from_cleanup()
+				return
+
 		var customer = game_manager.get_counter_customer()
 		print("Counter customer: ", customer)
 
 		if customer == null:
 			if not game_manager.is_open_for_business:
-				print("未开业，当前没有柜台顾客。按 T 可开业。")
+				print("未开业或已收摊，当前没有柜台顾客。")
 			else:
 				print("No customer at counter.")
 			return
@@ -69,6 +74,7 @@ func interact() -> void:
 
 	if station_name == "DeliveryPoint":
 		var customer = game_manager.get_first_deliverable_pending_customer()
+
 		if customer == null:
 			print("No deliverable customer.")
 			return
@@ -78,15 +84,18 @@ func interact() -> void:
 
 	if station_name == "StorageArea":
 		var game_ui = get_tree().get_first_node_in_group("game_ui")
+
 		if game_ui:
 			game_ui.show_stock(
 				game_manager.get_cooked_stock_text(),
 				game_manager.get_raw_stock_text()
 			)
+
 		return
 
 	if station_name == "EmergencyShop":
 		var customer = game_manager.get_first_customer_needing_emergency_purchase()
+
 		if customer == null:
 			print("No customer needs emergency purchase.")
 			return
@@ -94,6 +103,7 @@ func interact() -> void:
 		if game_manager.emergency_purchase_for_customer(customer):
 			customer.needs_emergency_purchase = false
 			print("Emergency purchase completed for customer.")
+
 		return
 
 	print("Unknown station interaction.")

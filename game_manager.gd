@@ -12,6 +12,7 @@ var today_income: int = 0
 
 var is_open_for_business: bool = false
 var is_round_closing: bool = false
+var is_cleanup_phase: bool = false
 var has_round_finished: bool = false
 
 var day_duration_seconds: float = 15.0
@@ -94,18 +95,24 @@ func _process(delta: float) -> void:
 	update_day_timer(delta)
 	update_cooker_slots(delta)
 
-	if is_round_closing and not has_round_finished:
+	if is_round_closing and not has_round_finished and not is_cleanup_phase:
 		try_finish_day()
 
 	var game_ui = get_tree().get_first_node_in_group("game_ui")
 	if game_ui == null:
 		return
 
-	game_ui.update_business_state(day_time_left, is_open_for_business, is_round_closing, has_round_finished)
+	game_ui.update_business_state(
+		day_time_left,
+		is_open_for_business,
+		is_round_closing,
+		has_round_finished,
+		is_cleanup_phase
+	)
+
 	game_ui.hide_patience()
 
 	var order_cards: Array = []
-
 	for customer in pending_customers:
 		if customer != null and is_instance_valid(customer):
 			if not customer.order_served:
@@ -142,8 +149,7 @@ func force_close_day_before_opening() -> void:
 	if spawn_timer != null and is_instance_valid(spawn_timer):
 		spawn_timer.stop()
 
-	print("=== 今日时间已耗尽，未开业也进入结算 ===")
-
+	print("=== 今日时间已耗尽，进入收摊整理 ===")
 	try_finish_day()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -171,6 +177,7 @@ func start_round() -> void:
 
 	is_open_for_business = false
 	is_round_closing = false
+	is_cleanup_phase = false
 	has_round_finished = false
 
 	day_time_left = day_duration_seconds
@@ -196,7 +203,13 @@ func start_round() -> void:
 		game_ui.hide_stock()
 		game_ui.hide_patience()
 		game_ui.hide_pending_orders()
-		game_ui.update_business_state(day_time_left, is_open_for_business, is_round_closing, has_round_finished)
+		game_ui.update_business_state(
+			day_time_left,
+			is_open_for_business,
+			is_round_closing,
+			has_round_finished,
+			is_cleanup_phase
+		)
 
 	queued_customers.clear()
 	pending_customers.clear()
@@ -425,7 +438,6 @@ func close_business() -> void:
 		spawn_timer.stop()
 
 	print("=== 已打烊 ===")
-
 	try_finish_day()
 
 func can_spawn_customers_now() -> bool:
@@ -1127,6 +1139,13 @@ func get_raw_stock_text() -> String:
 
 	return ", ".join(lines)
 
+func get_zero_food_stock() -> Dictionary:
+	return {
+		"spinach": 0,
+		"potato_slice": 0,
+		"tofu_puff": 0
+	}
+
 func can_make_ingredient(ingredient_name: String, amount: int) -> bool:
 	var cooked_amount: int = max(cooked_stock.get(ingredient_name, 0), 0)
 	var raw_amount: int = max(raw_stock.get(ingredient_name, 0), 0)
@@ -1326,15 +1345,105 @@ func print_round_summary() -> void:
 	print("Remaining raw stock: ", raw_stock)
 
 func try_finish_day() -> void:
-	if not is_round_closing:
-		return
-
 	if has_round_finished:
 		return
 
-	if not can_finish_day_now():
+	if is_cleanup_phase:
 		return
 
+	if not is_round_closing:
+		return
+
+	if not can_enter_cleanup_phase():
+		return
+
+	enter_cleanup_phase()
+
+func can_enter_cleanup_phase() -> bool:
+	if has_round_finished:
+		return false
+
+	if not is_round_closing:
+		return false
+
+	if has_active_customers_or_orders():
+		return false
+
+	if has_busy_cooker():
+		return false
+
+	return true
+
+
+func has_active_customers_or_orders() -> bool:
+	for customer in queued_customers:
+		if customer != null and is_instance_valid(customer):
+			return true
+
+	for customer in pending_customers:
+		if customer != null and is_instance_valid(customer):
+			if not customer.order_served:
+				return true
+
+	if characters_node != null and is_instance_valid(characters_node):
+		for child in characters_node.get_children():
+			if child != null and is_instance_valid(child):
+				if child.is_in_group("customers"):
+					return true
+
+	var customer_nodes := get_tree().get_nodes_in_group("customers")
+	for customer in customer_nodes:
+		if customer != null and is_instance_valid(customer):
+			return true
+
+	return false
+
+
+func has_busy_cooker() -> bool:
+	for i in range(min(unlocked_cooker_slots, cooker_slots.size())):
+		var slot = cooker_slots[i]
+
+		if bool(slot.get("is_busy", false)):
+			return true
+
+	return false
+
+
+func enter_cleanup_phase() -> void:
+	is_cleanup_phase = true
+	is_open_for_business = false
+	is_round_closing = true
+
+	if spawn_timer != null and is_instance_valid(spawn_timer):
+		spawn_timer.stop()
+
+	var game_ui = get_tree().get_first_node_in_group("game_ui")
+	if game_ui:
+		game_ui.hide_order()
+		game_ui.hide_patience()
+		game_ui.hide_pending_orders()
+		game_ui.update_business_state(
+			day_time_left,
+			is_open_for_business,
+			is_round_closing,
+			has_round_finished,
+			is_cleanup_phase
+		)
+
+	print("=== 进入收摊整理阶段 ===")
+	print("玩家可以在收银台按 E 进入结算。")
+
+
+func can_finalize_day_now() -> bool:
+	return is_cleanup_phase and not has_round_finished
+
+
+func finish_day_from_cleanup() -> void:
+	if not can_finalize_day_now():
+		print("当前还不能进入结算。")
+		return
+
+	print("=== 收摊完成，进入日结 ===")
 	finish_day()
 
 func can_finish_day_now() -> bool:
@@ -1352,10 +1461,16 @@ func can_finish_day_now() -> bool:
 func finish_day() -> void:
 	has_round_finished = true
 
+	var remaining_cooked_stock := cooked_stock.duplicate(true)
+	var remaining_raw_stock := raw_stock.duplicate(true)
+
 	RunSetupData.run_money = money
 	RunSetupData.run_total_income = round_income
-	RunSetupData.current_raw_stock = raw_stock.duplicate(true)
-	RunSetupData.current_cooked_stock = cooked_stock.duplicate(true)
+	RunSetupData.current_raw_stock = remaining_raw_stock
+
+	# 熟食不隔夜：日结显示剩余熟食，但下一天不继承熟食。
+	RunSetupData.current_cooked_stock = get_zero_food_stock()
+
 	RunSetupData.generated_night_queue = build_night_queue_from_today_results()
 
 	var day_summary := {
@@ -1366,8 +1481,11 @@ func finish_day() -> void:
 		"current_money": money,
 		"cooked_stock_text": get_cooked_stock_text(),
 		"raw_stock_text": get_raw_stock_text(),
+		"cooked_stock_data": remaining_cooked_stock,
+		"raw_stock_data": remaining_raw_stock,
 		"today_reputation_delta": RunSetupData.today_reputation_delta,
-		"shop_reputation": RunSetupData.shop_reputation
+		"shop_reputation": RunSetupData.shop_reputation,
+		"cooked_stock_discarded": true
 	}
 
 	RunSetupData.last_day_summary = day_summary
@@ -1384,25 +1502,34 @@ func finish_day() -> void:
 	print("Current money: ", money)
 	print("Today reputation delta: ", RunSetupData.today_reputation_delta)
 	print("Current reputation: ", RunSetupData.shop_reputation)
-	print("Remaining cooked stock: ", cooked_stock)
-	print("Remaining raw stock: ", raw_stock)
+	print("Remaining cooked stock this day: ", remaining_cooked_stock)
+	print("Cooked stock will not carry over to next day.")
+	print("Raw stock carried over: ", remaining_raw_stock)
 	print("Generated night queue: ", RunSetupData.generated_night_queue)
 
 	get_tree().call_deferred("change_scene_to_file", "res://settlement_result.tscn")
 
 func finish_run() -> void:
+	var remaining_cooked_stock := cooked_stock.duplicate(true)
+	var remaining_raw_stock := raw_stock.duplicate(true)
+
 	var run_summary := {
 		"total_days": RunSetupData.total_days_in_run,
 		"run_income": round_income,
 		"current_money": money,
 		"cooked_stock_text": get_cooked_stock_text(),
 		"raw_stock_text": get_raw_stock_text(),
+		"cooked_stock_data": remaining_cooked_stock,
+		"raw_stock_data": remaining_raw_stock,
 		"today_reputation_delta": RunSetupData.today_reputation_delta,
-		"shop_reputation": RunSetupData.shop_reputation
+		"shop_reputation": RunSetupData.shop_reputation,
+		"cooked_stock_discarded": true
 	}
 
 	RunSetupData.last_run_summary = run_summary
 	RunSetupData.settlement_view_mode = "run"
+
+	RunSetupData.current_cooked_stock = get_zero_food_stock()
 
 	print("=== 本轮结算 ===")
 	print("Today income: ", today_income)
@@ -1410,7 +1537,8 @@ func finish_run() -> void:
 	print("Current money: ", money)
 	print("Today reputation delta: ", RunSetupData.today_reputation_delta)
 	print("Current reputation: ", RunSetupData.shop_reputation)
-	print("Remaining cooked stock: ", cooked_stock)
-	print("Remaining raw stock: ", raw_stock)
+	print("Remaining cooked stock this day: ", remaining_cooked_stock)
+	print("Cooked stock is discarded at end of day/run.")
+	print("Remaining raw stock: ", remaining_raw_stock)
 
 	get_tree().call_deferred("change_scene_to_file", "res://settlement_result.tscn")
