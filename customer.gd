@@ -290,7 +290,55 @@ func mark_order_served() -> void:
 	is_waiting_after_checkout = false
 	is_waiting_for_food = false
 	is_ready_for_delivery = false
+
+	show_served_reaction()
+
 	print("Customer order served.")
+
+func show_served_reaction() -> void:
+	var reaction_text := get_served_reaction_text()
+	_create_customer_reaction_label(reaction_text)
+
+func get_served_reaction_text() -> String:
+	if is_special_customer:
+		match special_customer_type:
+			"mouse":
+				var mouse_options: Array[String] = ["🧀", "✨", "😋", "⭐"]
+				return mouse_options[randi() % mouse_options.size()]
+			_:
+				var special_options: Array[String] = ["⭐", "✨", "😋", "❤️"]
+				return special_options[randi() % special_options.size()]
+
+	var normal_options: Array[String] = ["😊", "😋", "✨", "❤️"]
+	return normal_options[randi() % normal_options.size()]
+
+func _create_customer_reaction_label(text: String) -> void:
+	var old_label = get_node_or_null("CustomerReactionLabel")
+	if old_label:
+		old_label.queue_free()
+
+	var reaction_label := Label.new()
+	reaction_label.name = "CustomerReactionLabel"
+	reaction_label.text = text
+	reaction_label.position = Vector2(-18, -72)
+	reaction_label.size = Vector2(36, 36)
+	reaction_label.z_index = 40
+	reaction_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	reaction_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	reaction_label.add_theme_font_size_override("font_size", 24)
+
+	add_child(reaction_label)
+
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(reaction_label, "position:y", reaction_label.position.y - 22.0, 1.15)
+	tween.tween_property(reaction_label, "modulate:a", 0.0, 1.15)
+	tween.tween_property(reaction_label, "scale", Vector2(1.25, 1.25), 1.15)
+
+	await get_tree().create_timer(1.2).timeout
+
+	if is_instance_valid(reaction_label):
+		reaction_label.queue_free()
 
 func can_be_delivered() -> bool:
 	return is_ready_for_delivery
