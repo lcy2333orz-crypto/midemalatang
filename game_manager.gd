@@ -19,6 +19,8 @@ var day_duration_seconds: float = 15.0
 var day_time_left: float = 90.0
 var auto_close_triggered: bool = false
 
+var morning_info_layer: CanvasLayer = null
+
 var planned_raw_stock: Dictionary = {
 	"spinach": 4,
 	"potato_slice": 4,
@@ -198,6 +200,7 @@ func start_round() -> void:
 	print_stocks()
 
 	var game_ui = get_tree().get_first_node_in_group("game_ui")
+
 	if game_ui:
 		game_ui.update_money(money)
 		game_ui.hide_order()
@@ -219,6 +222,68 @@ func start_round() -> void:
 		spawn_timer.stop()
 
 	print("当前未开业，不生成普通顾客。")
+
+	show_pending_morning_info_if_any()
+
+func show_pending_morning_info_if_any() -> void:
+	var lines := RunSetupData.consume_pending_morning_info_lines()
+
+	if lines.is_empty():
+		return
+
+	print("=== 昨晚小猫获得的信息 ===")
+
+	for line in lines:
+		print(line)
+
+	_create_morning_info_layer(lines)
+
+func _create_morning_info_layer(lines: Array[String]) -> void:
+	if morning_info_layer != null and is_instance_valid(morning_info_layer):
+		morning_info_layer.queue_free()
+
+	morning_info_layer = CanvasLayer.new()
+	morning_info_layer.name = "MorningInfoLayer"
+	morning_info_layer.layer = 80
+	add_child(morning_info_layer)
+
+	var viewport_size := get_viewport().get_visible_rect().size
+
+	var panel := Panel.new()
+	panel.name = "MorningInfoPanel"
+	panel.size = Vector2(460, 120)
+	panel.position = Vector2(
+		viewport_size.x * 0.5 - 230,
+		72
+	)
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	morning_info_layer.add_child(panel)
+
+	var label := Label.new()
+	label.name = "MorningInfoLabel"
+	label.position = Vector2(18, 14)
+	label.size = Vector2(424, 92)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 16)
+
+	if lines.size() >= 2:
+		label.text = "%s\n%s" % [str(lines[0]), str(lines[1])]
+	else:
+		label.text = "\n".join(lines)
+
+	panel.add_child(label)
+
+	var tween := create_tween()
+	tween.tween_interval(3.0)
+	tween.tween_property(panel, "modulate:a", 0.0, 0.8)
+
+	await get_tree().create_timer(3.9).timeout
+
+	if is_instance_valid(morning_info_layer):
+		morning_info_layer.queue_free()
+		morning_info_layer = null
 
 func _apply_special_customer_plan_to_customer(customer: Node) -> void:
 	if customer == null or not is_instance_valid(customer):

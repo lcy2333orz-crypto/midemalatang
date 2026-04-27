@@ -54,6 +54,8 @@ var today_special_echo_records: Array = []
 var settlement_view_mode: String = "day"
 var last_day_summary: Dictionary = {}
 var last_run_summary: Dictionary = {}
+var current_night_activity: Dictionary = {}
+var pending_morning_info: Dictionary = {}
 
 
 func reset_run_setup() -> void:
@@ -95,6 +97,7 @@ func reset_run_setup() -> void:
 
 	shop_reputation = 50
 	today_reputation_delta = 0
+
 	today_customers_served = 0
 	today_customers_failed = 0
 	today_special_echo_records = []
@@ -102,6 +105,9 @@ func reset_run_setup() -> void:
 	settlement_view_mode = "day"
 	last_day_summary = {}
 	last_run_summary = {}
+
+	current_night_activity = {}
+	pending_morning_info = {}
 
 
 func setup_stage_run(stage_id: String, difficulty_days: int = 7) -> void:
@@ -355,5 +361,93 @@ func get_today_stall_echo_lines() -> Array[String]:
 			lines.append("特殊客人回响：无")
 		else:
 			lines.append("特殊客人回响：%s" % "，".join(echo_names))
+
+	return lines
+
+func generate_night_background_activity(has_next_day: bool = true) -> Dictionary:
+	var options: Array = []
+
+	if has_next_day:
+		options = [
+			{
+				"id": "reading_notes",
+				"activity_text": "小猫正在翻看一本油乎乎的小本子。",
+				"morning_title": "昨晚小猫翻了翻小本子",
+				"morning_text": "今天或许可以多留意一下顾客喜欢的搭配。"
+			},
+			{
+				"id": "chatting_neighbor",
+				"activity_text": "小猫在和路过的街坊小声聊天。",
+				"morning_title": "昨晚小猫和街坊聊了聊",
+				"morning_text": "今天可能会有熟面孔路过小摊。"
+			},
+			{
+				"id": "checking_notice",
+				"activity_text": "小猫认真看了看贴在街口的小纸条。",
+				"morning_title": "昨晚小猫看了街口的小纸条",
+				"morning_text": "今天附近的人流也许会有一点变化。"
+			},
+			{
+				"id": "sorting_ingredients",
+				"activity_text": "小猫把剩下的食材重新数了一遍。",
+				"morning_title": "昨晚小猫整理了食材",
+				"morning_text": "今天开摊前，最好先想想哪些食材最紧张。"
+			},
+			{
+				"id": "resting_cart",
+				"activity_text": "小猫趴在餐车旁边，尾巴轻轻晃着。",
+				"morning_title": "昨晚小猫好好休息了一会儿",
+				"morning_text": "今天也要稳稳地把热乎乎的东西端出去。"
+			}
+		]
+	else:
+		options = [
+			{
+				"id": "final_rest",
+				"activity_text": "小猫收好餐车，安静地看着今天的小摊灯光慢慢暗下去。",
+				"morning_title": "",
+				"morning_text": ""
+			}
+		]
+
+	var chosen: Dictionary = options[randi() % options.size()]
+	current_night_activity = chosen.duplicate(true)
+
+	if has_next_day:
+		pending_morning_info = {
+			"title": str(chosen.get("morning_title", "")),
+			"text": str(chosen.get("morning_text", "")),
+			"source_activity_id": str(chosen.get("id", ""))
+		}
+	else:
+		pending_morning_info = {}
+
+	return current_night_activity.duplicate(true)
+
+func get_current_night_activity_text() -> String:
+	if current_night_activity.is_empty():
+		return ""
+
+	return str(current_night_activity.get("activity_text", ""))
+
+func has_pending_morning_info() -> bool:
+	if pending_morning_info.is_empty():
+		return false
+
+	return str(pending_morning_info.get("text", "")) != ""
+
+func consume_pending_morning_info_lines() -> Array[String]:
+	var lines: Array[String] = []
+
+	if not has_pending_morning_info():
+		return lines
+
+	var title := str(pending_morning_info.get("title", "昨晚小猫获得的信息"))
+	var text := str(pending_morning_info.get("text", ""))
+
+	lines.append(title)
+	lines.append(text)
+
+	pending_morning_info = {}
 
 	return lines

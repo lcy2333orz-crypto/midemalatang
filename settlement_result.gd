@@ -32,6 +32,7 @@ var card_choice_title_label: Label = null
 var cat_feed_area: Panel = null
 var cat_reaction_label: Label = null
 var stall_echo_label: Label = null
+var night_activity_label: Label = null
 var leftover_food_panel: Panel = null
 var leftover_food_container: HBoxContainer = null
 var leftover_cooked_stock_for_cat: Dictionary = {}
@@ -68,8 +69,8 @@ func _ready() -> void:
 	_create_card_overlay()
 	_create_cat_feed_widgets()
 	_create_stall_echo_label()
+	_create_night_activity_label()
 	_setup_layout_positions()
-	
 
 	if RunSetupData.settlement_view_mode == "run":
 		_setup_run_settlement()
@@ -207,7 +208,7 @@ func _create_card_overlay() -> void:
 func _create_cat_feed_widgets() -> void:
 	cat_feed_area = Panel.new()
 	cat_feed_area.name = "CatFeedArea"
-	cat_feed_area.size = Vector2(150, 120)
+	cat_feed_area.size = Vector2(170, 145)
 	cat_feed_area.z_index = 2
 	cat_feed_area.mouse_filter = Control.MOUSE_FILTER_STOP
 	cat_feed_area.set_script(preload("res://cat_feed_area.gd"))
@@ -215,19 +216,19 @@ func _create_cat_feed_widgets() -> void:
 
 	var cat_label := Label.new()
 	cat_label.name = "CatLabel"
-	cat_label.text = "🐱\n小猫"
-	cat_label.position = Vector2(0, 12)
-	cat_label.size = Vector2(150, 70)
+	cat_label.text = "小猫"
+	cat_label.position = Vector2(0, 18)
+	cat_label.size = Vector2(170, 66)
 	cat_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	cat_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	cat_label.add_theme_font_size_override("font_size", 26)
+	cat_label.add_theme_font_size_override("font_size", 28)
 	cat_feed_area.add_child(cat_label)
 
 	var cat_hint := Label.new()
 	cat_hint.name = "CatHintLabel"
 	cat_hint.text = "拖熟食来喂\n或点击摸头"
-	cat_hint.position = Vector2(0, 78)
-	cat_hint.size = Vector2(150, 38)
+	cat_hint.position = Vector2(0, 88)
+	cat_hint.size = Vector2(170, 42)
 	cat_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	cat_hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	cat_hint.add_theme_font_size_override("font_size", 12)
@@ -236,7 +237,7 @@ func _create_cat_feed_widgets() -> void:
 	cat_reaction_label = Label.new()
 	cat_reaction_label.name = "CatReactionLabel"
 	cat_reaction_label.text = ""
-	cat_reaction_label.size = Vector2(170, 34)
+	cat_reaction_label.size = Vector2(180, 34)
 	cat_reaction_label.z_index = 5
 	cat_reaction_label.visible = false
 	cat_reaction_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -246,20 +247,21 @@ func _create_cat_feed_widgets() -> void:
 
 	leftover_food_panel = Panel.new()
 	leftover_food_panel.name = "LeftoverFoodPanel"
-	leftover_food_panel.size = Vector2(420, 70)
+	leftover_food_panel.size = Vector2(540, 74)
 	leftover_food_panel.z_index = 2
 	add_child(leftover_food_panel)
 
 	leftover_food_container = HBoxContainer.new()
 	leftover_food_container.name = "LeftoverFoodContainer"
-	leftover_food_container.position = Vector2(12, 18)
-	leftover_food_container.size = Vector2(396, 42)
+	leftover_food_container.position = Vector2(14, 19)
+	leftover_food_container.size = Vector2(512, 42)
+	leftover_food_container.add_theme_constant_override("separation", 12)
 	leftover_food_panel.add_child(leftover_food_container)
 
 func _create_stall_echo_label() -> void:
 	stall_echo_label = Label.new()
 	stall_echo_label.name = "StallEchoLabel"
-	stall_echo_label.size = Vector2(420, 105)
+	stall_echo_label.size = Vector2(250, 210)
 	stall_echo_label.z_index = 1
 	stall_echo_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stall_echo_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -267,71 +269,71 @@ func _create_stall_echo_label() -> void:
 	stall_echo_label.add_theme_font_size_override("font_size", 14)
 	add_child(stall_echo_label)
 
+func _create_night_activity_label() -> void:
+	night_activity_label = Label.new()
+	night_activity_label.name = "NightActivityLabel"
+	night_activity_label.size = Vector2(210, 54)
+	night_activity_label.z_index = 3
+	night_activity_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	night_activity_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	night_activity_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	night_activity_label.add_theme_font_size_override("font_size", 13)
+	add_child(night_activity_label)
+
 func _setup_layout_positions() -> void:
 	var viewport_size := get_viewport_rect().size
 
-	# ===== 底层：日结信息 =====
-	title_label.position = Vector2(
-		viewport_size.x * 0.5 - 80,
-		75
-	)
+	var center_x := viewport_size.x * 0.5
+	var top_y := 36.0
+
+	# ===== 底层：标题 =====
+	title_label.position = Vector2(center_x - 160, top_y)
+	title_label.size = Vector2(320, 42)
 	title_label.z_index = 0
+	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title_label.add_theme_font_size_override("font_size", 24)
 
-	$SummaryBox.position = Vector2(
-		viewport_size.x * 0.5 - 170,
-		125
-	)
+	# ===== 左侧：今日账本 =====
+	$SummaryBox.position = Vector2(45, 105)
+	$SummaryBox.size = Vector2(245, 235)
 	$SummaryBox.z_index = 0
+	_arrange_summary_box_labels()
 
-	# ===== 夜间喂猫互动区：作为结算背景的一部分 =====
+	# ===== 中间：今日小摊回响 =====
+	if stall_echo_label != null:
+		stall_echo_label.position = Vector2(center_x - 125, 108)
+		stall_echo_label.size = Vector2(250, 220)
+
+	# ===== 右侧：小猫收摊互动 =====
 	if cat_feed_area != null:
-		cat_feed_area.position = Vector2(
-			viewport_size.x * 0.5 + 230,
-			145
-		)
+		cat_feed_area.position = Vector2(viewport_size.x - 230, 110)
 
 	if cat_reaction_label != null:
-		cat_reaction_label.position = Vector2(
-			viewport_size.x * 0.5 + 220,
-			112
-		)
+		cat_reaction_label.position = Vector2(viewport_size.x - 235, 72)
 
-	if stall_echo_label != null:
-		stall_echo_label.position = Vector2(
-			viewport_size.x * 0.5 - 210,
-			305
-		)
+	if night_activity_label != null:
+		night_activity_label.position = Vector2(viewport_size.x - 250, 265)
 
+	# ===== 下方：剩余熟食拖拽区 =====
 	if leftover_food_panel != null:
-		leftover_food_panel.position = Vector2(
-			viewport_size.x * 0.5 - 210,
-			420
-		)
+		leftover_food_panel.position = Vector2(center_x - 270, 380)
 
 	# ===== 上层：全屏抽卡蒙版 =====
 	card_overlay_bg.position = Vector2.ZERO
 	card_overlay_bg.size = viewport_size
 
-	# ===== 抽卡内容：整个界面的正中间 =====
-	card_choice_title_label.position = Vector2(
-		viewport_size.x * 0.5 - 220,
-		125
-	)
+	# ===== 抽卡内容：界面正中间 =====
+	card_choice_title_label.position = Vector2(center_x - 220, 125)
 	card_choice_title_label.size = Vector2(440, 36)
 
-	night_queue_label.position = Vector2(
-		viewport_size.x * 0.5 - 260,
-		175
-	)
+	night_queue_label.position = Vector2(center_x - 260, 175)
 	night_queue_label.size = Vector2(520, 30)
 	night_queue_label.z_index = 30
 	night_queue_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	night_queue_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
-	card_container.position = Vector2(
-		viewport_size.x * 0.5 - 255,
-		230
-	)
+	card_container.position = Vector2(center_x - 255, 230)
 	card_container.z_index = 30
 	card_container.mouse_filter = Control.MOUSE_FILTER_PASS
 
@@ -344,13 +346,41 @@ func _setup_layout_positions() -> void:
 		button.size = Vector2(150, 180)
 		button.mouse_filter = Control.MOUSE_FILTER_STOP
 
-	# 确认按钮只在抽完卡后显示
-	$ButtonBox.position = Vector2(
-		viewport_size.x * 0.5 - 120,
-		510
-	)
+	# ===== 底部：确认按钮 =====
+	$ButtonBox.position = Vector2(center_x - 120, viewport_size.y - 82)
 	$ButtonBox.z_index = 200
 
+func _arrange_summary_box_labels() -> void:
+	var x := 18
+	var y := 18
+	var line_h := 30
+	var label_w := 210
+	var label_h := 26
+
+	var labels := [
+		today_income_label,
+		round_income_label,
+		money_label,
+		waste_label,
+		profit_label,
+		raw_stock_label
+	]
+
+	for label in labels:
+		if label == null:
+			continue
+
+		label.visible = true
+		label.position = Vector2(x, y)
+		label.size = Vector2(label_w, label_h)
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.add_theme_font_size_override("font_size", 14)
+
+		y += line_h
+
+	if cooked_stock_label != null:
+		cooked_stock_label.visible = false
 
 func _setup_day_settlement() -> void:
 	var summary: Dictionary = RunSetupData.last_day_summary
@@ -360,11 +390,9 @@ func _setup_day_settlement() -> void:
 	round_income_label.text = TextDB.get_text("UI_SETTLEMENT_ROUND_INCOME") % int(summary.get("run_income", 0))
 	money_label.text = TextDB.get_text("UI_SETTLEMENT_CURRENT_MONEY") % int(summary.get("current_money", 0))
 
-	# 熟食不再在结算正文里显示，改由下方喂猫互动区显示
 	cooked_stock_label.visible = false
 
 	raw_stock_label.visible = true
-	raw_stock_label.position = cooked_stock_label.position
 	raw_stock_label.text = TextDB.get_text("UI_SETTLEMENT_RAW_STOCK") % str(summary.get("raw_stock_text", TextDB.get_text("UI_ITEM_NONE")))
 
 	var reputation_delta: int = int(summary.get("today_reputation_delta", 0))
@@ -381,6 +409,8 @@ func _setup_day_settlement() -> void:
 
 	_setup_stall_echo(summary)
 	_setup_cat_leftover_food(summary)
+	_setup_night_activity(true)
+	_setup_layout_positions()
 
 
 func _setup_run_settlement() -> void:
@@ -391,11 +421,9 @@ func _setup_run_settlement() -> void:
 	round_income_label.text = TextDB.get_text("UI_SETTLEMENT_ROUND_INCOME") % int(summary.get("run_income", 0))
 	money_label.text = TextDB.get_text("UI_SETTLEMENT_CURRENT_MONEY") % int(summary.get("current_money", 0))
 
-	# 熟食不再在本轮总结正文里显示，改由下方喂猫互动区显示
 	cooked_stock_label.visible = false
 
 	raw_stock_label.visible = true
-	raw_stock_label.position = cooked_stock_label.position
 	raw_stock_label.text = TextDB.get_text("UI_SETTLEMENT_RAW_STOCK") % str(summary.get("raw_stock_text", TextDB.get_text("UI_ITEM_NONE")))
 
 	var reputation_delta: int = int(summary.get("today_reputation_delta", 0))
@@ -412,6 +440,8 @@ func _setup_run_settlement() -> void:
 
 	_setup_stall_echo(summary)
 	_setup_cat_leftover_food(summary)
+	_setup_night_activity(false)
+	_setup_layout_positions()
 
 func _setup_stall_echo(summary: Dictionary) -> void:
 	if stall_echo_label == null:
@@ -429,6 +459,20 @@ func _setup_stall_echo(summary: Dictionary) -> void:
 		lines.append(str(line))
 
 	stall_echo_label.text = "\n".join(lines)
+
+func _setup_night_activity(has_next_day: bool) -> void:
+	if night_activity_label == null:
+		return
+
+	var activity := RunSetupData.generate_night_background_activity(has_next_day)
+	var activity_text := str(activity.get("activity_text", ""))
+
+	if activity_text == "":
+		night_activity_label.visible = false
+		return
+
+	night_activity_label.visible = true
+	night_activity_label.text = activity_text
 
 func _setup_cat_leftover_food(summary: Dictionary) -> void:
 	leftover_cooked_stock_for_cat = {}
