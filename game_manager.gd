@@ -186,6 +186,7 @@ func start_round() -> void:
 	RunSetupData.today_special_customer_results = []
 	RunSetupData.generated_night_queue = []
 	RunSetupData.today_reputation_delta = 0
+	RunSetupData.reset_today_stall_echo_stats()
 
 	RunSetupData.setup_daily_special_customer_plan()
 
@@ -520,18 +521,20 @@ func handle_customer_order_completed(customer: Node) -> void:
 	if customer == null or not is_instance_valid(customer):
 		return
 
+	RunSetupData.record_today_served_customer()
+
 	var delta := get_reputation_delta_for_customer(customer, "served")
 	change_shop_reputation(delta, "%s served" % get_customer_group(customer))
-
 	record_special_customer_result(customer, "good")
 
 func handle_customer_patience_timeout(customer: Node) -> void:
 	if customer == null or not is_instance_valid(customer):
 		return
 
+	RunSetupData.record_today_failed_customer()
+
 	var delta := get_reputation_delta_for_customer(customer, "failed")
 	change_shop_reputation(delta, "%s patience timeout" % get_customer_group(customer))
-
 	record_special_customer_result(customer, "bad")
 
 func get_counter_customer() -> Node:
@@ -834,10 +837,14 @@ func reject_customer_before_checkout(customer: Node) -> void:
 	if customer == null or not is_instance_valid(customer):
 		return
 
+	RunSetupData.record_today_failed_customer()
+
 	var delta := get_reputation_delta_for_customer(customer, "failed")
 	change_shop_reputation(delta, "%s rejected before checkout" % get_customer_group(customer))
+	record_special_customer_result(customer, "bad")
 
 	var exit_point = get_tree().get_first_node_in_group("exit_point")
+
 	if exit_point:
 		customer.go_to_exit(exit_point.global_position)
 
@@ -1525,6 +1532,7 @@ func finish_day() -> void:
 		"raw_stock_data": remaining_raw_stock,
 		"today_reputation_delta": RunSetupData.today_reputation_delta,
 		"shop_reputation": RunSetupData.shop_reputation,
+		"today_echo_lines": RunSetupData.get_today_stall_echo_lines(),
 		"cooked_stock_discarded": true
 	}
 
@@ -1563,6 +1571,7 @@ func finish_run() -> void:
 		"raw_stock_data": remaining_raw_stock,
 		"today_reputation_delta": RunSetupData.today_reputation_delta,
 		"shop_reputation": RunSetupData.shop_reputation,
+		"today_echo_lines": RunSetupData.get_today_stall_echo_lines(),
 		"cooked_stock_discarded": true
 	}
 

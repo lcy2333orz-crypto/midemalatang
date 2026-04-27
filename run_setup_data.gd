@@ -47,6 +47,10 @@ var shop_reputation: int = 50
 # 当天口碑变化，只用于日结显示
 var today_reputation_delta: int = 0
 
+var today_customers_served: int = 0
+var today_customers_failed: int = 0
+var today_special_echo_records: Array = []
+
 var settlement_view_mode: String = "day"
 var last_day_summary: Dictionary = {}
 var last_run_summary: Dictionary = {}
@@ -91,6 +95,9 @@ func reset_run_setup() -> void:
 
 	shop_reputation = 50
 	today_reputation_delta = 0
+	today_customers_served = 0
+	today_customers_failed = 0
+	today_special_echo_records = []
 
 	settlement_view_mode = "day"
 	last_day_summary = {}
@@ -162,6 +169,7 @@ func add_pending_gift(source_type: String, source_name: String, result: String) 
 	}
 
 	pending_gifts.append(gift_data)
+	record_today_special_echo(display_name, result)
 
 	print("Special customer echo added: ", gift_data)
 
@@ -300,5 +308,52 @@ func get_pending_gift_lines() -> Array[String]:
 				display_name = "%s留下的回响" % source_name
 
 		lines.append(" - %s" % display_name)
+
+	return lines
+
+func reset_today_stall_echo_stats() -> void:
+	today_customers_served = 0
+	today_customers_failed = 0
+	today_special_echo_records = []
+
+
+func record_today_served_customer() -> void:
+	today_customers_served += 1
+
+
+func record_today_failed_customer() -> void:
+	today_customers_failed += 1
+
+
+func record_today_special_echo(display_name: String, result: String) -> void:
+	today_special_echo_records.append({
+		"display_name": display_name,
+		"result": result
+	})
+
+
+func get_today_stall_echo_lines() -> Array[String]:
+	var lines: Array[String] = []
+
+	lines.append("今日小摊回响：")
+	lines.append("服务顾客：%d" % today_customers_served)
+	lines.append("满意离开：%d" % today_customers_served)
+	lines.append("遗憾离开：%d" % today_customers_failed)
+
+	if today_special_echo_records.is_empty():
+		lines.append("特殊客人回响：无")
+	else:
+		var echo_names: Array[String] = []
+
+		for record in today_special_echo_records:
+			if typeof(record) != TYPE_DICTIONARY:
+				continue
+
+			echo_names.append(str(record.get("display_name", "特殊客人的回响")))
+
+		if echo_names.is_empty():
+			lines.append("特殊客人回响：无")
+		else:
+			lines.append("特殊客人回响：%s" % "，".join(echo_names))
 
 	return lines

@@ -31,6 +31,7 @@ var card_overlay_bg: ColorRect = null
 var card_choice_title_label: Label = null
 var cat_feed_area: Panel = null
 var cat_reaction_label: Label = null
+var stall_echo_label: Label = null
 var leftover_food_panel: Panel = null
 var leftover_food_container: HBoxContainer = null
 var leftover_cooked_stock_for_cat: Dictionary = {}
@@ -66,7 +67,9 @@ func _ready() -> void:
 
 	_create_card_overlay()
 	_create_cat_feed_widgets()
+	_create_stall_echo_label()
 	_setup_layout_positions()
+	
 
 	if RunSetupData.settlement_view_mode == "run":
 		_setup_run_settlement()
@@ -253,6 +256,17 @@ func _create_cat_feed_widgets() -> void:
 	leftover_food_container.size = Vector2(396, 42)
 	leftover_food_panel.add_child(leftover_food_container)
 
+func _create_stall_echo_label() -> void:
+	stall_echo_label = Label.new()
+	stall_echo_label.name = "StallEchoLabel"
+	stall_echo_label.size = Vector2(420, 105)
+	stall_echo_label.z_index = 1
+	stall_echo_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	stall_echo_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	stall_echo_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	stall_echo_label.add_theme_font_size_override("font_size", 14)
+	add_child(stall_echo_label)
+
 func _setup_layout_positions() -> void:
 	var viewport_size := get_viewport_rect().size
 
@@ -280,6 +294,12 @@ func _setup_layout_positions() -> void:
 		cat_reaction_label.position = Vector2(
 			viewport_size.x * 0.5 + 220,
 			112
+		)
+
+	if stall_echo_label != null:
+		stall_echo_label.position = Vector2(
+			viewport_size.x * 0.5 - 210,
+			305
 		)
 
 	if leftover_food_panel != null:
@@ -359,6 +379,7 @@ func _setup_day_settlement() -> void:
 	retry_button.text = "确认"
 	back_home_button.text = TextDB.get_text("UI_SETTLEMENT_ABORT_RUN")
 
+	_setup_stall_echo(summary)
 	_setup_cat_leftover_food(summary)
 
 
@@ -389,7 +410,25 @@ func _setup_run_settlement() -> void:
 	retry_button.text = "确认"
 	back_home_button.text = TextDB.get_text("UI_SETTLEMENT_BACK_HOME")
 
+	_setup_stall_echo(summary)
 	_setup_cat_leftover_food(summary)
+
+func _setup_stall_echo(summary: Dictionary) -> void:
+	if stall_echo_label == null:
+		return
+
+	var echo_lines = summary.get("today_echo_lines", [])
+
+	if typeof(echo_lines) != TYPE_ARRAY or echo_lines.is_empty():
+		stall_echo_label.text = "今日小摊回响：\n暂无记录"
+		return
+
+	var lines: Array[String] = []
+
+	for line in echo_lines:
+		lines.append(str(line))
+
+	stall_echo_label.text = "\n".join(lines)
 
 func _setup_cat_leftover_food(summary: Dictionary) -> void:
 	leftover_cooked_stock_for_cat = {}
