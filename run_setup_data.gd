@@ -12,6 +12,7 @@ var station_layout: Dictionary = {
 	"emergency_shop": ""
 }
 
+
 var run_modifiers: Dictionary = {
 	"allow_pre_open_waiting_customers": false,
 	"lock_station_layout": false
@@ -22,9 +23,14 @@ var total_days_in_run: int = 7
 
 var run_money: int = 0
 var run_total_income: int = 0
+var run_gross_income: int = 0
+var run_total_expense: int = 0
 
 var current_raw_stock: Dictionary = {}
 var current_cooked_stock: Dictionary = {}
+
+var starting_money: int = 40
+var supplier_delivery_seconds: float = 6.0
 
 var basic_ingredient_ids: Array[String] = [
 	"spinach",
@@ -32,13 +38,35 @@ var basic_ingredient_ids: Array[String] = [
 	"tofu_puff"
 ]
 
+var staple_item_ids: Array[String] = [
+	"glass_noodle",
+	"noodle"
+]
+
 var supplier_base_prices: Dictionary = {
 	"spinach": 1,
 	"potato_slice": 1,
-	"tofu_puff": 2
+	"tofu_puff": 2,
+	"glass_noodle": 0.5,
+	"noodle": 0.5
 }
 
+var supplier_package_options: Array = [
+	{
+		"id": "basket",
+		"name": "一篮",
+		"amount": 10
+	},
+	{
+		"id": "box",
+		"name": "一箱",
+		"amount": 30
+	}
+]
+
 var neighbor_emergency_price_multiplier: float = 3.0
+
+var current_staple_stock: Dictionary = {}
 
 var current_day_special_spawn_plan: Array = []
 var today_special_customer_results: Array = []
@@ -99,9 +127,12 @@ func reset_run_setup() -> void:
 
 	run_money = 0
 	run_total_income = 0
+	run_gross_income = 0
+	run_total_expense = 0
 
 	current_raw_stock = {}
 	current_cooked_stock = {}
+	current_staple_stock = {}
 
 	current_day_special_spawn_plan = []
 	today_special_customer_results = []
@@ -629,25 +660,68 @@ func get_basic_ingredient_ids() -> Array[String]:
 
 	return result
 
-func get_supplier_base_price(item_id: String) -> int:
-	if not supplier_base_prices.has(item_id):
-		return 1
 
-	return max(int(supplier_base_prices.get(item_id, 1)), 1)
+func get_staple_item_ids() -> Array[String]:
+	var result: Array[String] = []
+
+	for item_id in staple_item_ids:
+		result.append(item_id)
+
+	return result
+
+
+func get_supplier_order_item_ids() -> Array[String]:
+	var result: Array[String] = []
+
+	for item_id in basic_ingredient_ids:
+		result.append(item_id)
+
+	for item_id in staple_item_ids:
+		result.append(item_id)
+
+	return result
+
+
+func get_supplier_package_options() -> Array:
+	var result: Array = []
+
+	for package_data in supplier_package_options:
+		if typeof(package_data) == TYPE_DICTIONARY:
+			result.append(package_data.duplicate(true))
+
+	return result
+
+
+func is_staple_item(item_id: String) -> bool:
+	return staple_item_ids.has(item_id)
+
+
+func get_supplier_delivery_seconds() -> float:
+	return max(supplier_delivery_seconds, 0.1)
+
+
+func get_supplier_base_price(item_id: String) -> float:
+	if not supplier_base_prices.has(item_id):
+		return 1.0
+
+	return max(float(supplier_base_prices.get(item_id, 1.0)), 0.1)
+
 
 func get_supplier_order_price(item_id: String, amount: int = 1) -> int:
 	if amount <= 0:
 		return 0
 
 	var base_price := get_supplier_base_price(item_id)
+
 	var multiplier := get_current_day_multiplier(
 		"supplier_order_price_multiplier",
 		1.0
 	)
 
-	var total := int(ceil(float(base_price * amount) * multiplier))
+	var total := int(ceil(float(amount) * base_price * multiplier))
 
 	return max(total, 1)
+
 
 func get_supplier_order_price_for_items(items: Dictionary) -> int:
 	var total := 0
@@ -662,6 +736,7 @@ func get_supplier_order_price_for_items(items: Dictionary) -> int:
 
 	return total
 
+
 func get_neighbor_emergency_price(item_id: String, amount: int = 1) -> int:
 	if amount <= 0:
 		return 0
@@ -674,10 +749,11 @@ func get_neighbor_emergency_price(item_id: String, amount: int = 1) -> int:
 		1.0
 	)
 
-	var raw_total := float(base_price * amount) * emergency_multiplier * day_multiplier
+	var raw_total := float(amount) * base_price * emergency_multiplier * day_multiplier
 	var total := int(ceil(raw_total))
 
 	return max(total, 1)
+
 
 func get_neighbor_emergency_price_for_shortage(shortage: Dictionary) -> int:
 	var total := 0
@@ -691,3 +767,19 @@ func get_neighbor_emergency_price_for_shortage(shortage: Dictionary) -> int:
 		total += get_neighbor_emergency_price(str(item_id), amount)
 
 	return total
+
+
+
+func ensure_starting_money_for_new_run() -> void:
+	if current_day_in_run != 1:
+		return
+
+	if run_money > 0:
+		return
+
+	if run_total_income != 0:
+		return
+
+	run_money = starting_money
+
+	print("Starting money granted: ", starting_money)

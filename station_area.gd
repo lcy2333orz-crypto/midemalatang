@@ -67,14 +67,7 @@ func interact() -> void:
 		return
 
 	if station_name == "StorageArea":
-		var game_ui = get_tree().get_first_node_in_group("game_ui")
-
-		if game_ui:
-			game_ui.show_stock(
-				game_manager.get_cooked_stock_text(),
-				game_manager.get_raw_stock_text()
-			)
-
+		game_manager.open_supplier_order_panel()
 		return
 
 	if station_name == "EmergencyShop":
@@ -114,11 +107,27 @@ func toggle_business() -> void:
 		print("Counter toggled business: open")
 
 func _on_body_entered(body: Node) -> void:
-	if body.is_in_group("player"):
-		if body.has_method("register_nearby_station"):
-			body.register_nearby_station(self)
+	if not body.is_in_group("player"):
+		return
+
+	if body.has_method("register_nearby_station"):
+		body.register_nearby_station(self)
+
+	if station_name == "StorageArea":
+		var game_manager = get_tree().get_first_node_in_group("game_manager")
+
+		if game_manager != null and game_manager.has_method("show_storage_stock_only"):
+			game_manager.show_storage_stock_only()
 
 func _on_body_exited(body: Node) -> void:
-	if body.is_in_group("player"):
-		if body.has_method("unregister_nearby_station"):
-			body.unregister_nearby_station(self)
+	if not body.is_in_group("player"):
+		return
+
+	if body.has_method("unregister_nearby_station"):
+		body.unregister_nearby_station(self)
+
+	if station_name == "StorageArea":
+		var game_ui = get_tree().get_first_node_in_group("game_ui")
+
+		if game_ui != null:
+			game_ui.hide_stock()

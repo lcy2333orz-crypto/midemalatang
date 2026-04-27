@@ -33,6 +33,10 @@ var cat_feed_area: Panel = null
 var cat_reaction_label: Label = null
 var stall_echo_label: Label = null
 var night_activity_label: Label = null
+
+var expense_label: Label = null
+var net_income_label: Label = null
+
 var leftover_food_panel: Panel = null
 var leftover_food_container: HBoxContainer = null
 var leftover_cooked_stock_for_cat: Dictionary = {}
@@ -70,6 +74,7 @@ func _ready() -> void:
 	_create_cat_feed_widgets()
 	_create_stall_echo_label()
 	_create_night_activity_label()
+	_create_accounting_extra_labels()
 	_setup_layout_positions()
 
 	if RunSetupData.settlement_view_mode == "run":
@@ -280,6 +285,19 @@ func _create_night_activity_label() -> void:
 	night_activity_label.add_theme_font_size_override("font_size", 13)
 	add_child(night_activity_label)
 
+func _create_accounting_extra_labels() -> void:
+	if expense_label == null:
+		expense_label = Label.new()
+		expense_label.name = "ExpenseLabel"
+		expense_label.text = ""
+		$SummaryBox.add_child(expense_label)
+
+	if net_income_label == null:
+		net_income_label = Label.new()
+		net_income_label.name = "NetIncomeLabel"
+		net_income_label.text = ""
+		$SummaryBox.add_child(net_income_label)
+
 func _setup_layout_positions() -> void:
 	var viewport_size := get_viewport_rect().size
 
@@ -295,8 +313,8 @@ func _setup_layout_positions() -> void:
 	title_label.add_theme_font_size_override("font_size", 24)
 
 	# ===== 左侧：今日账本 =====
-	$SummaryBox.position = Vector2(45, 105)
-	$SummaryBox.size = Vector2(245, 235)
+	$SummaryBox.position = Vector2(35, 98)
+	$SummaryBox.size = Vector2(270, 300)
 	$SummaryBox.z_index = 0
 	_arrange_summary_box_labels()
 
@@ -317,7 +335,7 @@ func _setup_layout_positions() -> void:
 
 	# ===== 下方：剩余熟食拖拽区 =====
 	if leftover_food_panel != null:
-		leftover_food_panel.position = Vector2(center_x - 270, 380)
+		leftover_food_panel.position = Vector2(center_x - 270, 400)
 
 	# ===== 上层：全屏抽卡蒙版 =====
 	card_overlay_bg.position = Vector2.ZERO
@@ -351,14 +369,16 @@ func _setup_layout_positions() -> void:
 	$ButtonBox.z_index = 200
 
 func _arrange_summary_box_labels() -> void:
-	var x := 18
-	var y := 18
-	var line_h := 30
-	var label_w := 210
-	var label_h := 26
+	var x := 16
+	var y := 16
+	var line_h := 28
+	var label_w := 238
+	var label_h := 24
 
 	var labels := [
 		today_income_label,
+		expense_label,
+		net_income_label,
 		round_income_label,
 		money_label,
 		waste_label,
@@ -386,8 +406,16 @@ func _setup_day_settlement() -> void:
 	var summary: Dictionary = RunSetupData.last_day_summary
 
 	title_label.text = TextDB.get_text("UI_DAY_SETTLEMENT_TITLE") % int(summary.get("day_index", 1))
-	today_income_label.text = TextDB.get_text("UI_SETTLEMENT_TODAY_INCOME") % int(summary.get("today_income", 0))
-	round_income_label.text = TextDB.get_text("UI_SETTLEMENT_ROUND_INCOME") % int(summary.get("run_income", 0))
+
+	today_income_label.text = "今日营业额：%d" % int(summary.get("today_gross_income", summary.get("today_income", 0)))
+
+	if expense_label != null:
+		expense_label.text = "今日支出：%d" % int(summary.get("today_expense", 0))
+
+	if net_income_label != null:
+		net_income_label.text = "今日净收入：%d" % int(summary.get("today_net_income", summary.get("today_income", 0)))
+
+	round_income_label.text = "本轮净收入：%d" % int(summary.get("run_net_income", summary.get("run_income", 0)))
 	money_label.text = TextDB.get_text("UI_SETTLEMENT_CURRENT_MONEY") % int(summary.get("current_money", 0))
 
 	cooked_stock_label.visible = false
@@ -417,8 +445,16 @@ func _setup_run_settlement() -> void:
 	var summary: Dictionary = RunSetupData.last_run_summary
 
 	title_label.text = TextDB.get_text("UI_RUN_SETTLEMENT_TITLE")
-	today_income_label.text = TextDB.get_text("UI_SETTLEMENT_TOTAL_DAYS") % int(summary.get("total_days", 0))
-	round_income_label.text = TextDB.get_text("UI_SETTLEMENT_ROUND_INCOME") % int(summary.get("run_income", 0))
+
+	today_income_label.text = "最后一天营业额：%d" % int(summary.get("today_gross_income", 0))
+
+	if expense_label != null:
+		expense_label.text = "最后一天支出：%d" % int(summary.get("today_expense", 0))
+
+	if net_income_label != null:
+		net_income_label.text = "最后一天净收入：%d" % int(summary.get("today_net_income", 0))
+
+	round_income_label.text = "本轮净收入：%d" % int(summary.get("run_net_income", summary.get("run_income", 0)))
 	money_label.text = TextDB.get_text("UI_SETTLEMENT_CURRENT_MONEY") % int(summary.get("current_money", 0))
 
 	cooked_stock_label.visible = false
