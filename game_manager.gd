@@ -586,11 +586,24 @@ func deliver_supplier_order(order_data: Dictionary) -> void:
 func show_storage_stock_only() -> void:
 	var game_ui = get_tree().get_first_node_in_group("game_ui")
 
-	if game_ui:
-		game_ui.show_stock(
-			get_cooked_stock_text(),
-			get_raw_stock_text()
-		)
+	if game_ui == null:
+		print("Cannot show storage stock. No game_ui found.")
+		return
+
+	var cooked_text := get_cooked_stock_text()
+	var raw_and_staple_text := "%s\n主食库存：%s" % [
+		get_raw_stock_text(),
+		get_staple_stock_text()
+	]
+
+	game_ui.show_stock(
+		cooked_text,
+		raw_and_staple_text
+	)
+
+	print("Show storage stock only.")
+	print("Cooked stock text: ", cooked_text)
+	print("Raw / staple stock text: ", raw_and_staple_text)
 
 
 func get_ingredient_display_name(item_id: String) -> String:
