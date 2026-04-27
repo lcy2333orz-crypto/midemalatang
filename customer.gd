@@ -391,6 +391,14 @@ func get_true_price_at_checkout() -> int:
 	return true_price_at_checkout
 
 func reset_patience() -> void:
+	var multiplier := RunSetupData.get_current_day_multiplier(
+		"customer_patience_multiplier",
+		1.0
+	)
+
+	counter_patience_max = 100.0 * multiplier
+	delivery_patience_max = 100.0 * multiplier
+
 	counter_patience_current = counter_patience_max
 	delivery_patience_current = delivery_patience_max
 

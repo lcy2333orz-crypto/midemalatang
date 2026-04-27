@@ -26,6 +26,20 @@ var run_total_income: int = 0
 var current_raw_stock: Dictionary = {}
 var current_cooked_stock: Dictionary = {}
 
+var basic_ingredient_ids: Array[String] = [
+	"spinach",
+	"potato_slice",
+	"tofu_puff"
+]
+
+var supplier_base_prices: Dictionary = {
+	"spinach": 1,
+	"potato_slice": 1,
+	"tofu_puff": 2
+}
+
+var neighbor_emergency_price_multiplier: float = 3.0
+
 var current_day_special_spawn_plan: Array = []
 var today_special_customer_results: Array = []
 var generated_night_queue: Array = []
@@ -56,6 +70,10 @@ var last_day_summary: Dictionary = {}
 var last_run_summary: Dictionary = {}
 var current_night_activity: Dictionary = {}
 var pending_morning_info: Dictionary = {}
+
+var pending_tomorrow_event: Dictionary = {}
+var current_day_business_event: Dictionary = {}
+var current_day_modifiers: Dictionary = {}
 
 
 func reset_run_setup() -> void:
@@ -108,6 +126,9 @@ func reset_run_setup() -> void:
 
 	current_night_activity = {}
 	pending_morning_info = {}
+	pending_tomorrow_event = {}
+	current_day_business_event = {}
+	current_day_modifiers = {}
 
 
 func setup_stage_run(stage_id: String, difficulty_days: int = 7) -> void:
@@ -373,31 +394,31 @@ func generate_night_background_activity(has_next_day: bool = true) -> Dictionary
 				"id": "reading_notes",
 				"activity_text": "小猫正在翻看一本油乎乎的小本子。",
 				"morning_title": "昨晚小猫翻了翻小本子",
-				"morning_text": "今天或许可以多留意一下顾客喜欢的搭配。"
+				"morning_text": "小猫从笔记里整理出了一点明日小摊情报。"
 			},
 			{
 				"id": "chatting_neighbor",
 				"activity_text": "小猫在和路过的街坊小声聊天。",
 				"morning_title": "昨晚小猫和街坊聊了聊",
-				"morning_text": "今天可能会有熟面孔路过小摊。"
+				"morning_text": "小猫听到了一些关于明天街口的小消息。"
 			},
 			{
 				"id": "checking_notice",
 				"activity_text": "小猫认真看了看贴在街口的小纸条。",
 				"morning_title": "昨晚小猫看了街口的小纸条",
-				"morning_text": "今天附近的人流也许会有一点变化。"
+				"morning_text": "小猫注意到明天附近可能会有些变化。"
 			},
 			{
 				"id": "sorting_ingredients",
 				"activity_text": "小猫把剩下的食材重新数了一遍。",
 				"morning_title": "昨晚小猫整理了食材",
-				"morning_text": "今天开摊前，最好先想想哪些食材最紧张。"
+				"morning_text": "小猫对明天的备货有了一点想法。"
 			},
 			{
 				"id": "resting_cart",
 				"activity_text": "小猫趴在餐车旁边，尾巴轻轻晃着。",
 				"morning_title": "昨晚小猫好好休息了一会儿",
-				"morning_text": "今天也要稳稳地把热乎乎的东西端出去。"
+				"morning_text": "小猫决定明天也要稳稳地把热乎乎的东西端出去。"
 			}
 		]
 	else:
@@ -414,15 +435,152 @@ func generate_night_background_activity(has_next_day: bool = true) -> Dictionary
 	current_night_activity = chosen.duplicate(true)
 
 	if has_next_day:
+		pending_tomorrow_event = generate_tomorrow_business_event_for_activity(str(chosen.get("id", "")))
+
 		pending_morning_info = {
 			"title": str(chosen.get("morning_title", "")),
 			"text": str(chosen.get("morning_text", "")),
-			"source_activity_id": str(chosen.get("id", ""))
+			"source_activity_id": str(chosen.get("id", "")),
+			"event": pending_tomorrow_event.duplicate(true)
 		}
 	else:
+		pending_tomorrow_event = {}
 		pending_morning_info = {}
 
 	return current_night_activity.duplicate(true)
+
+func generate_tomorrow_business_event_for_activity(activity_id: String) -> Dictionary:
+	match activity_id:
+		"chatting_neighbor":
+			return make_tomorrow_business_event(
+				"street_gets_busy",
+				"街口热闹",
+				"今天路过小摊的人会多一点。",
+				"mixed",
+				{
+					"customer_spawn_interval_multiplier": 0.85
+				}
+			)
+
+		"checking_notice":
+			return make_tomorrow_business_event(
+				"street_gets_busy",
+				"街口热闹",
+				"今天附近人流会比平时多一点。",
+				"mixed",
+				{
+					"customer_spawn_interval_multiplier": 0.85
+				}
+			)
+
+		"resting_cart":
+			return make_tomorrow_business_event(
+				"slow_easy_day",
+				"慢悠悠的一天",
+				"今天大家好像都不太着急。",
+				"positive",
+				{
+					"customer_patience_multiplier": 1.25
+				}
+			)
+
+		"sorting_ingredients":
+			return make_tomorrow_business_event(
+				"extra_raw_prep",
+				"早上多备一点",
+				"小猫今天早上多找出了一点能用的生食材。",
+				"positive",
+				{
+					"random_raw_stock_bonus": 2
+				}
+			)
+
+		"reading_notes":
+			var options := [
+				make_tomorrow_business_event(
+					"market_friend",
+					"菜摊熟脸",
+					"今天临时补货会便宜一点。",
+					"positive",
+					{
+						"emergency_shop_price_multiplier": 0.75
+					}
+				),
+				make_tomorrow_business_event(
+					"slow_easy_day",
+					"慢悠悠的一天",
+					"今天大家好像都不太着急。",
+					"positive",
+					{
+						"customer_patience_multiplier": 1.25
+					}
+				)
+			]
+
+			return options[randi() % options.size()]
+
+		_:
+			return make_tomorrow_business_event(
+				"slow_easy_day",
+				"慢悠悠的一天",
+				"今天大家好像都不太着急。",
+				"positive",
+				{
+					"customer_patience_multiplier": 1.15
+				}
+			)
+
+func make_tomorrow_business_event(
+	event_id: String,
+	title: String,
+	text: String,
+	tone: String,
+	modifiers: Dictionary
+) -> Dictionary:
+	return {
+		"id": event_id,
+		"title": title,
+		"text": text,
+		"tone": tone,
+		"modifiers": modifiers.duplicate(true)
+	}
+
+func activate_pending_tomorrow_event() -> Dictionary:
+	if pending_tomorrow_event.is_empty():
+		current_day_business_event = {}
+		current_day_modifiers = {}
+		return {}
+
+	current_day_business_event = pending_tomorrow_event.duplicate(true)
+
+	var modifiers = current_day_business_event.get("modifiers", {})
+
+	if typeof(modifiers) == TYPE_DICTIONARY:
+		current_day_modifiers = modifiers.duplicate(true)
+	else:
+		current_day_modifiers = {}
+
+	pending_tomorrow_event = {}
+
+	return current_day_business_event.duplicate(true)
+
+func get_current_day_multiplier(modifier_id: String, default_value: float = 1.0) -> float:
+	if current_day_modifiers.is_empty():
+		return default_value
+
+	if not current_day_modifiers.has(modifier_id):
+		return default_value
+
+	return float(current_day_modifiers.get(modifier_id, default_value))
+
+func get_current_day_additive(modifier_id: String, default_value: float = 0.0) -> float:
+	if current_day_modifiers.is_empty():
+		return default_value
+
+	if not current_day_modifiers.has(modifier_id):
+		return default_value
+
+	return float(current_day_modifiers.get(modifier_id, default_value))
 
 func get_current_night_activity_text() -> String:
 	if current_night_activity.is_empty():
@@ -444,10 +602,92 @@ func consume_pending_morning_info_lines() -> Array[String]:
 
 	var title := str(pending_morning_info.get("title", "昨晚小猫获得的信息"))
 	var text := str(pending_morning_info.get("text", ""))
+	var event = pending_morning_info.get("event", {})
 
 	lines.append(title)
-	lines.append(text)
+
+	if text != "":
+		lines.append(text)
+
+	if typeof(event) == TYPE_DICTIONARY and not event.is_empty():
+		var event_title := str(event.get("title", "明日营业变化"))
+		var event_text := str(event.get("text", ""))
+
+		if event_text != "":
+			lines.append("")
+			lines.append("%s：%s" % [event_title, event_text])
 
 	pending_morning_info = {}
 
 	return lines
+
+func get_basic_ingredient_ids() -> Array[String]:
+	var result: Array[String] = []
+
+	for item_id in basic_ingredient_ids:
+		result.append(item_id)
+
+	return result
+
+func get_supplier_base_price(item_id: String) -> int:
+	if not supplier_base_prices.has(item_id):
+		return 1
+
+	return max(int(supplier_base_prices.get(item_id, 1)), 1)
+
+func get_supplier_order_price(item_id: String, amount: int = 1) -> int:
+	if amount <= 0:
+		return 0
+
+	var base_price := get_supplier_base_price(item_id)
+	var multiplier := get_current_day_multiplier(
+		"supplier_order_price_multiplier",
+		1.0
+	)
+
+	var total := int(ceil(float(base_price * amount) * multiplier))
+
+	return max(total, 1)
+
+func get_supplier_order_price_for_items(items: Dictionary) -> int:
+	var total := 0
+
+	for item_id in items.keys():
+		var amount := int(items.get(item_id, 0))
+
+		if amount <= 0:
+			continue
+
+		total += get_supplier_order_price(str(item_id), amount)
+
+	return total
+
+func get_neighbor_emergency_price(item_id: String, amount: int = 1) -> int:
+	if amount <= 0:
+		return 0
+
+	var base_price := get_supplier_base_price(item_id)
+	var emergency_multiplier := neighbor_emergency_price_multiplier
+
+	var day_multiplier := get_current_day_multiplier(
+		"emergency_shop_price_multiplier",
+		1.0
+	)
+
+	var raw_total := float(base_price * amount) * emergency_multiplier * day_multiplier
+	var total := int(ceil(raw_total))
+
+	return max(total, 1)
+
+func get_neighbor_emergency_price_for_shortage(shortage: Dictionary) -> int:
+	var total := 0
+
+	for item_id in shortage.keys():
+		var amount := int(shortage.get(item_id, 0))
+
+		if amount <= 0:
+			continue
+
+		total += get_neighbor_emergency_price(str(item_id), amount)
+
+	return total

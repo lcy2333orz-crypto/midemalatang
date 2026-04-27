@@ -20,6 +20,7 @@ var day_time_left: float = 90.0
 var auto_close_triggered: bool = false
 
 var morning_info_layer: CanvasLayer = null
+var base_spawn_timer_wait_time: float = 1.0
 
 var planned_raw_stock: Dictionary = {
 	"spinach": 4,
@@ -87,6 +88,7 @@ func _ready() -> void:
 	print("queue_spot_3: ", queue_spot_3)
 
 	if spawn_timer != null:
+		base_spawn_timer_wait_time = spawn_timer.wait_time
 		spawn_timer.timeout.connect(_on_spawn_timer_timeout)
 
 	_apply_upgrade_flags()
@@ -169,6 +171,8 @@ func _apply_upgrade_flags() -> void:
 
 func start_round() -> void:
 	initialize_round_stocks()
+	activate_and_apply_current_day_business_event()
+
 	_apply_upgrade_flags()
 	initialize_cooker_slots()
 	apply_station_layout_from_run_setup()
@@ -197,6 +201,7 @@ func start_round() -> void:
 	print("Selected stage id: ", RunSetupData.selected_stage_id)
 	print("Selected difficulty days: ", RunSetupData.selected_difficulty_days)
 	print("Station layout from RunSetupData: ", RunSetupData.station_layout)
+	print("Current day business event: ", RunSetupData.current_day_business_event)
 	print_stocks()
 
 	var game_ui = get_tree().get_first_node_in_group("game_ui")
@@ -225,6 +230,74 @@ func start_round() -> void:
 
 	show_pending_morning_info_if_any()
 
+func activate_and_apply_current_day_business_event() -> void:
+	var event := RunSetupData.activate_pending_tomorrow_event()
+
+	if event.is_empty():
+		return
+
+	print("Activated tomorrow business event: ", event)
+
+	var raw_bonus := int(RunSetupData.get_current_day_additive("random_raw_stock_bonus", 0.0))
+
+	if raw_bonus > 0:
+		apply_random_raw_stock_bonus(raw_bonus)
+
+func apply_random_raw_stock_bonus(amount: int) -> void:
+	if amount <= 0:
+		return
+
+	var item_pool: Array[String] = [
+		"spinach",
+		"potato_slice",
+		"tofu_puff"
+	]
+
+	var gained: Dictionary = {}
+
+	for i in range(amount):
+		var item_id := item_pool[randi() % item_pool.size()]
+
+		if not raw_stock.has(item_id):
+			raw_stock[item_id] = 0
+
+		raw_stock[item_id] = int(raw_stock[item_id]) + 1
+		gained[item_id] = int(gained.get(item_id, 0)) + 1
+
+	RunSetupData.current_raw_stock = raw_stock.duplicate(true)
+
+	print("Morning raw stock bonus applied: ", gained)
+	print("Raw stock after morning bonus: ", raw_stock)
+
+func get_modified_spawn_timer_wait_time() -> float:
+	var multiplier := RunSetupData.get_current_day_multiplier(
+		"customer_spawn_interval_multiplier",
+		1.0
+	)
+
+	return max(base_spawn_timer_wait_time * multiplier, 0.2)
+
+func start_spawn_timer_if_needed() -> void:
+	if not can_spawn_customers_now():
+		return
+
+	if queued_customers.size() >= max_queue_size:
+		return
+
+	if spawn_timer == null:
+		return
+
+	if not is_instance_valid(spawn_timer):
+		return
+
+	if not spawn_timer.is_inside_tree():
+		return
+
+	spawn_timer.wait_time = get_modified_spawn_timer_wait_time()
+	spawn_timer.start()
+
+	print("Spawn timer started. wait_time=", spawn_timer.wait_time)
+
 func show_pending_morning_info_if_any() -> void:
 	var lines := RunSetupData.consume_pending_morning_info_lines()
 
@@ -251,35 +324,31 @@ func _create_morning_info_layer(lines: Array[String]) -> void:
 
 	var panel := Panel.new()
 	panel.name = "MorningInfoPanel"
-	panel.size = Vector2(460, 120)
+	panel.size = Vector2(520, 165)
 	panel.position = Vector2(
-		viewport_size.x * 0.5 - 230,
-		72
+		viewport_size.x * 0.5 - 260,
+		62
 	)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	morning_info_layer.add_child(panel)
 
 	var label := Label.new()
 	label.name = "MorningInfoLabel"
-	label.position = Vector2(18, 14)
-	label.size = Vector2(424, 92)
+	label.position = Vector2(20, 16)
+	label.size = Vector2(480, 132)
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override("font_size", 16)
-
-	if lines.size() >= 2:
-		label.text = "%s\n%s" % [str(lines[0]), str(lines[1])]
-	else:
-		label.text = "\n".join(lines)
+	label.add_theme_font_size_override("font_size", 15)
+	label.text = "\n".join(lines)
 
 	panel.add_child(label)
 
 	var tween := create_tween()
-	tween.tween_interval(3.0)
+	tween.tween_interval(4.2)
 	tween.tween_property(panel, "modulate:a", 0.0, 0.8)
 
-	await get_tree().create_timer(3.9).timeout
+	await get_tree().create_timer(5.1).timeout
 
 	if is_instance_valid(morning_info_layer):
 		morning_info_layer.queue_free()
@@ -683,6 +752,24 @@ func get_counter_customer_stock_preview(customer: Node) -> Dictionary:
 		"adjusted_order": get_adjusted_order(customer.get_ingredients())
 	}
 
+func prepare_customer_emergency_purchase_request(customer: Node, shortage: Dictionary) -> void:
+	if customer == null or not is_instance_valid(customer):
+		return
+
+	customer.needs_emergency_purchase = true
+	customer.set_meta("emergency_purchase_shortage", shortage.duplicate(true))
+
+	var game_ui = get_tree().get_first_node_in_group("game_ui")
+
+	if game_ui:
+		game_ui.show_stock(
+			get_cooked_stock_text(),
+			get_raw_stock_text()
+		)
+
+	print("库存不足，顾客暂时等待。请到 EmergencyShop 向隔壁借货。")
+	print("Emergency shortage: ", shortage)
+
 func confirm_checkout_and_create_order(customer: Node, quoted_price: int = -1) -> Dictionary:
 	var result := {
 		"success": false,
@@ -969,6 +1056,7 @@ func get_first_customer_needing_emergency_purchase() -> Node:
 		if customer != null and is_instance_valid(customer):
 			if customer.needs_emergency_purchase and not customer.order_served:
 				return customer
+
 	return null
 
 func get_first_uncooked_pending_customer() -> Node:
@@ -1005,11 +1093,7 @@ func remove_customer_from_pending(customer: Node) -> void:
 
 func release_counter_customer(customer: Node) -> void:
 	remove_customer_from_queue(customer)
-
-	if can_spawn_customers_now():
-		if queued_customers.size() < max_queue_size:
-			if spawn_timer != null and is_instance_valid(spawn_timer) and spawn_timer.is_inside_tree():
-				spawn_timer.start()
+	start_spawn_timer_if_needed()
 
 func notify_customer_leaving(customer: Node) -> void:
 	var paid_price := 0
@@ -1027,29 +1111,25 @@ func notify_customer_leaving(customer: Node) -> void:
 		today_income -= paid_price
 		print("Refund applied because customer left after payment: ", paid_price)
 
-		var game_ui = get_tree().get_first_node_in_group("game_ui")
-		if game_ui:
-			game_ui.update_money(money)
+	var game_ui = get_tree().get_first_node_in_group("game_ui")
+
+	if game_ui:
+		game_ui.update_money(money)
 
 	remove_customer_from_queue(customer)
 	remove_customer_from_pending(customer)
 	remove_customer_from_cooker_slots(customer)
 
-	if can_spawn_customers_now():
-		if queued_customers.size() < max_queue_size:
-			if spawn_timer != null and is_instance_valid(spawn_timer) and spawn_timer.is_inside_tree():
-				spawn_timer.start()
+	start_spawn_timer_if_needed()
 
 func _on_customer_exited(customer: Node) -> void:
 	print("customer exited: ", customer)
+
 	remove_customer_from_queue(customer)
 	remove_customer_from_pending(customer)
 	remove_customer_from_cooker_slots(customer)
 
-	if can_spawn_customers_now():
-		if queued_customers.size() < max_queue_size:
-			if spawn_timer != null and is_instance_valid(spawn_timer) and spawn_timer.is_inside_tree():
-				spawn_timer.start()
+	start_spawn_timer_if_needed()
 
 func _on_spawn_timer_timeout() -> void:
 	if not can_spawn_customers_now():
@@ -1270,25 +1350,28 @@ func get_order_shortage(ingredients: Dictionary) -> Dictionary:
 	return shortage
 
 func get_emergency_purchase_cost(shortage: Dictionary) -> int:
-	var total_cost := 0
+	var cost := RunSetupData.get_neighbor_emergency_price_for_shortage(shortage)
 
-	for ingredient_name in shortage.keys():
-		total_cost += shortage[ingredient_name] * 3
+	if cost <= 0:
+		return 0
 
-	return total_cost
+	print("Neighbor emergency stock cost: ", cost, " | shortage: ", shortage)
+
+	return cost
 
 func emergency_purchase_for_customer(customer: Node) -> bool:
-	if customer == null:
+	if customer == null or not is_instance_valid(customer):
 		print("No customer for emergency purchase.")
 		return false
 
 	var shortage: Dictionary = get_order_shortage(customer.get_ingredients())
 
 	if shortage.is_empty():
-		print("No shortage to purchase.")
-		return true
+		print("No shortage to purchase. Try reserving stock for this order.")
+		return reserve_stock_after_emergency_purchase(customer)
 
 	var cost: int = get_emergency_purchase_cost(shortage)
+
 	print("Emergency purchase shortage: ", shortage)
 	print("Emergency purchase cost: ", cost)
 
@@ -1299,10 +1382,47 @@ func emergency_purchase_for_customer(customer: Node) -> bool:
 	for ingredient_name in shortage.keys():
 		if not raw_stock.has(ingredient_name):
 			raw_stock[ingredient_name] = 0
-		raw_stock[ingredient_name] += shortage[ingredient_name]
+
+		raw_stock[ingredient_name] = int(raw_stock[ingredient_name]) + int(shortage[ingredient_name])
 
 	print("Emergency purchase completed.")
 	print("Raw stock after emergency purchase: ", raw_stock)
+
+	if not reserve_stock_after_emergency_purchase(customer):
+		print("Emergency purchase completed, but stock still cannot be reserved for this order.")
+		return false
+
+	print("Emergency purchase stock reserved for customer.")
+	print("Raw stock after reserving emergency order: ", raw_stock)
+	print("Cooked stock after reserving emergency order: ", cooked_stock)
+
+	return true
+
+
+func reserve_stock_after_emergency_purchase(customer: Node) -> bool:
+	if customer == null or not is_instance_valid(customer):
+		return false
+
+	if bool(customer.get_meta("ingredients_deducted_at_checkout", false)):
+		customer.needs_emergency_purchase = false
+		return true
+
+	var fulfillment_status: String = get_order_fulfillment_status(customer.get_ingredients())
+
+	if fulfillment_status == "unfulfillable":
+		print("Still cannot fulfill order after emergency purchase.")
+		print("Remaining shortage: ", get_order_shortage(customer.get_ingredients()))
+		return false
+
+	prepare_stock_for_waiting_order(customer, fulfillment_status)
+
+	customer.needs_emergency_purchase = false
+
+	if fulfillment_status == "waitable":
+		customer.needs_ingredient_cooking = true
+	else:
+		customer.needs_ingredient_cooking = false
+
 	return true
 
 func get_pending_order_display_text(customer: Node) -> String:

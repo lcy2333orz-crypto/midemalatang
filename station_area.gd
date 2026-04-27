@@ -10,6 +10,7 @@ func interact() -> void:
 	print("Interact with ", station_name)
 
 	var game_manager = get_tree().get_first_node_in_group("game_manager")
+
 	if game_manager == null:
 		print("No game manager found.")
 		return
@@ -28,6 +29,7 @@ func interact() -> void:
 				print("未开业或已收摊，当前没有柜台顾客。")
 			else:
 				print("No customer at counter.")
+
 			return
 
 		if not customer.order_revealed:
@@ -35,24 +37,6 @@ func interact() -> void:
 			return
 
 		if not customer.is_checked_out:
-			var evaluation = game_manager.evaluate_order_before_checkout(customer)
-
-			if evaluation["status"] != "ok":
-				print("Order evaluation failed.")
-				return
-
-			if evaluation["fulfillment_status"] == "unfulfillable":
-				var shortage_result = game_manager.handle_stock_shortage_for_customer(customer)
-
-				if shortage_result["has_alternative"]:
-					game_manager.apply_adjusted_order_to_customer(customer, shortage_result["adjusted_order"])
-					print("库存不足，顾客改为当前可做订单。请再次按 E 收银。")
-					return
-				else:
-					print("库存不足且没有可替代方案，顾客离开。")
-					game_manager.reject_customer_before_checkout(customer)
-					return
-
 			var quoted_price = customer.get_order_price()
 			var checkout_result = game_manager.confirm_checkout_and_create_order(customer, quoted_price)
 
