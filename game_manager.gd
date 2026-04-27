@@ -2330,35 +2330,36 @@ func finish_day() -> void:
 func finish_run() -> void:
 	var remaining_cooked_stock := cooked_stock.duplicate(true)
 	var remaining_raw_stock := raw_stock.duplicate(true)
+	var remaining_staple_stock := staple_stock.duplicate(true)
+
+	RunSetupData.current_raw_stock = remaining_raw_stock
+	RunSetupData.current_staple_stock = remaining_staple_stock
 
 	var run_summary := {
 		"total_days": RunSetupData.total_days_in_run,
-
 		"today_gross_income": today_gross_income,
 		"today_expense": today_expense,
 		"today_net_income": today_income,
-
 		"run_gross_income": round_gross_income,
 		"run_expense": round_expense,
 		"run_net_income": round_income,
-
 		"current_money": money,
-
 		"cooked_stock_text": get_cooked_stock_text(),
-		"raw_stock_text": get_raw_stock_text(),
+		"raw_stock_text": "%s\n主食库存：%s" % [
+			get_raw_stock_text(),
+			get_staple_stock_text()
+		],
 		"cooked_stock_data": remaining_cooked_stock,
 		"raw_stock_data": remaining_raw_stock,
-
+		"staple_stock_data": remaining_staple_stock,
 		"today_reputation_delta": RunSetupData.today_reputation_delta,
 		"shop_reputation": RunSetupData.shop_reputation,
 		"today_echo_lines": RunSetupData.get_today_stall_echo_lines(),
-
 		"cooked_stock_discarded": true
 	}
 
 	RunSetupData.last_run_summary = run_summary
 	RunSetupData.settlement_view_mode = "run"
-
 	RunSetupData.current_cooked_stock = get_zero_food_stock()
 
 	print("=== 本轮结算 ===")
@@ -2374,5 +2375,6 @@ func finish_run() -> void:
 	print("Remaining cooked stock this day: ", remaining_cooked_stock)
 	print("Cooked stock is discarded at end of day/run.")
 	print("Remaining raw stock: ", remaining_raw_stock)
+	print("Remaining staple stock: ", remaining_staple_stock)
 
 	get_tree().call_deferred("change_scene_to_file", "res://settlement_result.tscn")
