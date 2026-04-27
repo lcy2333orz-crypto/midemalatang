@@ -295,6 +295,25 @@ func mark_order_served() -> void:
 
 	print("Customer order served.")
 
+func blocks_cart_cleanup() -> bool:
+	# 餐车阶段判断的是：
+	# 这个顾客是否还有“未完成经营责任”。
+	# 不是判断这个顾客是否还在画面里。
+
+	# 已经进入离开流程：不阻止收摊。
+	if current_state == CustomerState.MOVING_TO_EXIT:
+		return false
+
+	# 已经拿到餐：不阻止收摊。
+	if order_served:
+		return false
+
+	# 已经因为没耐心离开：不阻止收摊。
+	if leaving_due_to_patience:
+		return false
+
+	return true
+
 func show_served_reaction() -> void:
 	var reaction_text := get_served_reaction_text()
 	_create_customer_reaction_label(reaction_text)

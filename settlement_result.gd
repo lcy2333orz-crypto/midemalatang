@@ -339,7 +339,12 @@ func _setup_day_settlement() -> void:
 	today_income_label.text = TextDB.get_text("UI_SETTLEMENT_TODAY_INCOME") % int(summary.get("today_income", 0))
 	round_income_label.text = TextDB.get_text("UI_SETTLEMENT_ROUND_INCOME") % int(summary.get("run_income", 0))
 	money_label.text = TextDB.get_text("UI_SETTLEMENT_CURRENT_MONEY") % int(summary.get("current_money", 0))
-	cooked_stock_label.text = "剩余熟食（收摊处理）：%s" % str(summary.get("cooked_stock_text", TextDB.get_text("UI_ITEM_NONE")))
+
+	# 熟食不再在结算正文里显示，改由下方喂猫互动区显示
+	cooked_stock_label.visible = false
+
+	raw_stock_label.visible = true
+	raw_stock_label.position = cooked_stock_label.position
 	raw_stock_label.text = TextDB.get_text("UI_SETTLEMENT_RAW_STOCK") % str(summary.get("raw_stock_text", TextDB.get_text("UI_ITEM_NONE")))
 
 	var reputation_delta: int = int(summary.get("today_reputation_delta", 0))
@@ -364,7 +369,12 @@ func _setup_run_settlement() -> void:
 	today_income_label.text = TextDB.get_text("UI_SETTLEMENT_TOTAL_DAYS") % int(summary.get("total_days", 0))
 	round_income_label.text = TextDB.get_text("UI_SETTLEMENT_ROUND_INCOME") % int(summary.get("run_income", 0))
 	money_label.text = TextDB.get_text("UI_SETTLEMENT_CURRENT_MONEY") % int(summary.get("current_money", 0))
-	cooked_stock_label.text = "剩余熟食（收摊处理）：%s" % str(summary.get("cooked_stock_text", TextDB.get_text("UI_ITEM_NONE")))
+
+	# 熟食不再在本轮总结正文里显示，改由下方喂猫互动区显示
+	cooked_stock_label.visible = false
+
+	raw_stock_label.visible = true
+	raw_stock_label.position = cooked_stock_label.position
 	raw_stock_label.text = TextDB.get_text("UI_SETTLEMENT_RAW_STOCK") % str(summary.get("raw_stock_text", TextDB.get_text("UI_ITEM_NONE")))
 
 	var reputation_delta: int = int(summary.get("today_reputation_delta", 0))
@@ -578,16 +588,39 @@ func _on_card_selected(index: int) -> void:
 
 	var chosen_id := str(card_buttons[index].get_meta("card_id", "unknown_card"))
 	var chosen_name := str(card_buttons[index].get_meta("card_name", card_buttons[index].text))
+	var gift_id := str(entry.get("gift_id", ""))
+
+	var source_name := str(entry.get("name", "unknown"))
+	var effect_type := str(entry.get("type", "unknown"))
+	var effect_result := str(entry.get("result", "neutral"))
+
+	var chosen_card := {
+		"id": chosen_id,
+		"name": chosen_name
+	}
+
+	if gift_id != "":
+		var gift_data := RunSetupData.get_unopened_gift_by_id(gift_id)
+
+		if not gift_data.is_empty():
+			source_name = str(gift_data.get("display_name", source_name))
+			effect_type = "special_echo"
+			RunSetupData.mark_gift_opened(gift_id, chosen_card)
 
 	print("选了：", chosen_name, " / id=", chosen_id)
 
-	RunSetupData.active_effects.append({
-		"source": entry.get("name", "unknown"),
-		"type": entry.get("type", "unknown"),
-		"result": entry.get("result", "neutral"),
+	var effect_data := {
+		"source": source_name,
+		"type": effect_type,
+		"result": effect_result,
 		"effect_id": chosen_id,
 		"effect": chosen_name
-	})
+	}
+
+	if gift_id != "":
+		effect_data["from_gift_id"] = gift_id
+
+	RunSetupData.active_effects.append(effect_data)
 
 	print("当前已获得效果列表：", RunSetupData.active_effects)
 

@@ -496,19 +496,25 @@ func record_special_customer_result(customer: Node, result: String) -> void:
 	var special_type: String = str(customer.get("special_customer_type"))
 	var special_name: String = str(customer.get("special_customer_name"))
 
-	RunSetupData.today_special_customer_results.append({
+	var gift_data := RunSetupData.add_pending_gift(
+		special_type,
+		special_name,
+		result
+	)
+
+	var result_data := {
 		"type": special_type,
 		"name": special_name,
-		"result": result
-	})
+		"result": result,
+		"gift_id": str(gift_data.get("gift_id", ""))
+	}
+
+	RunSetupData.today_special_customer_results.append(result_data)
 
 	customer.set("special_result_recorded", true)
 
-	print("Recorded special customer result: ", {
-		"type": special_type,
-		"name": special_name,
-		"result": result
-	})
+	print("Recorded special customer result: ", result_data)
+	print("Special customer left an echo: ", gift_data)
 
 func handle_customer_order_completed(customer: Node) -> void:
 	if customer == null or not is_instance_valid(customer):
@@ -750,10 +756,20 @@ func complete_delivery_for_customer(customer: Node) -> bool:
 
 func build_night_queue_from_today_results() -> Array:
 	var queue: Array = [
-		{"type": "insight", "name": "小猫领悟", "result": "neutral"}
+		{
+			"type": "insight",
+			"name": "小猫领悟",
+			"result": "neutral"
+		}
 	]
 
 	for entry in RunSetupData.today_special_customer_results:
+		var gift_id := str(entry.get("gift_id", ""))
+
+		if gift_id != "" and RunSetupData.is_gift_opened(gift_id):
+			print("Skip opened special echo at night: ", gift_id)
+			continue
+
 		var result_text: String = str(entry.get("result", "neutral"))
 		var entry_name: String = str(entry.get("name", "特殊客人"))
 
@@ -761,13 +777,15 @@ func build_night_queue_from_today_results() -> Array:
 			queue.append({
 				"type": "good",
 				"name": entry_name,
-				"result": "good"
+				"result": "good",
+				"gift_id": gift_id
 			})
 		elif result_text == "bad":
 			queue.append({
 				"type": "bad",
 				"name": entry_name,
-				"result": "bad"
+				"result": "bad",
+				"gift_id": gift_id
 			})
 
 	return queue
@@ -1377,27 +1395,49 @@ func can_enter_cleanup_phase() -> bool:
 
 func has_active_customers_or_orders() -> bool:
 	for customer in queued_customers:
-		if customer != null and is_instance_valid(customer):
+		if _customer_blocks_cart_cleanup(customer):
 			return true
 
 	for customer in pending_customers:
-		if customer != null and is_instance_valid(customer):
-			if not customer.order_served:
-				return true
+		if _customer_blocks_cart_cleanup(customer):
+			return true
 
 	if characters_node != null and is_instance_valid(characters_node):
 		for child in characters_node.get_children():
-			if child != null and is_instance_valid(child):
-				if child.is_in_group("customers"):
-					return true
+			if _customer_blocks_cart_cleanup(child):
+				return true
 
 	var customer_nodes := get_tree().get_nodes_in_group("customers")
+
 	for customer in customer_nodes:
-		if customer != null and is_instance_valid(customer):
+		if _customer_blocks_cart_cleanup(customer):
 			return true
 
 	return false
 
+func _customer_blocks_cart_cleanup(customer: Node) -> bool:
+	if customer == null:
+		return false
+
+	if not is_instance_valid(customer):
+		return false
+
+	if not customer.is_in_group("customers"):
+		return false
+
+	if customer.has_method("blocks_cart_cleanup"):
+		return bool(customer.blocks_cart_cleanup())
+
+	# 兜底逻辑：
+	# 如果某个顾客脚本还没有 blocks_cart_cleanup()，
+	# 至少不要让已经服务完成或已经因耐心离开的顾客阻止收摊。
+	if bool(customer.get("order_served")):
+		return false
+
+	if bool(customer.get("leaving_due_to_patience")):
+		return false
+
+	return true
 
 func has_busy_cooker() -> bool:
 	for i in range(min(unlocked_cooker_slots, cooker_slots.size())):

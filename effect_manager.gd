@@ -153,3 +153,44 @@ func get_additive(modifier_id: String, default_value: float = 0.0) -> float:
 			value += float(modifiers[modifier_id])
 
 	return value
+
+func get_cards_for_pool(pool_name: String) -> Array:
+	var pools: Dictionary = card_db.get("pools", {})
+
+	if not pools.has(pool_name):
+		return []
+
+	var pool = pools[pool_name]
+
+	if typeof(pool) != TYPE_ARRAY:
+		return []
+
+	var result: Array = []
+
+	for card_data in pool:
+		if typeof(card_data) != TYPE_DICTIONARY:
+			continue
+
+		result.append(card_data.duplicate(true))
+
+	return result
+
+
+func get_card_options_for_special_echo(gift_data: Dictionary) -> Array:
+	var result := str(gift_data.get("result", "neutral"))
+	var pool_name := "fallback"
+
+	if result == "good":
+		pool_name = "good"
+	elif result == "bad":
+		pool_name = "bad"
+
+	var options := get_cards_for_pool(pool_name)
+
+	if options.size() < 3:
+		options = get_cards_for_pool("fallback")
+
+	if options.size() > 3:
+		options = options.slice(0, 3)
+
+	return options
