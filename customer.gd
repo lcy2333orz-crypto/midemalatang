@@ -41,6 +41,10 @@ var needs_main_food_cooking: bool = false
 var needs_ingredient_cooking: bool = false
 var needs_emergency_purchase: bool = false
 
+# 推车阶段：配菜和主食分别判断是否完成
+var cart_main_food_ready: bool = true
+var cart_ingredients_ready: bool = true
+
 var is_checked_out: bool = false
 var order_revealed: bool = false
 
@@ -288,17 +292,65 @@ func start_waiting_for_food(main_food_cooking: bool, ingredient_cooking: bool) -
 	needs_main_food_cooking = main_food_cooking
 	needs_ingredient_cooking = ingredient_cooking
 
+	cart_main_food_ready = not main_food_cooking
+	cart_ingredients_ready = not ingredient_cooking
+
+	_refresh_cart_ready_for_delivery()
+
 	print("Customer started waiting for food. main_food_cooking=", main_food_cooking, " ingredient_cooking=", ingredient_cooking)
 
 func mark_food_ready() -> void:
+	cart_main_food_ready = true
+	cart_ingredients_ready = true
+
+	needs_main_food_cooking = false
+	needs_ingredient_cooking = false
+
 	is_ready_for_delivery = true
+
 	print("Customer food is ready for delivery.")
+
+func mark_cart_main_food_ready() -> void:
+	cart_main_food_ready = true
+	needs_main_food_cooking = false
+
+	_refresh_cart_ready_for_delivery()
+
+	print("Customer main food is ready.")
+
+
+func mark_cart_ingredients_ready() -> void:
+	cart_ingredients_ready = true
+	needs_ingredient_cooking = false
+
+	_refresh_cart_ready_for_delivery()
+
+	print("Customer ingredients are ready.")
+
+
+func _refresh_cart_ready_for_delivery() -> void:
+	if order_served:
+		return
+
+	if not is_waiting_for_food:
+		return
+
+	if needs_emergency_purchase:
+		is_ready_for_delivery = false
+		return
+
+	is_ready_for_delivery = cart_main_food_ready and cart_ingredients_ready
 
 func mark_order_served() -> void:
 	order_served = true
 	is_waiting_after_checkout = false
 	is_waiting_for_food = false
 	is_ready_for_delivery = false
+
+	cart_main_food_ready = true
+	cart_ingredients_ready = true
+	needs_main_food_cooking = false
+	needs_ingredient_cooking = false
 
 	show_served_reaction()
 

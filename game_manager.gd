@@ -41,8 +41,33 @@ var planned_cooked_stock: Dictionary = {
 
 var raw_stock: Dictionary = {}
 var cooked_stock: Dictionary = {}
-
 var staple_stock: Dictionary = {}
+
+# 推车阶段：大锅批量煮配菜
+var cart_pot_capacity: int = 6
+var cart_pot_batch_duration: float = 3.0
+var cart_pot_is_cooking: bool = false
+var cart_pot_time_left: float = 0.0
+var cart_pot_cooking_batch: Dictionary = {}
+var cart_pot_selection: Dictionary = {}
+
+var cart_pot_layer: CanvasLayer = null
+var cart_pot_panel: Panel = null
+var cart_pot_status_label: Label = null
+var cart_pot_row_labels: Dictionary = {}
+var cart_pot_minus_buttons: Dictionary = {}
+var cart_pot_plus_buttons: Dictionary = {}
+var cart_pot_max_buttons: Dictionary = {}
+var cart_pot_start_button: Button = null
+
+# 推车阶段：主食漏勺
+var staple_ladle_duration: float = 3.0
+var staple_ladle_slots: Array = []
+var held_staple_food_id: String = ""
+
+var staple_ladle_status_label: Label = null
+var staple_ladle_buttons: Array[Button] = []
+
 var planned_staple_stock: Dictionary = {
 	"glass_noodle": 10,
 	"noodle": 10
@@ -118,12 +143,13 @@ func _process(delta: float) -> void:
 	update_day_timer(delta)
 	update_supplier_orders(delta)
 	update_cooker_slots(delta)
+	update_cart_pot(delta)
+	update_staple_ladle_slots(delta)
 
 	if is_round_closing and not has_round_finished and not is_cleanup_phase:
 		try_finish_day()
 
 	var game_ui = get_tree().get_first_node_in_group("game_ui")
-
 	if game_ui == null:
 		return
 
@@ -138,7 +164,6 @@ func _process(delta: float) -> void:
 	game_ui.hide_patience()
 
 	var order_cards: Array = []
-
 	for customer in pending_customers:
 		if customer != null and is_instance_valid(customer):
 			if not customer.order_served:
@@ -199,6 +224,7 @@ func start_round() -> void:
 
 	_apply_upgrade_flags()
 	initialize_cooker_slots()
+	initialize_staple_ladle_slots()
 	apply_station_layout_from_run_setup()
 
 	money = RunSetupData.run_money
@@ -582,6 +608,361 @@ func deliver_supplier_order(order_data: Dictionary) -> void:
 	if supplier_order_layer != null and is_instance_valid(supplier_order_layer):
 		refresh_supplier_order_panel()
 
+func create_staple_ladle_controls() -> void:
+	if cart_pot_panel == null:
+		return
+
+	var viewport_size := get_viewport().get_visible_rect().size
+
+	cart_pot_panel.size = Vector2(760, 650)
+	cart_pot_panel.position = Vector2(
+		viewport_size.x * 0.5 - 380,
+		viewport_size.y * 0.5 - 325
+	)
+
+	if cart_pot_start_button != null:
+		cart_pot_start_button.position = Vector2(150, 575)
+
+	var old_cooker_button: Button = cart_pot_panel.get_node_or_null("OldOrderCookerButton") as Button
+	if old_cooker_button != null:
+		old_cooker_button.position = Vector2(310, 575)
+
+	var close_button: Button = cart_pot_panel.get_node_or_null("CartPotCloseButton") as Button
+	if close_button != null:
+		close_button.position = Vector2(500, 575)
+
+	if staple_ladle_status_label != null and is_instance_valid(staple_ladle_status_label):
+		return
+
+	staple_ladle_status_label = Label.new()
+	staple_ladle_status_label.name = "StapleLadleStatusLabel"
+	staple_ladle_status_label.position = Vector2(40, 350)
+	staple_ladle_status_label.size = Vector2(680, 70)
+	staple_ladle_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	staple_ladle_status_label.add_theme_font_size_override("font_size", 14)
+	cart_pot_panel.add_child(staple_ladle_status_label)
+
+	staple_ladle_buttons.clear()
+
+	for slot_index in range(2):
+		var row_y := 430 + slot_index * 55
+
+		var glass_button := Button.new()
+		glass_button.name = "Ladle%dGlassButton" % [slot_index + 1]
+		glass_button.text = "漏勺%d煮粉丝" % [slot_index + 1]
+		glass_button.position = Vector2(60, row_y)
+		glass_button.size = Vector2(130, 38)
+		glass_button.set_meta("action", "start")
+		glass_button.set_meta("slot_index", slot_index)
+		glass_button.set_meta("main_food_id", "glass_noodle")
+		glass_button.pressed.connect(_on_staple_ladle_start_pressed.bind(slot_index, "glass_noodle"))
+		cart_pot_panel.add_child(glass_button)
+		staple_ladle_buttons.append(glass_button)
+
+		var noodle_button := Button.new()
+		noodle_button.name = "Ladle%dNoodleButton" % [slot_index + 1]
+		noodle_button.text = "漏勺%d煮面" % [slot_index + 1]
+		noodle_button.position = Vector2(205, row_y)
+		noodle_button.size = Vector2(130, 38)
+		noodle_button.set_meta("action", "start")
+		noodle_button.set_meta("slot_index", slot_index)
+		noodle_button.set_meta("main_food_id", "noodle")
+		noodle_button.pressed.connect(_on_staple_ladle_start_pressed.bind(slot_index, "noodle"))
+		cart_pot_panel.add_child(noodle_button)
+		staple_ladle_buttons.append(noodle_button)
+
+		var take_button := Button.new()
+		take_button.name = "Ladle%dTakeButton" % [slot_index + 1]
+		take_button.text = "取出漏勺%d" % [slot_index + 1]
+		take_button.position = Vector2(350, row_y)
+		take_button.size = Vector2(130, 38)
+		take_button.set_meta("action", "take")
+		take_button.set_meta("slot_index", slot_index)
+		take_button.pressed.connect(_on_staple_ladle_take_pressed.bind(slot_index))
+		cart_pot_panel.add_child(take_button)
+		staple_ladle_buttons.append(take_button)
+
+
+func refresh_staple_ladle_controls() -> void:
+	if staple_ladle_status_label == null:
+		return
+
+	var waiting_glass: int = get_waiting_main_food_count("glass_noodle")
+	var waiting_noodle: int = get_waiting_main_food_count("noodle")
+	var assigned_glass: int = get_assigned_staple_food_count("glass_noodle")
+	var assigned_noodle: int = get_assigned_staple_food_count("noodle")
+	var unassigned_glass: int = get_unassigned_waiting_main_food_count("glass_noodle")
+	var unassigned_noodle: int = get_unassigned_waiting_main_food_count("noodle")
+
+	var lines: Array[String] = []
+	lines.append("【主食漏勺】手里：%s" % get_held_staple_text())
+	lines.append("粉丝：等待%d / 已安排%d / 可下锅%d    面：等待%d / 已安排%d / 可下锅%d" % [
+		waiting_glass,
+		assigned_glass,
+		unassigned_glass,
+		waiting_noodle,
+		assigned_noodle,
+		unassigned_noodle
+	])
+	lines.append("%s    |    %s" % [
+		get_staple_ladle_text(0),
+		get_staple_ladle_text(1)
+	])
+
+	staple_ladle_status_label.text = "\n".join(lines)
+
+	for button in staple_ladle_buttons:
+		if button == null or not is_instance_valid(button):
+			continue
+
+		var action: String = str(button.get_meta("action", ""))
+		var slot_index: int = int(button.get_meta("slot_index", -1))
+
+		if slot_index < 0 or slot_index >= staple_ladle_slots.size():
+			button.disabled = true
+			continue
+
+		var slot: Dictionary = staple_ladle_slots[slot_index] as Dictionary
+		var state: String = str(slot.get("state", "empty"))
+
+		if action == "start":
+			var main_food_id: String = str(button.get_meta("main_food_id", ""))
+			button.disabled = state != "empty" or get_unassigned_waiting_main_food_count(main_food_id) <= 0
+		elif action == "take":
+			button.disabled = state != "ready" or held_staple_food_id != ""
+
+func _on_staple_ladle_start_pressed(slot_index: int, main_food_id: String) -> void:
+	start_staple_ladle_cooking(slot_index, main_food_id)
+
+
+func _on_staple_ladle_take_pressed(slot_index: int) -> void:
+	take_ready_staple_from_ladle(slot_index)
+
+func open_cart_pot_panel() -> void:
+	if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
+		create_staple_ladle_controls()
+		refresh_cart_pot_panel()
+		return
+
+	cart_pot_layer = CanvasLayer.new()
+	cart_pot_layer.name = "CartPotLayer"
+	cart_pot_layer.layer = 95
+	add_child(cart_pot_layer)
+
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+
+	cart_pot_panel = Panel.new()
+	cart_pot_panel.name = "CartPotPanel"
+	cart_pot_panel.size = Vector2(720, 500)
+	cart_pot_panel.position = Vector2(
+		viewport_size.x * 0.5 - 360,
+		viewport_size.y * 0.5 - 250
+	)
+	cart_pot_layer.add_child(cart_pot_panel)
+
+	var title_label := Label.new()
+	title_label.name = "CartPotTitle"
+	title_label.text = "大锅：批量煮配菜"
+	title_label.position = Vector2(24, 14)
+	title_label.size = Vector2(672, 32)
+	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title_label.add_theme_font_size_override("font_size", 22)
+	cart_pot_panel.add_child(title_label)
+
+	var desc_label := Label.new()
+	desc_label.name = "CartPotDesc"
+	desc_label.text = "锅中熟配菜和正在煮的配菜都会占用容量。第一版先用 - / + / 最大，不做手动输入。"
+	desc_label.position = Vector2(40, 48)
+	desc_label.size = Vector2(640, 42)
+	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	desc_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	desc_label.add_theme_font_size_override("font_size", 13)
+	cart_pot_panel.add_child(desc_label)
+
+	cart_pot_status_label = Label.new()
+	cart_pot_status_label.name = "CartPotStatus"
+	cart_pot_status_label.position = Vector2(36, 94)
+	cart_pot_status_label.size = Vector2(648, 96)
+	cart_pot_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	cart_pot_status_label.add_theme_font_size_override("font_size", 13)
+	cart_pot_panel.add_child(cart_pot_status_label)
+
+	cart_pot_row_labels.clear()
+	cart_pot_minus_buttons.clear()
+	cart_pot_plus_buttons.clear()
+	cart_pot_max_buttons.clear()
+
+	var item_ids: Array = get_cart_pot_ingredient_ids()
+	var start_y: int = 205
+	var row_h: int = 46
+
+	for i in range(item_ids.size()):
+		var item_id: String = str(item_ids[i])
+		var row_y: int = start_y + i * row_h
+
+		var row_label := Label.new()
+		row_label.name = "CartPot_%s_Label" % item_id
+		row_label.position = Vector2(40, row_y)
+		row_label.size = Vector2(360, 34)
+		row_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		row_label.add_theme_font_size_override("font_size", 15)
+		cart_pot_panel.add_child(row_label)
+		cart_pot_row_labels[item_id] = row_label
+
+		var minus_button := Button.new()
+		minus_button.name = "CartPot_%s_MinusButton" % item_id
+		minus_button.text = "-"
+		minus_button.position = Vector2(420, row_y)
+		minus_button.size = Vector2(48, 34)
+		minus_button.pressed.connect(_on_cart_pot_minus_pressed.bind(item_id))
+		cart_pot_panel.add_child(minus_button)
+		cart_pot_minus_buttons[item_id] = minus_button
+
+		var plus_button := Button.new()
+		plus_button.name = "CartPot_%s_PlusButton" % item_id
+		plus_button.text = "+"
+		plus_button.position = Vector2(478, row_y)
+		plus_button.size = Vector2(48, 34)
+		plus_button.pressed.connect(_on_cart_pot_plus_pressed.bind(item_id))
+		cart_pot_panel.add_child(plus_button)
+		cart_pot_plus_buttons[item_id] = plus_button
+
+		var max_button := Button.new()
+		max_button.name = "CartPot_%s_MaxButton" % item_id
+		max_button.text = "最大"
+		max_button.position = Vector2(538, row_y)
+		max_button.size = Vector2(72, 34)
+		max_button.pressed.connect(_on_cart_pot_max_pressed.bind(item_id))
+		cart_pot_panel.add_child(max_button)
+		cart_pot_max_buttons[item_id] = max_button
+
+	cart_pot_start_button = Button.new()
+	cart_pot_start_button.name = "CartPotStartButton"
+	cart_pot_start_button.text = "开始烹饪"
+	cart_pot_start_button.position = Vector2(175, 430)
+	cart_pot_start_button.size = Vector2(140, 42)
+	cart_pot_start_button.pressed.connect(_on_cart_pot_start_pressed)
+	cart_pot_panel.add_child(cart_pot_start_button)
+
+	var old_cooker_button := Button.new()
+	old_cooker_button.name = "OldOrderCookerButton"
+	old_cooker_button.text = "处理等待订单（旧）"
+	old_cooker_button.position = Vector2(325, 430)
+	old_cooker_button.size = Vector2(160, 42)
+	old_cooker_button.pressed.connect(start_shop_order_bound_cooking_pending_order)
+	cart_pot_panel.add_child(old_cooker_button)
+
+	var close_button := Button.new()
+	close_button.name = "CartPotCloseButton"
+	close_button.text = "关闭"
+	close_button.position = Vector2(495, 430)
+	close_button.size = Vector2(110, 42)
+	close_button.pressed.connect(close_cart_pot_panel)
+	cart_pot_panel.add_child(close_button)
+
+	create_staple_ladle_controls()
+	refresh_cart_pot_panel()
+
+
+func refresh_cart_pot_panel() -> void:
+	if cart_pot_panel == null:
+		return
+
+	if cart_pot_status_label != null:
+		var lines: Array[String] = []
+
+		lines.append("大锅容量：%d / %d" % [
+			get_cart_pot_total_capacity_with_selection(),
+			cart_pot_capacity
+		])
+
+		lines.append("锅中熟配菜：%s" % get_cooked_stock_text())
+
+		if cart_pot_is_cooking:
+			lines.append("正在煮：%s，剩余 %.1f 秒" % [
+				get_items_text(cart_pot_cooking_batch),
+				max(cart_pot_time_left, 0.0)
+			])
+		else:
+			lines.append("正在煮：无")
+
+		if cart_pot_selection.is_empty():
+			lines.append("本次准备：无")
+		else:
+			lines.append("本次准备：%s" % get_items_text(cart_pot_selection))
+
+		cart_pot_status_label.text = "\n".join(lines)
+
+	var disabled_by_cooking := cart_pot_is_cooking
+
+	for item_id in get_cart_pot_ingredient_ids():
+		var item_key := str(item_id)
+
+		var raw_amount := int(raw_stock.get(item_key, 0))
+		var cooked_amount := int(cooked_stock.get(item_key, 0))
+		var selected_amount := int(cart_pot_selection.get(item_key, 0))
+		var display_name := get_ingredient_display_name(item_key)
+
+		if cart_pot_row_labels.has(item_key):
+			var row_label: Label = cart_pot_row_labels[item_key]
+			row_label.text = "%s    生 x%d    锅中熟 x%d    本次煮 x%d" % [
+				display_name,
+				raw_amount,
+				cooked_amount,
+				selected_amount
+			]
+
+		if cart_pot_minus_buttons.has(item_key):
+			var minus_button: Button = cart_pot_minus_buttons[item_key]
+			minus_button.disabled = disabled_by_cooking or selected_amount <= 0
+
+		if cart_pot_plus_buttons.has(item_key):
+			var plus_button: Button = cart_pot_plus_buttons[item_key]
+			plus_button.disabled = not can_add_to_cart_pot_selection(item_key, 1)
+
+		if cart_pot_max_buttons.has(item_key):
+			var max_button: Button = cart_pot_max_buttons[item_key]
+			max_button.disabled = disabled_by_cooking or raw_amount <= selected_amount or get_cart_pot_available_capacity_for_selection() <= 0
+
+	if cart_pot_start_button != null:
+		cart_pot_start_button.disabled = cart_pot_is_cooking or cart_pot_selection.is_empty()
+	
+	refresh_staple_ladle_controls()
+
+func close_cart_pot_panel() -> void:
+	if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
+		cart_pot_layer.queue_free()
+
+	cart_pot_layer = null
+	cart_pot_panel = null
+	cart_pot_status_label = null
+	cart_pot_row_labels.clear()
+	cart_pot_minus_buttons.clear()
+	cart_pot_plus_buttons.clear()
+	cart_pot_max_buttons.clear()
+	cart_pot_start_button = null
+
+	staple_ladle_status_label = null
+	staple_ladle_buttons.clear()
+
+
+func _on_cart_pot_minus_pressed(item_id: String) -> void:
+	remove_from_cart_pot_selection(item_id, 1)
+
+
+func _on_cart_pot_plus_pressed(item_id: String) -> void:
+	add_to_cart_pot_selection(item_id, 1)
+
+
+func _on_cart_pot_max_pressed(item_id: String) -> void:
+	max_add_to_cart_pot_selection(item_id)
+
+
+func _on_cart_pot_start_pressed() -> void:
+	start_cart_pot_batch_cooking()
+
 
 func show_storage_stock_only() -> void:
 	var game_ui = get_tree().get_first_node_in_group("game_ui")
@@ -780,52 +1161,65 @@ func prepare_stock_for_waiting_order(customer: Node, fulfillment_status: String)
 
 	var ingredients: Dictionary = customer.get_ingredients()
 	var reserved_cooked: Dictionary = {}
-	var reserved_raw_to_cook: Dictionary = {}
+	var remaining_to_cook: Dictionary = {}
 
 	if fulfillment_status == "instant":
 		deduct_cooked_stock(ingredients)
+
 		customer.set_meta("reserved_cooked_ingredients", ingredients.duplicate(true))
 		customer.set_meta("ingredients_to_cook", {})
 		customer.set_meta("ingredients_deducted_at_checkout", true)
+
+		RunSetupData.current_cooked_stock = cooked_stock.duplicate(true)
 		return
 
 	if fulfillment_status == "waitable":
-		print("Reserving stock for waiting order...")
+		print("Preparing cart waiting order...")
 		print("Before cooked stock: ", cooked_stock)
 		print("Before raw stock: ", raw_stock)
 
 		for ingredient_name in ingredients.keys():
-			var needed_amount: int = int(ingredients[ingredient_name])
-			var available_cooked: int = int(max(cooked_stock.get(ingredient_name, 0), 0))
+			var item_key: String = str(ingredient_name)
+			var needed_amount: int = int(ingredients.get(item_key, 0))
 
-			var reserve_cooked_amount: int = min(available_cooked, needed_amount)
-			var missing_amount: int = max(needed_amount - reserve_cooked_amount, 0)
+			if needed_amount <= 0:
+				continue
+
+			var available_cooked: int = int(cooked_stock.get(item_key, 0))
+			if available_cooked < 0:
+				available_cooked = 0
+
+			var reserve_cooked_amount: int = needed_amount
+			if available_cooked < reserve_cooked_amount:
+				reserve_cooked_amount = available_cooked
+
+			var missing_amount: int = needed_amount - reserve_cooked_amount
+			if missing_amount < 0:
+				missing_amount = 0
 
 			if reserve_cooked_amount > 0:
-				reserved_cooked[ingredient_name] = reserve_cooked_amount
-				cooked_stock[ingredient_name] = available_cooked - reserve_cooked_amount
+				reserved_cooked[item_key] = reserve_cooked_amount
+				cooked_stock[item_key] = available_cooked - reserve_cooked_amount
 
 			if missing_amount > 0:
-				reserved_raw_to_cook[ingredient_name] = missing_amount
-
-				if not raw_stock.has(ingredient_name):
-					raw_stock[ingredient_name] = 0
-
-				raw_stock[ingredient_name] = max(int(raw_stock[ingredient_name]) - missing_amount, 0)
+				remaining_to_cook[item_key] = missing_amount
 
 		customer.set_meta("reserved_cooked_ingredients", reserved_cooked)
-		customer.set_meta("ingredients_to_cook", reserved_raw_to_cook)
+		customer.set_meta("ingredients_to_cook", remaining_to_cook)
 		customer.set_meta("ingredients_deducted_at_checkout", true)
 
+		RunSetupData.current_cooked_stock = cooked_stock.duplicate(true)
+
 		print("Reserved cooked ingredients: ", reserved_cooked)
-		print("Reserved raw ingredients for cooking: ", reserved_raw_to_cook)
+		print("Remaining ingredients to cook in cart pot: ", remaining_to_cook)
 		print("After cooked stock: ", cooked_stock)
-		print("After raw stock: ", raw_stock)
+		print("Raw stock is NOT deducted at checkout in cart mode: ", raw_stock)
 		return
 
 	customer.set_meta("reserved_cooked_ingredients", {})
-	customer.set_meta("ingredients_to_cook", {})
+	customer.set_meta("ingredients_to_cook", ingredients.duplicate(true))
 	customer.set_meta("ingredients_deducted_at_checkout", false)
+
 
 func get_customer_ingredients_to_cook(customer: Node) -> Dictionary:
 	if customer == null or not is_instance_valid(customer):
@@ -855,6 +1249,462 @@ func initialize_round_stocks() -> void:
 	raw_stock = RunSetupData.current_raw_stock.duplicate(true)
 	cooked_stock = RunSetupData.current_cooked_stock.duplicate(true)
 	staple_stock = RunSetupData.current_staple_stock.duplicate(true)
+
+func get_cart_pot_ingredient_ids() -> Array:
+	var ids: Array = RunSetupData.get_basic_ingredient_ids()
+
+	if ids.is_empty():
+		ids = [
+			"spinach",
+			"potato_slice",
+			"tofu_puff"
+		]
+
+	return ids
+
+
+func get_stock_total(stock: Dictionary) -> int:
+	var total := 0
+
+	for item_id in stock.keys():
+		total += int(stock.get(item_id, 0))
+
+	return total
+
+
+func get_cart_pot_cooked_capacity_used() -> int:
+	return get_stock_total(cooked_stock)
+
+
+func get_cart_pot_cooking_capacity_used() -> int:
+	return get_stock_total(cart_pot_cooking_batch)
+
+
+func get_cart_pot_selection_total() -> int:
+	return get_stock_total(cart_pot_selection)
+
+
+func get_cart_pot_used_capacity() -> int:
+	return get_cart_pot_cooked_capacity_used() + get_cart_pot_cooking_capacity_used()
+
+
+func get_cart_pot_total_capacity_with_selection() -> int:
+	return get_cart_pot_used_capacity() + get_cart_pot_selection_total()
+
+
+func get_cart_pot_available_capacity_for_selection() -> int:
+	return max(cart_pot_capacity - get_cart_pot_total_capacity_with_selection(), 0)
+
+
+func can_add_to_cart_pot_selection(item_id: String, amount: int = 1) -> bool:
+	if amount <= 0:
+		return false
+
+	if cart_pot_is_cooking:
+		return false
+
+	var current_selected := int(cart_pot_selection.get(item_id, 0))
+	var current_raw := int(raw_stock.get(item_id, 0))
+
+	if current_selected + amount > current_raw:
+		return false
+
+	if get_cart_pot_total_capacity_with_selection() + amount > cart_pot_capacity:
+		return false
+
+	return true
+
+
+func add_to_cart_pot_selection(item_id: String, amount: int = 1) -> void:
+	if amount <= 0:
+		return
+
+	var actually_added := 0
+
+	for i in range(amount):
+		if not can_add_to_cart_pot_selection(item_id, 1):
+			break
+
+		cart_pot_selection[item_id] = int(cart_pot_selection.get(item_id, 0)) + 1
+		actually_added += 1
+
+	if actually_added > 0:
+		refresh_cart_pot_panel()
+
+
+func remove_from_cart_pot_selection(item_id: String, amount: int = 1) -> void:
+	if amount <= 0:
+		return
+
+	var current_selected := int(cart_pot_selection.get(item_id, 0))
+	current_selected = max(current_selected - amount, 0)
+
+	if current_selected <= 0:
+		cart_pot_selection.erase(item_id)
+	else:
+		cart_pot_selection[item_id] = current_selected
+
+	refresh_cart_pot_panel()
+
+
+func max_add_to_cart_pot_selection(item_id: String) -> void:
+	if cart_pot_is_cooking:
+		return
+
+	var current_selected: int = int(cart_pot_selection.get(item_id, 0))
+	var current_raw: int = int(raw_stock.get(item_id, 0))
+
+	var raw_room: int = current_raw - current_selected
+	if raw_room < 0:
+		raw_room = 0
+
+	var capacity_room: int = get_cart_pot_available_capacity_for_selection()
+
+	var amount: int = raw_room
+	if capacity_room < amount:
+		amount = capacity_room
+
+	if amount <= 0:
+		return
+
+	add_to_cart_pot_selection(item_id, amount)
+
+
+func start_cart_pot_batch_cooking() -> void:
+	if cart_pot_is_cooking:
+		print("大锅正在煮，暂时不能加入新配菜。")
+		return
+
+	if cart_pot_selection.is_empty():
+		print("还没有选择要煮的配菜。")
+		return
+
+	if get_cart_pot_total_capacity_with_selection() > cart_pot_capacity:
+		print("大锅容量不足，不能开始烹饪。")
+		refresh_cart_pot_panel()
+		return
+
+	var batch: Dictionary = {}
+
+	for item_id in cart_pot_selection.keys():
+		var item_key := str(item_id)
+		var amount := int(cart_pot_selection.get(item_key, 0))
+
+		if amount <= 0:
+			continue
+
+		if int(raw_stock.get(item_key, 0)) < amount:
+			print("生食材不足：", item_key)
+			refresh_cart_pot_panel()
+			return
+
+		batch[item_key] = amount
+
+	if batch.is_empty():
+		print("没有有效的烹饪批次。")
+		return
+
+	for item_id in batch.keys():
+		var amount := int(batch.get(item_id, 0))
+		raw_stock[item_id] = max(int(raw_stock.get(item_id, 0)) - amount, 0)
+
+	cart_pot_cooking_batch = batch.duplicate(true)
+	cart_pot_selection.clear()
+	cart_pot_is_cooking = true
+	cart_pot_time_left = cart_pot_batch_duration
+
+	RunSetupData.current_raw_stock = raw_stock.duplicate(true)
+
+	print("=== 大锅开始批量烹饪 ===")
+	print("Batch: ", cart_pot_cooking_batch)
+	print("Raw stock after starting cart pot: ", raw_stock)
+	print("Cart pot capacity used: ", get_cart_pot_used_capacity(), "/", cart_pot_capacity)
+
+	refresh_cart_pot_panel()
+
+
+func update_cart_pot(delta: float) -> void:
+	if not cart_pot_is_cooking:
+		return
+
+	cart_pot_time_left -= delta
+
+	if cart_pot_time_left > 0.0:
+		if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
+			refresh_cart_pot_panel()
+		return
+
+	finish_cart_pot_batch_cooking()
+
+
+func finish_cart_pot_batch_cooking() -> void:
+	if not cart_pot_is_cooking:
+		return
+
+	for item_id in cart_pot_cooking_batch.keys():
+		var item_key := str(item_id)
+		var amount := int(cart_pot_cooking_batch.get(item_key, 0))
+
+		if amount <= 0:
+			continue
+
+		if not cooked_stock.has(item_key):
+			cooked_stock[item_key] = 0
+
+		cooked_stock[item_key] = int(cooked_stock.get(item_key, 0)) + amount
+
+	print("=== 大锅批量烹饪完成 ===")
+	print("Cooked batch: ", cart_pot_cooking_batch)
+
+	cart_pot_is_cooking = false
+	cart_pot_time_left = 0.0
+	cart_pot_cooking_batch.clear()
+
+	RunSetupData.current_cooked_stock = cooked_stock.duplicate(true)
+
+	print("Cooked stock after cart pot: ", cooked_stock)
+	print("Cart pot capacity used: ", get_cart_pot_used_capacity(), "/", cart_pot_capacity)
+
+	refresh_cart_pot_panel()
+	print_stocks()
+
+func initialize_staple_ladle_slots() -> void:
+	staple_ladle_slots.clear()
+
+	for i in range(2):
+		staple_ladle_slots.append({
+			"state": "empty",
+			"main_food_id": "",
+			"time_left": 0.0
+		})
+
+	held_staple_food_id = ""
+
+
+func has_busy_staple_ladle() -> bool:
+	for i in range(staple_ladle_slots.size()):
+		var slot: Dictionary = staple_ladle_slots[i] as Dictionary
+		var state: String = str(slot.get("state", "empty"))
+
+		if state == "cooking":
+			return true
+
+	return false
+
+
+func update_staple_ladle_slots(delta: float) -> void:
+	if staple_ladle_slots.is_empty():
+		return
+
+	var changed := false
+
+	for i in range(staple_ladle_slots.size()):
+		var slot: Dictionary = staple_ladle_slots[i] as Dictionary
+		var state: String = str(slot.get("state", "empty"))
+
+		if state != "cooking":
+			continue
+
+		var time_left: float = float(slot.get("time_left", 0.0))
+		time_left -= delta
+
+		if time_left <= 0.0:
+			slot["state"] = "ready"
+			slot["time_left"] = 0.0
+			print("漏勺 ", i + 1, " 的 ", get_ingredient_display_name(str(slot.get("main_food_id", ""))), " 煮好了。")
+		else:
+			slot["time_left"] = time_left
+
+		staple_ladle_slots[i] = slot
+		changed = true
+
+	if changed and cart_pot_layer != null and is_instance_valid(cart_pot_layer):
+		refresh_cart_pot_panel()
+
+
+func get_first_pending_customer_waiting_for_main_food(main_food_id: String) -> Node:
+	for customer in pending_customers:
+		if customer == null or not is_instance_valid(customer):
+			continue
+
+		if bool(customer.get("order_served")):
+			continue
+
+		if bool(customer.get("needs_emergency_purchase")):
+			continue
+
+		if not customer_has_main_food(customer):
+			continue
+
+		if get_customer_main_food_stock_id(customer) != main_food_id:
+			continue
+
+		if not bool(customer.get("needs_main_food_cooking")):
+			continue
+
+		return customer
+
+	return null
+
+
+func has_waiting_main_food_order(main_food_id: String) -> bool:
+	return get_unassigned_waiting_main_food_count(main_food_id) > 0
+
+func get_waiting_main_food_count(main_food_id: String) -> int:
+	var count := 0
+
+	for customer in pending_customers:
+		if customer == null or not is_instance_valid(customer):
+			continue
+
+		if bool(customer.get("order_served")):
+			continue
+
+		if bool(customer.get("needs_emergency_purchase")):
+			continue
+
+		if not customer_has_main_food(customer):
+			continue
+
+		if get_customer_main_food_stock_id(customer) != main_food_id:
+			continue
+
+		if not bool(customer.get("needs_main_food_cooking")):
+			continue
+
+		count += 1
+
+	return count
+
+func get_assigned_staple_food_count(main_food_id: String) -> int:
+	var count: int = 0
+
+	for i in range(staple_ladle_slots.size()):
+		var slot: Dictionary = staple_ladle_slots[i] as Dictionary
+		var state: String = str(slot.get("state", "empty"))
+		var slot_food_id: String = str(slot.get("main_food_id", ""))
+
+		if state == "empty":
+			continue
+
+		if slot_food_id == main_food_id:
+			count += 1
+
+	if held_staple_food_id == main_food_id:
+		count += 1
+
+	return count
+
+
+func get_unassigned_waiting_main_food_count(main_food_id: String) -> int:
+	var waiting_count: int = get_waiting_main_food_count(main_food_id)
+	var assigned_count: int = get_assigned_staple_food_count(main_food_id)
+
+	var available_count: int = waiting_count - assigned_count
+	if available_count < 0:
+		available_count = 0
+
+	return available_count
+
+
+func start_staple_ladle_cooking(slot_index: int, main_food_id: String) -> void:
+	if slot_index < 0 or slot_index >= staple_ladle_slots.size():
+		return
+
+	var slot: Dictionary = staple_ladle_slots[slot_index] as Dictionary
+	var state: String = str(slot.get("state", "empty"))
+
+	if state != "empty":
+		print("漏勺 ", slot_index + 1, " 不是空的，不能放入新主食。")
+		return
+
+	var unassigned_count: int = get_unassigned_waiting_main_food_count(main_food_id)
+
+	if unassigned_count <= 0:
+		print("当前没有未安排的 ", get_ingredient_display_name(main_food_id), " 订单。")
+		return
+
+	# 过渡期说明：
+	# 当前主食库存仍然在顾客付款时扣除。
+	# 所以这里暂时不重复扣 staple_stock，避免双扣。
+	slot["state"] = "cooking"
+	slot["main_food_id"] = main_food_id
+	slot["time_left"] = staple_ladle_duration
+	staple_ladle_slots[slot_index] = slot
+
+	print("漏勺 ", slot_index + 1, " 开始煮：", get_ingredient_display_name(main_food_id))
+
+	refresh_cart_pot_panel()
+
+
+func take_ready_staple_from_ladle(slot_index: int) -> void:
+	if slot_index < 0 or slot_index >= staple_ladle_slots.size():
+		return
+
+	if held_staple_food_id != "":
+		print("手里已经有主食：", get_ingredient_display_name(held_staple_food_id), "。先去出餐点交付。")
+		return
+
+	var slot: Dictionary = staple_ladle_slots[slot_index] as Dictionary
+	var state: String = str(slot.get("state", "empty"))
+
+	if state != "ready":
+		print("漏勺 ", slot_index + 1, " 还没有可以取出的主食。")
+		return
+
+	var main_food_id: String = str(slot.get("main_food_id", ""))
+
+	if main_food_id == "":
+		return
+
+	held_staple_food_id = main_food_id
+
+	slot["state"] = "empty"
+	slot["main_food_id"] = ""
+	slot["time_left"] = 0.0
+	staple_ladle_slots[slot_index] = slot
+
+	print("从漏勺 ", slot_index + 1, " 取出：", get_ingredient_display_name(main_food_id), "。现在手里拿着这份主食。")
+
+	refresh_cart_pot_panel()
+
+
+func get_held_staple_text() -> String:
+	if held_staple_food_id == "":
+		return "空"
+
+	return get_ingredient_display_name(held_staple_food_id)
+
+
+func get_staple_ladle_text(slot_index: int) -> String:
+	if slot_index < 0 or slot_index >= staple_ladle_slots.size():
+		return "漏勺不存在"
+
+	var slot: Dictionary = staple_ladle_slots[slot_index] as Dictionary
+	var state: String = str(slot.get("state", "empty"))
+	var main_food_id: String = str(slot.get("main_food_id", ""))
+	var main_food_text := "无"
+
+	if main_food_id != "":
+		main_food_text = get_ingredient_display_name(main_food_id)
+
+	if state == "empty":
+		return "漏勺 %d：空" % [slot_index + 1]
+
+	if state == "cooking":
+		return "漏勺 %d：正在煮 %s，剩余 %.1f 秒" % [
+			slot_index + 1,
+			main_food_text,
+			float(slot.get("time_left", 0.0))
+		]
+
+	if state == "ready":
+		return "漏勺 %d：%s 已煮好，等待取出" % [
+			slot_index + 1,
+			main_food_text
+		]
+
+	return "漏勺 %d：未知状态" % [slot_index + 1]
 
 func initialize_cooker_slots() -> void:
 	cooker_slots.clear()
@@ -1125,12 +1975,14 @@ func evaluate_order_before_checkout(customer: Node) -> Dictionary:
 	if customer == null or not is_instance_valid(customer):
 		return result
 
-	var fulfillment_status: String = get_order_fulfillment_status(customer.get_ingredients())
+	var ingredients: Dictionary = customer.get_ingredients()
+	var fulfillment_status: String = get_order_fulfillment_status(ingredients)
 	var has_main_food: bool = customer.get_main_food_id() != "none"
-	var needs_waiting: bool = has_main_food or fulfillment_status != "instant"
+
 	var needs_main_food_cooking: bool = has_main_food
-	var needs_ingredient_cooking: bool = fulfillment_status == "waitable"
+	var needs_ingredient_cooking: bool = fulfillment_status != "instant"
 	var needs_emergency_purchase: bool = fulfillment_status == "unfulfillable"
+	var needs_waiting: bool = needs_main_food_cooking or needs_ingredient_cooking or needs_emergency_purchase
 
 	result["status"] = "ok"
 	result["needs_waiting"] = needs_waiting
@@ -1138,7 +1990,7 @@ func evaluate_order_before_checkout(customer: Node) -> Dictionary:
 	result["needs_ingredient_cooking"] = needs_ingredient_cooking
 	result["needs_emergency_purchase"] = needs_emergency_purchase
 	result["fulfillment_status"] = fulfillment_status
-	result["shortage"] = get_order_shortage(customer.get_ingredients())
+	result["shortage"] = get_order_shortage(ingredients)
 
 	return result
 
@@ -1222,10 +2074,13 @@ func route_customer_after_payment(customer: Node, evaluation: Dictionary) -> Str
 		customer.needs_ingredient_cooking = needs_ingredient_cooking
 		customer.needs_emergency_purchase = true
 
+		customer.set_meta("reserved_cooked_ingredients", {})
+		customer.set_meta("ingredients_to_cook", customer.get_ingredients().duplicate(true))
+		customer.set_meta("ingredients_deducted_at_checkout", false)
+
 		customer.start_waiting_for_food(needs_main_food_cooking, needs_ingredient_cooking)
 
-		var missing_main_food_delivery_spot = get_tree().get_first_node_in_group("delivery_spot")
-
+		var missing_main_food_delivery_spot: Node = get_tree().get_first_node_in_group("delivery_spot") as Node
 		if missing_main_food_delivery_spot:
 			customer.go_to_delivery(missing_main_food_delivery_spot.global_position)
 		else:
@@ -1235,18 +2090,20 @@ func route_customer_after_payment(customer: Node, evaluation: Dictionary) -> Str
 		release_counter_customer(customer)
 
 		print("Customer paid, but main food stock is missing. Customer needs emergency purchase.")
-
 		return "waiting_emergency"
 
 	if needs_emergency_purchase:
 		customer.needs_main_food_cooking = needs_main_food_cooking
-		customer.needs_ingredient_cooking = needs_ingredient_cooking
+		customer.needs_ingredient_cooking = true
 		customer.needs_emergency_purchase = true
 
-		customer.start_waiting_for_food(needs_main_food_cooking, needs_ingredient_cooking)
+		customer.set_meta("reserved_cooked_ingredients", {})
+		customer.set_meta("ingredients_to_cook", customer.get_ingredients().duplicate(true))
+		customer.set_meta("ingredients_deducted_at_checkout", false)
 
-		var emergency_delivery_spot = get_tree().get_first_node_in_group("delivery_spot")
+		customer.start_waiting_for_food(needs_main_food_cooking, true)
 
+		var emergency_delivery_spot: Node = get_tree().get_first_node_in_group("delivery_spot") as Node
 		if emergency_delivery_spot:
 			customer.go_to_delivery(emergency_delivery_spot.global_position)
 		else:
@@ -1256,7 +2113,6 @@ func route_customer_after_payment(customer: Node, evaluation: Dictionary) -> Str
 		release_counter_customer(customer)
 
 		print("Customer paid, but order currently needs emergency purchase.")
-
 		return "waiting_emergency"
 
 	if fulfillment_status == "instant":
@@ -1268,15 +2124,13 @@ func route_customer_after_payment(customer: Node, evaluation: Dictionary) -> Str
 			if has_method("handle_customer_order_completed"):
 				handle_customer_order_completed(customer)
 
-			var instant_exit_point = get_tree().get_first_node_in_group("exit_point")
-
+			var instant_exit_point: Node = get_tree().get_first_node_in_group("exit_point") as Node
 			if instant_exit_point:
 				customer.go_to_exit(instant_exit_point.global_position)
 
 			release_counter_customer(customer)
 
 			print("Customer paid and took food immediately.")
-
 			return "instant_leave"
 
 		customer.needs_main_food_cooking = needs_main_food_cooking
@@ -1285,8 +2139,7 @@ func route_customer_after_payment(customer: Node, evaluation: Dictionary) -> Str
 
 		customer.start_waiting_for_food(needs_main_food_cooking, false)
 
-		var instant_delivery_spot = get_tree().get_first_node_in_group("delivery_spot")
-
+		var instant_delivery_spot: Node = get_tree().get_first_node_in_group("delivery_spot") as Node
 		if instant_delivery_spot:
 			customer.go_to_delivery(instant_delivery_spot.global_position)
 		else:
@@ -1296,20 +2149,24 @@ func route_customer_after_payment(customer: Node, evaluation: Dictionary) -> Str
 		release_counter_customer(customer)
 
 		print("Customer paid and is now waiting for main food.")
-
 		return "waiting_delivery"
 
 	if fulfillment_status == "waitable":
 		prepare_stock_for_waiting_order(customer, fulfillment_status)
 
+		var ingredients_to_cook: Dictionary = get_customer_ingredients_to_cook(customer)
+		var still_needs_ingredients: bool = not ingredients_to_cook.is_empty()
+
 		customer.needs_main_food_cooking = needs_main_food_cooking
-		customer.needs_ingredient_cooking = needs_ingredient_cooking
+		customer.needs_ingredient_cooking = still_needs_ingredients
 		customer.needs_emergency_purchase = false
 
-		customer.start_waiting_for_food(needs_main_food_cooking, needs_ingredient_cooking)
+		customer.start_waiting_for_food(needs_main_food_cooking, still_needs_ingredients)
 
-		var waitable_delivery_spot = get_tree().get_first_node_in_group("delivery_spot")
+		if not still_needs_ingredients and customer.has_method("mark_cart_ingredients_ready"):
+			customer.mark_cart_ingredients_ready()
 
+		var waitable_delivery_spot: Node = get_tree().get_first_node_in_group("delivery_spot") as Node
 		if waitable_delivery_spot:
 			customer.go_to_delivery(waitable_delivery_spot.global_position)
 		else:
@@ -1319,17 +2176,19 @@ func route_customer_after_payment(customer: Node, evaluation: Dictionary) -> Str
 		release_counter_customer(customer)
 
 		print("Customer paid and is now waiting for food.")
-
 		return "waiting_delivery"
 
 	customer.needs_main_food_cooking = needs_main_food_cooking
-	customer.needs_ingredient_cooking = needs_ingredient_cooking
+	customer.needs_ingredient_cooking = true
 	customer.needs_emergency_purchase = true
 
-	customer.start_waiting_for_food(needs_main_food_cooking, needs_ingredient_cooking)
+	customer.set_meta("reserved_cooked_ingredients", {})
+	customer.set_meta("ingredients_to_cook", customer.get_ingredients().duplicate(true))
+	customer.set_meta("ingredients_deducted_at_checkout", false)
 
-	var fallback_delivery_spot = get_tree().get_first_node_in_group("delivery_spot")
+	customer.start_waiting_for_food(needs_main_food_cooking, true)
 
+	var fallback_delivery_spot: Node = get_tree().get_first_node_in_group("delivery_spot") as Node
 	if fallback_delivery_spot:
 		customer.go_to_delivery(fallback_delivery_spot.global_position)
 	else:
@@ -1339,7 +2198,6 @@ func route_customer_after_payment(customer: Node, evaluation: Dictionary) -> Str
 	release_counter_customer(customer)
 
 	print("Customer paid, but order currently needs emergency purchase.")
-
 	return "waiting_emergency"
 
 func refresh_money_and_reputation_ui() -> void:
@@ -1379,6 +2237,10 @@ func complete_delivery_for_customer(customer: Node) -> bool:
 		customer.go_to_exit(exit_point.global_position)
 
 	print("Delivered order to customer.")
+
+	if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
+		refresh_cart_pot_panel()
+
 	return true
 
 func build_night_queue_from_today_results() -> Array:
@@ -1525,9 +2387,19 @@ func resolve_price_reaction(_customer: Node, _quoted_price: int, _true_price: in
 
 func get_first_customer_needing_emergency_purchase() -> Node:
 	for customer in pending_customers:
-		if customer != null and is_instance_valid(customer):
-			if customer.needs_emergency_purchase and not customer.order_served:
-				return customer
+		if customer == null or not is_instance_valid(customer):
+			continue
+
+		if bool(customer.get("order_served")):
+			continue
+
+		if bool(customer.get("needs_emergency_purchase")):
+			return customer
+
+		var cart_shortage: Dictionary = get_cart_ingredient_shortage_for_customer(customer)
+
+		if not cart_shortage.is_empty():
+			return customer
 
 	return null
 
@@ -1543,13 +2415,188 @@ func get_first_uncooked_pending_customer() -> Node:
 			return customer
 	return null
 
+func get_cart_ingredients_needed_from_pot(customer: Node) -> Dictionary:
+	if customer == null or not is_instance_valid(customer):
+		return {}
+
+	if customer.has_meta("ingredients_to_cook"):
+		var ingredients_to_cook = customer.get_meta("ingredients_to_cook")
+
+		if typeof(ingredients_to_cook) == TYPE_DICTIONARY:
+			return ingredients_to_cook
+
+	if customer.has_meta("ingredients_deducted_at_checkout"):
+		var already_deducted: bool = bool(customer.get_meta("ingredients_deducted_at_checkout"))
+
+		if already_deducted:
+			return {}
+
+	if customer.has_method("get_ingredients"):
+		return customer.get_ingredients()
+
+	return {}
+
+func get_cart_ingredient_shortage_for_customer(customer: Node) -> Dictionary:
+	var shortage: Dictionary = {}
+
+	if customer == null or not is_instance_valid(customer):
+		return shortage
+
+	if bool(customer.get("order_served")):
+		return shortage
+
+	if not bool(customer.get("needs_ingredient_cooking")):
+		return shortage
+
+	if bool(customer.get("cart_ingredients_ready")):
+		return shortage
+
+	var needed_ingredients: Dictionary = get_cart_ingredients_needed_from_pot(customer)
+
+	if needed_ingredients.is_empty():
+		return shortage
+
+	for item_id in needed_ingredients.keys():
+		var item_key: String = str(item_id)
+		var needed_amount: int = int(needed_ingredients.get(item_key, 0))
+
+		if needed_amount <= 0:
+			continue
+
+		var cooked_amount: int = int(cooked_stock.get(item_key, 0))
+		var raw_amount: int = int(raw_stock.get(item_key, 0))
+		var available_amount: int = cooked_amount + raw_amount
+		var missing_amount: int = needed_amount - available_amount
+
+		if missing_amount > 0:
+			shortage[item_key] = missing_amount
+
+	return shortage
+
+
+func try_fulfill_cart_ingredients_for_customer(customer: Node) -> bool:
+	if customer == null or not is_instance_valid(customer):
+		return false
+
+	if bool(customer.get("order_served")):
+		return false
+
+	if bool(customer.get("needs_emergency_purchase")):
+		return false
+
+	if not bool(customer.get("needs_ingredient_cooking")):
+		return true
+
+	var needed_ingredients: Dictionary = get_cart_ingredients_needed_from_pot(customer)
+
+	if needed_ingredients.is_empty():
+		if customer.has_method("mark_cart_ingredients_ready"):
+			customer.mark_cart_ingredients_ready()
+		return true
+
+	for item_id in needed_ingredients.keys():
+		var item_key: String = str(item_id)
+		var needed_amount: int = int(needed_ingredients.get(item_key, 0))
+
+		if needed_amount <= 0:
+			continue
+
+		var available_amount: int = int(cooked_stock.get(item_key, 0))
+
+		if available_amount < needed_amount:
+			return false
+
+	for item_id in needed_ingredients.keys():
+		var item_key: String = str(item_id)
+		var needed_amount: int = int(needed_ingredients.get(item_key, 0))
+
+		if needed_amount <= 0:
+			continue
+
+		cooked_stock[item_key] = int(cooked_stock.get(item_key, 0)) - needed_amount
+
+	customer.set_meta("ingredients_to_cook", {})
+	customer.set_meta("ingredients_deducted_at_checkout", true)
+
+	if customer.has_method("mark_cart_ingredients_ready"):
+		customer.mark_cart_ingredients_ready()
+
+	RunSetupData.current_cooked_stock = cooked_stock.duplicate(true)
+
+	print("从大锅熟菜中补齐等待顾客配菜：", needed_ingredients)
+	print("Cooked stock after fulfilling waiting ingredients: ", cooked_stock)
+
+	if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
+		refresh_cart_pot_panel()
+
+	return true
+
+
+func refresh_cart_ingredients_for_pending_customers() -> void:
+	for customer in pending_customers:
+		if customer == null or not is_instance_valid(customer):
+			continue
+
+		if bool(customer.get("order_served")):
+			continue
+
+		if bool(customer.get("needs_emergency_purchase")):
+			continue
+
+		if bool(customer.get("needs_ingredient_cooking")):
+			try_fulfill_cart_ingredients_for_customer(customer)
+
+func hand_over_held_staple_to_waiting_customer() -> Node:
+	if held_staple_food_id == "":
+		return null
+
+	var staple_customer: Node = get_first_pending_customer_waiting_for_main_food(held_staple_food_id)
+
+	if staple_customer == null:
+		print("手里有主食，但没有等待这种主食的顾客：", get_ingredient_display_name(held_staple_food_id))
+		return null
+
+	var handed_food_id: String = held_staple_food_id
+
+	if staple_customer.has_method("mark_cart_main_food_ready"):
+		staple_customer.mark_cart_main_food_ready()
+
+	held_staple_food_id = ""
+
+	print("交出手中主食：", get_ingredient_display_name(handed_food_id))
+
+	if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
+		refresh_cart_pot_panel()
+
+	return staple_customer
+
 func get_first_deliverable_pending_customer() -> Node:
+	refresh_cart_ingredients_for_pending_customers()
+
+	if held_staple_food_id != "":
+		var staple_customer: Node = hand_over_held_staple_to_waiting_customer()
+
+		if staple_customer == null:
+			return null
+
+		try_fulfill_cart_ingredients_for_customer(staple_customer)
+
+		if staple_customer.can_be_delivered():
+			return staple_customer
+
+		print("主食已交给顾客，但这位顾客的配菜还没准备好。")
+		return null
+
 	for customer in pending_customers:
 		if customer != null and is_instance_valid(customer):
 			if customer.needs_emergency_purchase:
 				continue
+
+			try_fulfill_cart_ingredients_for_customer(customer)
+
 			if customer.can_be_delivered():
 				return customer
+
 	return null
 
 func remove_customer_from_queue(customer: Node) -> void:
@@ -1662,7 +2709,12 @@ func remove_customer_from_cooker_slots(customer: Node) -> void:
 			cooker_slots[i] = slot
 
 func start_cooking_pending_order() -> void:
-	var customer = get_first_uncooked_pending_customer()
+	open_cart_pot_panel()
+
+
+func start_shop_order_bound_cooking_pending_order() -> void:
+	var customer: Node = get_first_uncooked_pending_customer() as Node
+
 	if customer == null:
 		if get_first_customer_needing_emergency_purchase() != null:
 			print("Need emergency purchase first.")
@@ -1670,12 +2722,13 @@ func start_cooking_pending_order() -> void:
 			print("No pending order to cook")
 		return
 
-	var free_slot_index = find_free_cooker_slot_index()
+	var free_slot_index: int = find_free_cooker_slot_index()
+
 	if free_slot_index == -1:
 		print("All unlocked cookers are busy")
 		return
 
-	var slot = cooker_slots[free_slot_index]
+	var slot: Dictionary = cooker_slots[free_slot_index] as Dictionary
 	slot["is_busy"] = true
 	slot["customer"] = customer
 	slot["time_left"] = cooker_duration
@@ -1898,11 +2951,20 @@ func emergency_purchase_for_customer(customer: Node) -> bool:
 		print("No customer for emergency purchase.")
 		return false
 
-	var shortage: Dictionary = get_order_shortage(customer.get_ingredients())
+	var shortage: Dictionary = get_cart_ingredient_shortage_for_customer(customer)
 
 	if shortage.is_empty():
-		print("No shortage to purchase. Try reserving stock for this order.")
-		return reserve_stock_after_emergency_purchase(customer)
+		shortage = get_order_shortage(customer.get_ingredients())
+
+	if shortage.is_empty():
+		print("No shortage to purchase.")
+
+		customer.needs_emergency_purchase = false
+
+		if customer.has_method("mark_cart_ingredients_ready"):
+			try_fulfill_cart_ingredients_for_customer(customer)
+
+		return true
 
 	var cost: int = get_emergency_purchase_cost(shortage)
 
@@ -1913,22 +2975,35 @@ func emergency_purchase_for_customer(customer: Node) -> bool:
 		print("Emergency purchase failed.")
 		return false
 
-	for ingredient_name in shortage.keys():
-		if not raw_stock.has(ingredient_name):
-			raw_stock[ingredient_name] = 0
+	for item_id in shortage.keys():
+		var item_key: String = str(item_id)
+		var amount: int = int(shortage.get(item_key, 0))
 
-		raw_stock[ingredient_name] = int(raw_stock[ingredient_name]) + int(shortage[ingredient_name])
+		if amount <= 0:
+			continue
+
+		if not raw_stock.has(item_key):
+			raw_stock[item_key] = 0
+
+		raw_stock[item_key] = int(raw_stock.get(item_key, 0)) + amount
+
+	customer.needs_emergency_purchase = false
+	customer.needs_ingredient_cooking = true
+	customer.cart_ingredients_ready = false
+
+	var needed_ingredients: Dictionary = get_cart_ingredients_needed_from_pot(customer)
+
+	if needed_ingredients.is_empty() and customer.has_method("get_ingredients"):
+		customer.set_meta("ingredients_to_cook", customer.get_ingredients())
+
+	RunSetupData.current_raw_stock = raw_stock.duplicate(true)
 
 	print("Emergency purchase completed.")
 	print("Raw stock after emergency purchase: ", raw_stock)
+	print("这个订单现在可以通过大锅继续补配菜。")
 
-	if not reserve_stock_after_emergency_purchase(customer):
-		print("Emergency purchase completed, but stock still cannot be reserved for this order.")
-		return false
-
-	print("Emergency purchase stock reserved for customer.")
-	print("Raw stock after reserving emergency order: ", raw_stock)
-	print("Cooked stock after reserving emergency order: ", cooked_stock)
+	if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
+		refresh_cart_pot_panel()
 
 	return true
 
@@ -1992,23 +3067,97 @@ func get_pending_order_display_text(customer: Node) -> String:
 
 	return TextDB.get_text("UI_PENDING_ORDER_STATUS") % [status_text, base_text]
 
+func get_pending_order_remaining_main_food_text(customer: Node) -> String:
+	if customer == null or not is_instance_valid(customer):
+		return ""
+
+	if not customer_has_main_food(customer):
+		return ""
+
+	if not bool(customer.get("needs_main_food_cooking")):
+		return ""
+
+	if bool(customer.get("cart_main_food_ready")):
+		return ""
+
+	return str(customer.get_main_food())
+
+
+func get_pending_order_remaining_ingredients(customer: Node) -> Dictionary:
+	if customer == null or not is_instance_valid(customer):
+		return {}
+
+	if not bool(customer.get("needs_ingredient_cooking")):
+		return {}
+
+	if bool(customer.get("cart_ingredients_ready")):
+		return {}
+
+	if customer.has_meta("ingredients_to_cook"):
+		var ingredients_to_cook = customer.get_meta("ingredients_to_cook")
+
+		if typeof(ingredients_to_cook) == TYPE_DICTIONARY:
+			return ingredients_to_cook
+
+	if customer.has_method("get_ingredients"):
+		return customer.get_ingredients()
+
+	return {}
+
+
+func get_pending_order_remaining_ingredients_text(customer: Node) -> String:
+	var remaining_ingredients: Dictionary = get_pending_order_remaining_ingredients(customer)
+
+	if remaining_ingredients.is_empty():
+		return ""
+
+	return get_items_text(remaining_ingredients)
+
+
+func get_pending_order_card_status_text(customer: Node) -> String:
+	if customer == null or not is_instance_valid(customer):
+		return ""
+
+	if customer.can_be_delivered():
+		return "可出餐"
+
+	if bool(customer.get("needs_emergency_purchase")):
+		return "缺货"
+
+	var remaining_main_food := get_pending_order_remaining_main_food_text(customer)
+	var remaining_ingredients := get_pending_order_remaining_ingredients(customer)
+
+	if remaining_main_food != "" and not remaining_ingredients.is_empty():
+		return "等主食和配菜"
+
+	if remaining_main_food != "":
+		return "等主食"
+
+	if not remaining_ingredients.is_empty():
+		return "等配菜"
+
+	return "等待确认"
+
 func get_pending_order_card_data(customer: Node) -> Dictionary:
 	var patience_text := "%d/%d" % [
 		int(ceil(customer.get_display_patience_current())),
 		int(customer.get_display_patience_max())
 	]
 
-	var status_text := ""
+	var status_text := get_pending_order_card_status_text(customer)
 	var extra_text := ""
 
 	if order_panel_upgrade_level >= 1:
 		var status_id: String = get_pending_order_status_id(customer)
-		status_text = TextDB.get_status_name(status_id)
+		var upgrade_status_text: String = TextDB.get_status_name(status_id)
+
+		if upgrade_status_text != "":
+			status_text = upgrade_status_text
 
 	return {
 		"status_text": status_text,
-		"main_food_text": customer.get_main_food(),
-		"ingredients_text": customer.get_ingredients_text(),
+		"main_food_text": get_pending_order_remaining_main_food_text(customer),
+		"ingredients_text": get_pending_order_remaining_ingredients_text(customer),
 		"patience_text": patience_text,
 		"extra_text": extra_text
 	}
@@ -2182,8 +3331,14 @@ func _customer_blocks_cart_cleanup(customer: Node) -> bool:
 	return true
 
 func has_busy_cooker() -> bool:
+	if cart_pot_is_cooking:
+		return true
+
+	if has_busy_staple_ladle():
+		return true
+
 	for i in range(min(unlocked_cooker_slots, cooker_slots.size())):
-		var slot = cooker_slots[i]
+		var slot: Dictionary = cooker_slots[i] as Dictionary
 
 		if bool(slot.get("is_busy", false)):
 			return true
