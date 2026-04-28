@@ -596,22 +596,29 @@ func activate_pending_tomorrow_event() -> Dictionary:
 	return current_day_business_event.duplicate(true)
 
 func get_current_day_multiplier(modifier_id: String, default_value: float = 1.0) -> float:
-	if current_day_modifiers.is_empty():
-		return default_value
+	var value := default_value
 
-	if not current_day_modifiers.has(modifier_id):
-		return default_value
+	if not current_day_modifiers.is_empty() and current_day_modifiers.has(modifier_id):
+		value *= float(current_day_modifiers.get(modifier_id, 1.0))
 
-	return float(current_day_modifiers.get(modifier_id, default_value))
+	var effect_manager := get_node_or_null("/root/EffectManager")
+	if effect_manager != null and effect_manager.has_method("get_multiplier"):
+		value = effect_manager.get_multiplier(modifier_id, value)
+
+	return value
+
 
 func get_current_day_additive(modifier_id: String, default_value: float = 0.0) -> float:
-	if current_day_modifiers.is_empty():
-		return default_value
+	var value := default_value
 
-	if not current_day_modifiers.has(modifier_id):
-		return default_value
+	if not current_day_modifiers.is_empty() and current_day_modifiers.has(modifier_id):
+		value += float(current_day_modifiers.get(modifier_id, 0.0))
 
-	return float(current_day_modifiers.get(modifier_id, default_value))
+	var effect_manager := get_node_or_null("/root/EffectManager")
+	if effect_manager != null and effect_manager.has_method("get_additive"):
+		value = effect_manager.get_additive(modifier_id, value)
+
+	return value
 
 func get_current_night_activity_text() -> String:
 	if current_night_activity.is_empty():

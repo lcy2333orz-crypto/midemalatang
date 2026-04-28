@@ -159,19 +159,29 @@ func _get_fallback_card_options() -> Array:
 	return [
 		{
 			"id": "tidy_up",
-			"name": "整理一下"
+			"name": "整理一下",
+			"description": "小猫把摊位重新整理好。每天早上额外获得一点随机生食材。",
+			"modifiers": {
+				"random_raw_stock_bonus": 1
+			}
 		},
 		{
 			"id": "take_a_breath",
-			"name": "缓一口气"
+			"name": "缓一口气",
+			"description": "小猫坐下来缓了一口气。之后顾客耐心略微提高。",
+			"modifiers": {
+				"customer_patience_multiplier": 1.1
+			}
 		},
 		{
 			"id": "cheer_up_again",
-			"name": "重新打起精神"
+			"name": "重新打起精神",
+			"description": "小猫重新打起精神。之后顾客来得略微更快。",
+			"modifiers": {
+				"customer_spawn_interval_multiplier": 0.95
+			}
 		}
 	]
-
-
 
 
 func _show_confirm_button_only() -> void:
@@ -351,18 +361,21 @@ func _setup_layout_positions() -> void:
 	night_queue_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	night_queue_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
-	card_container.position = Vector2(center_x - 255, 230)
+	card_container.position = Vector2(center_x - 315, 230)
 	card_container.z_index = 30
 	card_container.mouse_filter = Control.MOUSE_FILTER_PASS
 
 	card_buttons[0].position = Vector2(0, 0)
-	card_buttons[1].position = Vector2(175, 0)
-	card_buttons[2].position = Vector2(350, 0)
+	card_buttons[1].position = Vector2(220, 0)
+	card_buttons[2].position = Vector2(440, 0)
 
 	for button in card_buttons:
-		button.custom_minimum_size = Vector2(150, 180)
-		button.size = Vector2(150, 180)
+		button.custom_minimum_size = Vector2(200, 190)
+		button.size = Vector2(200, 190)
 		button.mouse_filter = Control.MOUSE_FILTER_STOP
+		button.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+		button.clip_text = true
+		button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 
 	# ===== 底部：确认按钮 =====
 	$ButtonBox.position = Vector2(center_x - 120, viewport_size.y - 82)
@@ -653,6 +666,39 @@ func setup_night_queue() -> void:
 	night_finished = false
 	update_night_queue_preview()
 
+func format_card_button_text(card_name: String, card_description: String) -> String:
+	var wrapped_description := wrap_cjk_text(card_description, 12)
+
+	if wrapped_description == "":
+		return card_name
+
+	return "%s\n\n%s" % [
+		card_name,
+		wrapped_description
+	]
+
+
+func wrap_cjk_text(text: String, max_chars_per_line: int = 12) -> String:
+	var cleaned := text.strip_edges()
+
+	if cleaned == "":
+		return ""
+
+	var lines: Array[String] = []
+	var current_line := ""
+
+	for i in range(cleaned.length()):
+		var ch := cleaned.substr(i, 1)
+		current_line += ch
+
+		if current_line.length() >= max_chars_per_line:
+			lines.append(current_line)
+			current_line = ""
+
+	if current_line != "":
+		lines.append(current_line)
+
+	return "\n".join(lines)
 
 func show_current_choice() -> void:
 	if current_index >= night_queue.size():
@@ -666,7 +712,6 @@ func show_current_choice() -> void:
 	card_choice_title_label.visible = true
 	night_queue_label.visible = true
 	card_container.visible = true
-
 	retry_button.visible = false
 	back_home_button.visible = false
 
@@ -675,11 +720,18 @@ func show_current_choice() -> void:
 
 	for i in range(3):
 		var card_data: Dictionary = options[i]
-		card_buttons[i].text = str(card_data.get("name", "未知卡牌"))
+		var card_name := str(card_data.get("name", "未知卡牌"))
+		var card_description := str(card_data.get("description", ""))
+
+		card_buttons[i].text = format_card_button_text(card_name, card_description)
 		card_buttons[i].set_meta("card_id", str(card_data.get("id", "unknown_card")))
-		card_buttons[i].set_meta("card_name", str(card_data.get("name", "未知卡牌")))
+		card_buttons[i].set_meta("card_name", card_name)
 		card_buttons[i].visible = true
 		card_buttons[i].disabled = false
+
+		card_buttons[i].autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+		card_buttons[i].clip_text = true
+		card_buttons[i].text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 
 
 func get_night_choice_title(entry: Dictionary) -> String:
