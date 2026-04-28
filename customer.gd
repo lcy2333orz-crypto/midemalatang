@@ -242,14 +242,23 @@ func randomize_main_food() -> void:
 			main_food_id = ITEM_NOODLE
 
 func randomize_ingredients() -> void:
-	var ingredient_pool: Array[String] = [ITEM_SPINACH, ITEM_POTATO_SLICE, ITEM_TOFU_PUFF]
+	var ingredient_pool: Array = RunSetupData.get_basic_ingredient_ids()
+
+	if ingredient_pool.is_empty():
+		ingredient_pool = [
+			ITEM_SPINACH,
+			ITEM_POTATO_SLICE,
+			ITEM_TOFU_PUFF
+		]
+
 	ingredient_pool.shuffle()
 
-	var ingredient_count := randi_range(1, 2)
+	var ingredient_count: int = min(randi_range(1, 2), ingredient_pool.size())
+
 	ingredients.clear()
 
 	for i in range(ingredient_count):
-		var ingredient_id: String = ingredient_pool[i]
+		var ingredient_id := str(ingredient_pool[i])
 		var quantity := randi_range(1, 2)
 		ingredients[ingredient_id] = quantity
 

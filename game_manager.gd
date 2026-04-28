@@ -607,19 +607,7 @@ func show_storage_stock_only() -> void:
 
 
 func get_ingredient_display_name(item_id: String) -> String:
-	match item_id:
-		"spinach":
-			return "菠菜"
-		"potato_slice":
-			return "土豆片"
-		"tofu_puff":
-			return "豆腐泡"
-		"glass_noodle":
-			return "粉丝"
-		"noodle":
-			return "面"
-		_:
-			return item_id
+	return TextDB.get_item_name(item_id)
 
 
 func get_items_text(items: Dictionary) -> String:
@@ -658,11 +646,10 @@ func apply_random_raw_stock_bonus(amount: int) -> void:
 	if amount <= 0:
 		return
 
-	var item_pool: Array[String] = [
-		"spinach",
-		"potato_slice",
-		"tofu_puff"
-	]
+	var item_pool: Array[String] = RunSetupData.get_basic_ingredient_ids()
+
+	if item_pool.is_empty():
+		return
 
 	var gained: Dictionary = {}
 
