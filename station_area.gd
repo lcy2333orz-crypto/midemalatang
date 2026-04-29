@@ -10,7 +10,6 @@ func interact() -> void:
 	print("Interact with ", station_name)
 
 	var game_manager = get_tree().get_first_node_in_group("game_manager")
-
 	if game_manager == null:
 		print("No game manager found.")
 		return
@@ -22,7 +21,6 @@ func interact() -> void:
 				return
 
 		var customer = game_manager.get_counter_customer()
-
 		print("Counter customer: ", customer)
 
 		if customer == null:
@@ -39,14 +37,12 @@ func interact() -> void:
 		if not customer.is_checked_out:
 			var quoted_price = customer.get_order_price()
 			var checkout_result = game_manager.confirm_checkout_and_create_order(customer, quoted_price)
-
 			print("Checkout result: ", checkout_result)
 
 			if checkout_result["success"]:
 				print("顾客付款成功，订单正式成立。")
 			else:
 				print("收银未完成：", checkout_result["message"])
-
 			return
 
 		print("Customer already checked out.")
@@ -57,7 +53,6 @@ func interact() -> void:
 			game_manager.open_cart_pot_panel()
 			return
 
-		# 兼容旧版本：如果大锅面板函数不存在，才走旧逐单烹饪。
 		if game_manager.has_method("start_cooking_pending_order"):
 			game_manager.start_cooking_pending_order()
 			return
@@ -66,8 +61,11 @@ func interact() -> void:
 		return
 
 	if station_name == "DeliveryPoint":
-		var customer = game_manager.get_first_deliverable_pending_customer()
+		if game_manager.has_method("interact_with_delivery_point"):
+			game_manager.interact_with_delivery_point()
+			return
 
+		var customer = game_manager.get_first_deliverable_pending_customer()
 		if customer == null:
 			print("No deliverable customer.")
 			return
@@ -81,7 +79,6 @@ func interact() -> void:
 
 	if station_name == "EmergencyShop":
 		var customer = game_manager.get_first_customer_needing_emergency_purchase()
-
 		if customer == null:
 			print("No customer needs emergency purchase.")
 			return
@@ -89,7 +86,34 @@ func interact() -> void:
 		if game_manager.emergency_purchase_for_customer(customer):
 			customer.needs_emergency_purchase = false
 			print("Emergency purchase completed for customer.")
+		return
 
+	if station_name == "GlassNoodleBasket":
+		if game_manager.has_method("interact_with_staple_basket"):
+			game_manager.interact_with_staple_basket("glass_noodle")
+		else:
+			print("GameManager missing interact_with_staple_basket")
+		return
+
+	if station_name == "NoodleBasket":
+		if game_manager.has_method("interact_with_staple_basket"):
+			game_manager.interact_with_staple_basket("noodle")
+		else:
+			print("GameManager missing interact_with_staple_basket")
+		return
+
+	if station_name == "StapleLadle1":
+		if game_manager.has_method("interact_with_staple_ladle"):
+			game_manager.interact_with_staple_ladle(0)
+		else:
+			print("GameManager missing interact_with_staple_ladle")
+		return
+
+	if station_name == "StapleLadle2":
+		if game_manager.has_method("interact_with_staple_ladle"):
+			game_manager.interact_with_staple_ladle(1)
+		else:
+			print("GameManager missing interact_with_staple_ladle")
 		return
 
 	print("Unknown station interaction.")

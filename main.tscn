@@ -140,6 +140,82 @@ shape = SubResource("RectangleShape2D_lquwl")
 
 [node name="LabelPoint" type="Marker2D" parent="Stations/EmergencyShop" unique_id=7260532]
 
+[node name="GlassNoodleBasket" type="Node2D" parent="Stations" unique_id=1630752081]
+position = Vector2(500, 300)
+scale = Vector2(0.5, 0.5)
+
+[node name="Visual" type="Node2D" parent="Stations/GlassNoodleBasket" unique_id=1103558268]
+
+[node name="Polygon2D" type="Polygon2D" parent="Stations/GlassNoodleBasket/Visual" unique_id=1671072966]
+color = Color(0.078431375, 1, 1, 1)
+polygon = PackedVector2Array(-60, -40, 60, -40, 60, 40, -60, 40)
+
+[node name="InteractionArea" type="Area2D" parent="Stations/GlassNoodleBasket" unique_id=1209998590]
+script = ExtResource("1_0xm2m")
+station_name = "GlassNoodleBasket"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/GlassNoodleBasket/InteractionArea" unique_id=2139567060]
+shape = SubResource("RectangleShape2D_1bvp3")
+
+[node name="LabelPoint" type="Marker2D" parent="Stations/GlassNoodleBasket" unique_id=1587903561]
+
+[node name="NoodleBasket" type="Node2D" parent="Stations" unique_id=283729249]
+position = Vector2(560, 300)
+scale = Vector2(0.5, 0.5)
+
+[node name="Visual" type="Node2D" parent="Stations/NoodleBasket" unique_id=196300936]
+
+[node name="Polygon2D" type="Polygon2D" parent="Stations/NoodleBasket/Visual" unique_id=1913279538]
+color = Color(0.078431375, 1, 1, 1)
+polygon = PackedVector2Array(-60, -40, 60, -40, 60, 40, -60, 40)
+
+[node name="InteractionArea" type="Area2D" parent="Stations/NoodleBasket" unique_id=1404811644]
+script = ExtResource("1_0xm2m")
+station_name = "NoodleBasket"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/NoodleBasket/InteractionArea" unique_id=1370360968]
+shape = SubResource("RectangleShape2D_1bvp3")
+
+[node name="LabelPoint" type="Marker2D" parent="Stations/NoodleBasket" unique_id=250395910]
+
+[node name="StapleLadle1" type="Node2D" parent="Stations" unique_id=241111430]
+position = Vector2(500, 350)
+scale = Vector2(0.5, 0.5)
+
+[node name="Visual" type="Node2D" parent="Stations/StapleLadle1" unique_id=710750646]
+
+[node name="Polygon2D" type="Polygon2D" parent="Stations/StapleLadle1/Visual" unique_id=1975173707]
+color = Color(0.078431375, 1, 1, 1)
+polygon = PackedVector2Array(-60, -40, 60, -40, 60, 40, -60, 40)
+
+[node name="InteractionArea" type="Area2D" parent="Stations/StapleLadle1" unique_id=1620084798]
+script = ExtResource("1_0xm2m")
+station_name = "StapleLadle1"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/StapleLadle1/InteractionArea" unique_id=248531754]
+shape = SubResource("RectangleShape2D_1bvp3")
+
+[node name="LabelPoint" type="Marker2D" parent="Stations/StapleLadle1" unique_id=772515222]
+
+[node name="StapleLadle2" type="Node2D" parent="Stations" unique_id=1443454171]
+position = Vector2(560, 350)
+scale = Vector2(0.5, 0.5)
+
+[node name="Visual" type="Node2D" parent="Stations/StapleLadle2" unique_id=1565908761]
+
+[node name="Polygon2D" type="Polygon2D" parent="Stations/StapleLadle2/Visual" unique_id=774557631]
+color = Color(0.078431375, 1, 1, 1)
+polygon = PackedVector2Array(-60, -40, 60, -40, 60, 40, -60, 40)
+
+[node name="InteractionArea" type="Area2D" parent="Stations/StapleLadle2" unique_id=2010027832]
+script = ExtResource("1_0xm2m")
+station_name = "StapleLadle2"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/StapleLadle2/InteractionArea" unique_id=424560111]
+shape = SubResource("RectangleShape2D_1bvp3")
+
+[node name="LabelPoint" type="Marker2D" parent="Stations/StapleLadle2" unique_id=459484310]
+
 [node name="Characters" type="Node2D" parent="." unique_id=1772073976]
 
 [node name="Player" parent="Characters" unique_id=1448892241 instance=ExtResource("1_ig7tw")]
