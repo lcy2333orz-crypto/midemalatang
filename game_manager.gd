@@ -53,6 +53,9 @@ var cart_pot_selection: Dictionary = {}
 
 var cart_pot_layer: CanvasLayer = null
 var cart_pot_panel: Panel = null
+var cart_pot_scroll: ScrollContainer = null
+var cart_pot_content: VBoxContainer = null
+
 var cart_pot_status_label: Label = null
 var cart_pot_row_labels: Dictionary = {}
 var cart_pot_minus_buttons: Dictionary = {}
@@ -695,16 +698,24 @@ func refresh_staple_ladle_controls() -> void:
 	var unassigned_noodle: int = get_unassigned_waiting_main_food_count("noodle")
 
 	var lines: Array[String] = []
-	lines.append("【主食漏勺】手里：%s" % get_held_staple_text())
-	lines.append("粉丝：等待%d / 已安排%d / 可下锅%d    面：等待%d / 已安排%d / 可下锅%d" % [
+
+	lines.append("〖主食漏勺〗手里：%s" % get_held_staple_text())
+
+	lines.append("粉丝：库存%d / 等待%d / 已安排%d / 未安排%d" % [
+		int(staple_stock.get("glass_noodle", 0)),
 		waiting_glass,
 		assigned_glass,
-		unassigned_glass,
+		unassigned_glass
+	])
+
+	lines.append("面：库存%d / 等待%d / 已安排%d / 未安排%d" % [
+		int(staple_stock.get("noodle", 0)),
 		waiting_noodle,
 		assigned_noodle,
 		unassigned_noodle
 	])
-	lines.append("%s    |    %s" % [
+
+	lines.append("%s | %s" % [
 		get_staple_ladle_text(0),
 		get_staple_ladle_text(1)
 	])
@@ -727,20 +738,31 @@ func refresh_staple_ladle_controls() -> void:
 
 		if action == "start":
 			var main_food_id: String = str(button.get_meta("main_food_id", ""))
-			button.disabled = state != "empty" or get_unassigned_waiting_main_food_count(main_food_id) <= 0
+			button.disabled = not can_start_staple_ladle_cooking(slot_index, main_food_id)
 		elif action == "take":
 			button.disabled = state != "ready" or held_staple_food_id != ""
+		else:
+			button.disabled = true
 
 func _on_staple_ladle_start_pressed(slot_index: int, main_food_id: String) -> void:
+	print("Staple ladle start button down. slot=", slot_index, " main_food=", main_food_id)
+
 	start_staple_ladle_cooking(slot_index, main_food_id)
+
+	if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
+		call_deferred("refresh_cart_pot_panel")
 
 
 func _on_staple_ladle_take_pressed(slot_index: int) -> void:
+	print("Staple ladle take button down. slot=", slot_index)
+
 	take_ready_staple_from_ladle(slot_index)
+
+	if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
+		call_deferred("refresh_cart_pot_panel")
 
 func open_cart_pot_panel() -> void:
 	if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
-		create_staple_ladle_controls()
 		refresh_cart_pot_panel()
 		return
 
@@ -749,187 +771,263 @@ func open_cart_pot_panel() -> void:
 	cart_pot_layer.layer = 95
 	add_child(cart_pot_layer)
 
-	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+	var viewport_size := get_viewport().get_visible_rect().size
 
 	cart_pot_panel = Panel.new()
 	cart_pot_panel.name = "CartPotPanel"
-	cart_pot_panel.size = Vector2(720, 500)
+	cart_pot_panel.size = Vector2(860, 430)
 	cart_pot_panel.position = Vector2(
-		viewport_size.x * 0.5 - 360,
-		viewport_size.y * 0.5 - 250
+		viewport_size.x * 0.5 - 430,
+		viewport_size.y * 0.5 - 215
 	)
 	cart_pot_layer.add_child(cart_pot_panel)
 
+	var bg := ColorRect.new()
+	bg.name = "BG"
+	bg.color = Color(0, 0, 0, 0.72)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cart_pot_panel.add_child(bg)
+
+	var outer_margin := MarginContainer.new()
+	outer_margin.name = "OuterMargin"
+	outer_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	outer_margin.add_theme_constant_override("margin_left", 14)
+	outer_margin.add_theme_constant_override("margin_top", 10)
+	outer_margin.add_theme_constant_override("margin_right", 14)
+	outer_margin.add_theme_constant_override("margin_bottom", 10)
+	cart_pot_panel.add_child(outer_margin)
+
+	var outer_vbox := VBoxContainer.new()
+	outer_vbox.name = "OuterVBox"
+	outer_vbox.add_theme_constant_override("separation", 6)
+	outer_margin.add_child(outer_vbox)
+
 	var title_label := Label.new()
-	title_label.name = "CartPotTitle"
-	title_label.text = "大锅：批量煮配菜"
-	title_label.position = Vector2(24, 14)
-	title_label.size = Vector2(672, 32)
-	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	title_label.add_theme_font_size_override("font_size", 22)
-	cart_pot_panel.add_child(title_label)
+	title_label.name = "TitleLabel"
+	title_label.text = "营业中大锅 / 主食漏勺"
+	title_label.add_theme_font_size_override("font_size", 18)
+	outer_vbox.add_child(title_label)
 
-	var desc_label := Label.new()
-	desc_label.name = "CartPotDesc"
-	desc_label.text = "锅中熟配菜和正在煮的配菜都会占用容量。第一版先用 - / + / 最大，不做手动输入。"
-	desc_label.position = Vector2(40, 48)
-	desc_label.size = Vector2(640, 42)
-	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	desc_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	desc_label.add_theme_font_size_override("font_size", 13)
-	cart_pot_panel.add_child(desc_label)
+	var summary_label := Label.new()
+	summary_label.name = "SummaryLabel"
+	summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	summary_label.custom_minimum_size.y = 76
+	summary_label.add_theme_font_size_override("font_size", 13)
+	outer_vbox.add_child(summary_label)
 
-	cart_pot_status_label = Label.new()
-	cart_pot_status_label.name = "CartPotStatus"
-	cart_pot_status_label.position = Vector2(36, 94)
-	cart_pot_status_label.size = Vector2(648, 96)
-	cart_pot_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	cart_pot_status_label.add_theme_font_size_override("font_size", 13)
-	cart_pot_panel.add_child(cart_pot_status_label)
+	cart_pot_scroll = ScrollContainer.new()
+	cart_pot_scroll.name = "CartPotScroll"
+	cart_pot_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cart_pot_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	cart_pot_scroll.custom_minimum_size = Vector2(0, 245)
+	outer_vbox.add_child(cart_pot_scroll)
 
-	cart_pot_row_labels.clear()
-	cart_pot_minus_buttons.clear()
-	cart_pot_plus_buttons.clear()
-	cart_pot_max_buttons.clear()
+	cart_pot_content = VBoxContainer.new()
+	cart_pot_content.name = "CartPotContent"
+	cart_pot_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cart_pot_content.add_theme_constant_override("separation", 6)
+	cart_pot_scroll.add_child(cart_pot_content)
 
-	var item_ids: Array = get_cart_pot_ingredient_ids()
-	var start_y: int = 205
-	var row_h: int = 46
-
-	for i in range(item_ids.size()):
-		var item_id: String = str(item_ids[i])
-		var row_y: int = start_y + i * row_h
-
-		var row_label := Label.new()
-		row_label.name = "CartPot_%s_Label" % item_id
-		row_label.position = Vector2(40, row_y)
-		row_label.size = Vector2(360, 34)
-		row_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		row_label.add_theme_font_size_override("font_size", 15)
-		cart_pot_panel.add_child(row_label)
-		cart_pot_row_labels[item_id] = row_label
-
-		var minus_button := Button.new()
-		minus_button.name = "CartPot_%s_MinusButton" % item_id
-		minus_button.text = "-"
-		minus_button.position = Vector2(420, row_y)
-		minus_button.size = Vector2(48, 34)
-		minus_button.pressed.connect(_on_cart_pot_minus_pressed.bind(item_id))
-		cart_pot_panel.add_child(minus_button)
-		cart_pot_minus_buttons[item_id] = minus_button
-
-		var plus_button := Button.new()
-		plus_button.name = "CartPot_%s_PlusButton" % item_id
-		plus_button.text = "+"
-		plus_button.position = Vector2(478, row_y)
-		plus_button.size = Vector2(48, 34)
-		plus_button.pressed.connect(_on_cart_pot_plus_pressed.bind(item_id))
-		cart_pot_panel.add_child(plus_button)
-		cart_pot_plus_buttons[item_id] = plus_button
-
-		var max_button := Button.new()
-		max_button.name = "CartPot_%s_MaxButton" % item_id
-		max_button.text = "最大"
-		max_button.position = Vector2(538, row_y)
-		max_button.size = Vector2(72, 34)
-		max_button.pressed.connect(_on_cart_pot_max_pressed.bind(item_id))
-		cart_pot_panel.add_child(max_button)
-		cart_pot_max_buttons[item_id] = max_button
-
-	cart_pot_start_button = Button.new()
-	cart_pot_start_button.name = "CartPotStartButton"
-	cart_pot_start_button.text = "开始烹饪"
-	cart_pot_start_button.position = Vector2(175, 430)
-	cart_pot_start_button.size = Vector2(140, 42)
-	cart_pot_start_button.pressed.connect(_on_cart_pot_start_pressed)
-	cart_pot_panel.add_child(cart_pot_start_button)
-
-	var old_cooker_button := Button.new()
-	old_cooker_button.name = "OldOrderCookerButton"
-	old_cooker_button.text = "处理等待订单（旧）"
-	old_cooker_button.position = Vector2(325, 430)
-	old_cooker_button.size = Vector2(160, 42)
-	old_cooker_button.pressed.connect(start_shop_order_bound_cooking_pending_order)
-	cart_pot_panel.add_child(old_cooker_button)
+	var bottom_row := HBoxContainer.new()
+	bottom_row.name = "BottomRow"
+	bottom_row.alignment = BoxContainer.ALIGNMENT_END
+	outer_vbox.add_child(bottom_row)
 
 	var close_button := Button.new()
-	close_button.name = "CartPotCloseButton"
+	close_button.name = "CloseButton"
 	close_button.text = "关闭"
-	close_button.position = Vector2(495, 430)
-	close_button.size = Vector2(110, 42)
+	close_button.custom_minimum_size = Vector2(90, 32)
 	close_button.pressed.connect(close_cart_pot_panel)
-	cart_pot_panel.add_child(close_button)
+	bottom_row.add_child(close_button)
 
-	create_staple_ladle_controls()
 	refresh_cart_pot_panel()
 
+func _build_ladle_row(ladle_index: int) -> HBoxContainer:
+	var slot_index: int = ladle_index - 1
 
-func refresh_cart_pot_panel() -> void:
-	if cart_pot_panel == null:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+
+	var state_label := Label.new()
+	state_label.custom_minimum_size = Vector2(190, 28)
+	state_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	state_label.text = _get_ladle_state_text(ladle_index)
+	row.add_child(state_label)
+
+	var slot_state: String = "empty"
+
+	if slot_index >= 0 and slot_index < staple_ladle_slots.size():
+		var slot: Dictionary = staple_ladle_slots[slot_index] as Dictionary
+		slot_state = str(slot.get("state", "empty"))
+
+	var cook_glass_button := Button.new()
+	cook_glass_button.text = "煮粉丝"
+	cook_glass_button.custom_minimum_size = Vector2(74, 28)
+	cook_glass_button.disabled = not can_start_staple_ladle_cooking(slot_index, "glass_noodle")
+	cook_glass_button.button_down.connect(_on_staple_ladle_start_pressed.bind(slot_index, "glass_noodle"))
+	row.add_child(cook_glass_button)
+
+	var cook_noodle_button := Button.new()
+	cook_noodle_button.text = "煮面"
+	cook_noodle_button.custom_minimum_size = Vector2(74, 28)
+	cook_noodle_button.disabled = not can_start_staple_ladle_cooking(slot_index, "noodle")
+	cook_noodle_button.button_down.connect(_on_staple_ladle_start_pressed.bind(slot_index, "noodle"))
+	row.add_child(cook_noodle_button)
+
+	var take_out_button := Button.new()
+	take_out_button.text = "取出"
+	take_out_button.custom_minimum_size = Vector2(64, 28)
+	take_out_button.disabled = slot_state != "ready" or held_staple_food_id != ""
+	take_out_button.button_down.connect(_on_staple_ladle_take_pressed.bind(slot_index))
+	row.add_child(take_out_button)
+
+	return row
+
+func _get_ladle_state_text(ladle_index: int) -> String:
+	var slot_index := ladle_index - 1
+
+	if slot_index < 0 or slot_index >= staple_ladle_slots.size():
+		return "漏勺%d：空" % ladle_index
+
+	return get_staple_ladle_text(slot_index)
+
+func request_cart_pot_panel_refresh() -> void:
+	if cart_pot_panel == null or not is_instance_valid(cart_pot_panel):
 		return
 
-	if cart_pot_status_label != null:
-		var lines: Array[String] = []
+	call_deferred("refresh_cart_pot_panel")
 
-		lines.append("大锅容量：%d / %d" % [
+func refresh_cart_pot_panel() -> void:
+	if cart_pot_panel == null or cart_pot_content == null:
+		return
+
+	var title_label: Label = cart_pot_panel.get_node_or_null("OuterMargin/OuterVBox/TitleLabel") as Label
+	var summary_label: Label = cart_pot_panel.get_node_or_null("OuterMargin/OuterVBox/SummaryLabel") as Label
+
+	if title_label != null:
+		title_label.text = "营业中大锅 / 主食漏勺"
+
+	if summary_label != null:
+		var summary_lines: Array[String] = []
+
+		if is_open_for_business:
+			summary_lines.append("营业状态：已开业")
+		else:
+			summary_lines.append("营业状态：已打烊")
+
+		summary_lines.append("大锅容量：%d / %d" % [
 			get_cart_pot_total_capacity_with_selection(),
 			cart_pot_capacity
 		])
 
-		lines.append("锅中熟配菜：%s" % get_cooked_stock_text())
+		summary_lines.append("锅中熟配菜：%s" % get_cooked_stock_text())
 
 		if cart_pot_is_cooking:
-			lines.append("正在煮：%s，剩余 %.1f 秒" % [
+			summary_lines.append("正在煮：%s，剩余 %.1f 秒" % [
 				get_items_text(cart_pot_cooking_batch),
 				max(cart_pot_time_left, 0.0)
 			])
 		else:
-			lines.append("正在煮：无")
+			summary_lines.append("正在煮：无")
 
 		if cart_pot_selection.is_empty():
-			lines.append("本次准备：无")
+			summary_lines.append("本次准备：无")
 		else:
-			lines.append("本次准备：%s" % get_items_text(cart_pot_selection))
+			summary_lines.append("本次准备：%s" % get_items_text(cart_pot_selection))
 
-		cart_pot_status_label.text = "\n".join(lines)
+		summary_label.text = "\n".join(summary_lines)
 
-	var disabled_by_cooking := cart_pot_is_cooking
+	for child in cart_pot_content.get_children():
+		child.queue_free()
+
+	var ingredient_title := Label.new()
+	ingredient_title.text = "【大锅：批量煮配菜】"
+	ingredient_title.add_theme_font_size_override("font_size", 14)
+	cart_pot_content.add_child(ingredient_title)
 
 	for item_id in get_cart_pot_ingredient_ids():
 		var item_key := str(item_id)
 
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		cart_pot_content.add_child(row)
+
+		var name_label := Label.new()
+		name_label.custom_minimum_size = Vector2(62, 28)
+		name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		name_label.text = get_ingredient_display_name(item_key)
+		row.add_child(name_label)
+
+		var info_label := Label.new()
+		info_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		info_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+
 		var raw_amount := int(raw_stock.get(item_key, 0))
 		var cooked_amount := int(cooked_stock.get(item_key, 0))
 		var selected_amount := int(cart_pot_selection.get(item_key, 0))
-		var display_name := get_ingredient_display_name(item_key)
 
-		if cart_pot_row_labels.has(item_key):
-			var row_label: Label = cart_pot_row_labels[item_key]
-			row_label.text = "%s    生 x%d    锅中熟 x%d    本次煮 x%d" % [
-				display_name,
-				raw_amount,
-				cooked_amount,
-				selected_amount
-			]
+		info_label.text = "生 x%d  锅中熟 x%d  本次煮 x%d" % [
+			raw_amount,
+			cooked_amount,
+			selected_amount
+		]
+		row.add_child(info_label)
 
-		if cart_pot_minus_buttons.has(item_key):
-			var minus_button: Button = cart_pot_minus_buttons[item_key]
-			minus_button.disabled = disabled_by_cooking or selected_amount <= 0
+		var minus_button := Button.new()
+		minus_button.text = "-"
+		minus_button.custom_minimum_size = Vector2(36, 28)
+		minus_button.disabled = cart_pot_is_cooking or selected_amount <= 0
+		minus_button.pressed.connect(_on_cart_pot_minus_pressed.bind(item_key))
+		row.add_child(minus_button)
 
-		if cart_pot_plus_buttons.has(item_key):
-			var plus_button: Button = cart_pot_plus_buttons[item_key]
-			plus_button.disabled = not can_add_to_cart_pot_selection(item_key, 1)
+		var plus_button := Button.new()
+		plus_button.text = "+"
+		plus_button.custom_minimum_size = Vector2(36, 28)
+		plus_button.disabled = not can_add_to_cart_pot_selection(item_key, 1)
+		plus_button.pressed.connect(_on_cart_pot_plus_pressed.bind(item_key))
+		row.add_child(plus_button)
 
-		if cart_pot_max_buttons.has(item_key):
-			var max_button: Button = cart_pot_max_buttons[item_key]
-			max_button.disabled = disabled_by_cooking or raw_amount <= selected_amount or get_cart_pot_available_capacity_for_selection() <= 0
+		var max_button := Button.new()
+		max_button.text = "最大"
+		max_button.custom_minimum_size = Vector2(56, 28)
+		max_button.disabled = cart_pot_is_cooking or raw_amount <= selected_amount or get_cart_pot_available_capacity_for_selection() <= 0
+		max_button.pressed.connect(_on_cart_pot_max_pressed.bind(item_key))
+		row.add_child(max_button)
 
-	if cart_pot_start_button != null:
-		cart_pot_start_button.disabled = cart_pot_is_cooking or cart_pot_selection.is_empty()
-	
-	refresh_staple_ladle_controls()
+	var pot_action_row := HBoxContainer.new()
+	pot_action_row.add_theme_constant_override("separation", 8)
+	cart_pot_content.add_child(pot_action_row)
+
+	var cook_batch_button := Button.new()
+	cook_batch_button.text = "开始煮这一锅"
+	cook_batch_button.custom_minimum_size = Vector2(140, 30)
+	cook_batch_button.disabled = cart_pot_is_cooking or cart_pot_selection.is_empty()
+	cook_batch_button.pressed.connect(_on_cart_pot_start_pressed)
+	pot_action_row.add_child(cook_batch_button)
+
+	var old_cooker_button := Button.new()
+	old_cooker_button.text = "处理旧订单"
+	old_cooker_button.custom_minimum_size = Vector2(120, 30)
+	old_cooker_button.pressed.connect(start_shop_order_bound_cooking_pending_order)
+	pot_action_row.add_child(old_cooker_button)
+
+	var ladle_title := Label.new()
+	ladle_title.text = "【主食漏勺】"
+	ladle_title.add_theme_font_size_override("font_size", 14)
+	cart_pot_content.add_child(ladle_title)
+
+	var staple_info := Label.new()
+	staple_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	staple_info.text = "粉丝库存：%d｜面库存：%d｜手里：%s" % [
+		int(staple_stock.get("glass_noodle", 0)),
+		int(staple_stock.get("noodle", 0)),
+		get_held_staple_text()
+	]
+	cart_pot_content.add_child(staple_info)
+
+	cart_pot_content.add_child(_build_ladle_row(1))
+	cart_pot_content.add_child(_build_ladle_row(2))
 
 func close_cart_pot_panel() -> void:
 	if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
@@ -937,6 +1035,9 @@ func close_cart_pot_panel() -> void:
 
 	cart_pot_layer = null
 	cart_pot_panel = null
+	cart_pot_scroll = null
+	cart_pot_content = null
+
 	cart_pot_status_label = null
 	cart_pot_row_labels.clear()
 	cart_pot_minus_buttons.clear()
@@ -949,15 +1050,65 @@ func close_cart_pot_panel() -> void:
 
 
 func _on_cart_pot_minus_pressed(item_id: String) -> void:
-	remove_from_cart_pot_selection(item_id, 1)
+	if cart_pot_is_cooking:
+		print("大锅正在煮，不能调整本次准备。")
+		request_cart_pot_panel_refresh()
+		return
+
+	var current_amount := int(cart_pot_selection.get(item_id, 0))
+
+	if current_amount <= 0:
+		cart_pot_selection.erase(item_id)
+		request_cart_pot_panel_refresh()
+		return
+
+	current_amount -= 1
+
+	if current_amount <= 0:
+		cart_pot_selection.erase(item_id)
+	else:
+		cart_pot_selection[item_id] = current_amount
+
+	request_cart_pot_panel_refresh()
 
 
 func _on_cart_pot_plus_pressed(item_id: String) -> void:
-	add_to_cart_pot_selection(item_id, 1)
+	if cart_pot_is_cooking:
+		print("大锅正在煮，不能调整本次准备。")
+		request_cart_pot_panel_refresh()
+		return
+
+	if not can_add_to_cart_pot_selection(item_id, 1):
+		print("不能继续加入大锅选择：", item_id)
+		request_cart_pot_panel_refresh()
+		return
+
+	cart_pot_selection[item_id] = int(cart_pot_selection.get(item_id, 0)) + 1
+
+	request_cart_pot_panel_refresh()
 
 
 func _on_cart_pot_max_pressed(item_id: String) -> void:
-	max_add_to_cart_pot_selection(item_id)
+	if cart_pot_is_cooking:
+		print("大锅正在煮，不能调整本次准备。")
+		request_cart_pot_panel_refresh()
+		return
+
+	var raw_amount: int = int(raw_stock.get(item_id, 0))
+	var selected_amount: int = int(cart_pot_selection.get(item_id, 0))
+	var available_capacity: int = int(get_cart_pot_available_capacity_for_selection())
+
+	var raw_available: int = raw_amount - selected_amount
+	var can_add_amount: int = min(raw_available, available_capacity)
+
+	if can_add_amount <= 0:
+		print("没有更多可加入大锅的数量：", item_id)
+		request_cart_pot_panel_refresh()
+		return
+
+	cart_pot_selection[item_id] = selected_amount + can_add_amount
+
+	request_cart_pot_panel_refresh()
 
 
 func _on_cart_pot_start_pressed() -> void:
@@ -1606,9 +1757,40 @@ func get_unassigned_waiting_main_food_count(main_food_id: String) -> int:
 
 	return available_count
 
+func can_start_staple_ladle_cooking(slot_index: int, main_food_id: String) -> bool:
+	if slot_index < 0 or slot_index >= staple_ladle_slots.size():
+		return false
+
+	if main_food_id == "":
+		return false
+
+	if not RunSetupData.is_staple_item(main_food_id):
+		return false
+
+	var slot: Dictionary = staple_ladle_slots[slot_index] as Dictionary
+	var state: String = str(slot.get("state", "empty"))
+
+	if state != "empty":
+		return false
+
+	var current_stock: int = int(staple_stock.get(main_food_id, 0))
+
+	if current_stock <= 0:
+		return false
+
+	return true
 
 func start_staple_ladle_cooking(slot_index: int, main_food_id: String) -> void:
 	if slot_index < 0 or slot_index >= staple_ladle_slots.size():
+		print("漏勺编号不存在：", slot_index)
+		return
+
+	if main_food_id == "":
+		print("没有指定主食。")
+		return
+
+	if not RunSetupData.is_staple_item(main_food_id):
+		print("这不是可用主食：", main_food_id)
 		return
 
 	var slot: Dictionary = staple_ladle_slots[slot_index] as Dictionary
@@ -1618,23 +1800,25 @@ func start_staple_ladle_cooking(slot_index: int, main_food_id: String) -> void:
 		print("漏勺 ", slot_index + 1, " 不是空的，不能放入新主食。")
 		return
 
-	var unassigned_count: int = get_unassigned_waiting_main_food_count(main_food_id)
+	var current_stock: int = int(staple_stock.get(main_food_id, 0))
 
-	if unassigned_count <= 0:
-		print("当前没有未安排的 ", get_ingredient_display_name(main_food_id), " 订单。")
+	if current_stock <= 0:
+		print(get_ingredient_display_name(main_food_id), " 库存不足，不能下漏勺。")
 		return
 
-	# 过渡期说明：
-	# 当前主食库存仍然在顾客付款时扣除。
-	# 所以这里暂时不重复扣 staple_stock，避免双扣。
+	staple_stock[main_food_id] = current_stock - 1
+	RunSetupData.current_staple_stock = staple_stock.duplicate(true)
+
 	slot["state"] = "cooking"
 	slot["main_food_id"] = main_food_id
 	slot["time_left"] = staple_ladle_duration
 	staple_ladle_slots[slot_index] = slot
 
 	print("漏勺 ", slot_index + 1, " 开始煮：", get_ingredient_display_name(main_food_id))
+	print("Staple stock after putting into ladle: ", staple_stock)
 
-	refresh_cart_pot_panel()
+	if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
+		call_deferred("refresh_cart_pot_panel")
 
 
 func take_ready_staple_from_ladle(slot_index: int) -> void:
@@ -2069,29 +2253,6 @@ func route_customer_after_payment(customer: Node, evaluation: Dictionary) -> Str
 	var needs_ingredient_cooking: bool = bool(evaluation.get("needs_ingredient_cooking", false))
 	var needs_emergency_purchase: bool = bool(evaluation.get("needs_emergency_purchase", false))
 
-	if not reserve_main_food_stock_for_customer(customer):
-		customer.needs_main_food_cooking = needs_main_food_cooking
-		customer.needs_ingredient_cooking = needs_ingredient_cooking
-		customer.needs_emergency_purchase = true
-
-		customer.set_meta("reserved_cooked_ingredients", {})
-		customer.set_meta("ingredients_to_cook", customer.get_ingredients().duplicate(true))
-		customer.set_meta("ingredients_deducted_at_checkout", false)
-
-		customer.start_waiting_for_food(needs_main_food_cooking, needs_ingredient_cooking)
-
-		var missing_main_food_delivery_spot: Node = get_tree().get_first_node_in_group("delivery_spot") as Node
-		if missing_main_food_delivery_spot:
-			customer.go_to_delivery(missing_main_food_delivery_spot.global_position)
-		else:
-			print("No delivery spot found.")
-
-		pending_customers.append(customer)
-		release_counter_customer(customer)
-
-		print("Customer paid, but main food stock is missing. Customer needs emergency purchase.")
-		return "waiting_emergency"
-
 	if needs_emergency_purchase:
 		customer.needs_main_food_cooking = needs_main_food_cooking
 		customer.needs_ingredient_cooking = true
@@ -2390,15 +2551,14 @@ func get_first_customer_needing_emergency_purchase() -> Node:
 		if customer == null or not is_instance_valid(customer):
 			continue
 
-		if bool(customer.get("order_served")):
+		if customer.order_served:
 			continue
 
-		if bool(customer.get("needs_emergency_purchase")):
-			return customer
+		var shortage := get_customer_order_shortage_for_emergency(customer)
 
-		var cart_shortage: Dictionary = get_cart_ingredient_shortage_for_customer(customer)
-
-		if not cart_shortage.is_empty():
+		if bool(customer.needs_emergency_purchase) or not shortage.is_empty():
+			customer.needs_emergency_purchase = true
+			print("Emergency shortage: ", shortage)
 			return customer
 
 	return null
@@ -2919,6 +3079,33 @@ func get_adjusted_order(ingredients: Dictionary) -> Dictionary:
 
 	return adjusted_order
 
+func get_customer_order_shortage_for_emergency(customer: Node) -> Dictionary:
+	var shortage: Dictionary = {}
+
+	if customer == null or not is_instance_valid(customer):
+		return shortage
+
+	var ingredient_shortage := get_order_shortage(customer.get_ingredients())
+
+	for item_id in ingredient_shortage.keys():
+		var amount := int(ingredient_shortage.get(item_id, 0))
+
+		if amount <= 0:
+			continue
+
+		shortage[str(item_id)] = amount
+
+	if customer_has_main_food(customer):
+		var main_food_id := get_customer_main_food_stock_id(customer)
+
+		if main_food_id != "":
+			var current_staple_amount := int(staple_stock.get(main_food_id, 0))
+
+			if current_staple_amount <= 0:
+				shortage[main_food_id] = int(shortage.get(main_food_id, 0)) + 1
+
+	return shortage
+
 func get_order_shortage(ingredients: Dictionary) -> Dictionary:
 	var shortage: Dictionary = {}
 
@@ -2937,36 +3124,23 @@ func get_order_shortage(ingredients: Dictionary) -> Dictionary:
 	return shortage
 
 func get_emergency_purchase_cost(shortage: Dictionary) -> int:
-	var cost := RunSetupData.get_neighbor_emergency_price_for_shortage(shortage)
-
-	if cost <= 0:
+	if shortage.is_empty():
 		return 0
 
-	print("Neighbor emergency stock cost: ", cost, " | shortage: ", shortage)
-
-	return cost
+	return RunSetupData.get_neighbor_emergency_price_for_shortage(shortage)
 
 func emergency_purchase_for_customer(customer: Node) -> bool:
 	if customer == null or not is_instance_valid(customer):
 		print("No customer for emergency purchase.")
 		return false
 
-	var shortage: Dictionary = get_cart_ingredient_shortage_for_customer(customer)
+	var shortage := get_customer_order_shortage_for_emergency(customer)
 
 	if shortage.is_empty():
-		shortage = get_order_shortage(customer.get_ingredients())
+		print("No shortage to purchase. Try refreshing this waiting order.")
+		return reserve_stock_after_emergency_purchase(customer)
 
-	if shortage.is_empty():
-		print("No shortage to purchase.")
-
-		customer.needs_emergency_purchase = false
-
-		if customer.has_method("mark_cart_ingredients_ready"):
-			try_fulfill_cart_ingredients_for_customer(customer)
-
-		return true
-
-	var cost: int = get_emergency_purchase_cost(shortage)
+	var cost := get_emergency_purchase_cost(shortage)
 
 	print("Emergency purchase shortage: ", shortage)
 	print("Emergency purchase cost: ", cost)
@@ -2976,35 +3150,35 @@ func emergency_purchase_for_customer(customer: Node) -> bool:
 		return false
 
 	for item_id in shortage.keys():
-		var item_key: String = str(item_id)
-		var amount: int = int(shortage.get(item_key, 0))
+		var item_key := str(item_id)
+		var amount := int(shortage.get(item_id, 0))
 
 		if amount <= 0:
 			continue
 
-		if not raw_stock.has(item_key):
-			raw_stock[item_key] = 0
+		if RunSetupData.is_staple_item(item_key):
+			if not staple_stock.has(item_key):
+				staple_stock[item_key] = 0
 
-		raw_stock[item_key] = int(raw_stock.get(item_key, 0)) + amount
+			staple_stock[item_key] = int(staple_stock.get(item_key, 0)) + amount
+		else:
+			if not raw_stock.has(item_key):
+				raw_stock[item_key] = 0
 
-	customer.needs_emergency_purchase = false
-	customer.needs_ingredient_cooking = true
-	customer.cart_ingredients_ready = false
-
-	var needed_ingredients: Dictionary = get_cart_ingredients_needed_from_pot(customer)
-
-	if needed_ingredients.is_empty() and customer.has_method("get_ingredients"):
-		customer.set_meta("ingredients_to_cook", customer.get_ingredients())
+			raw_stock[item_key] = int(raw_stock.get(item_key, 0)) + amount
 
 	RunSetupData.current_raw_stock = raw_stock.duplicate(true)
+	RunSetupData.current_staple_stock = staple_stock.duplicate(true)
 
 	print("Emergency purchase completed.")
 	print("Raw stock after emergency purchase: ", raw_stock)
-	print("这个订单现在可以通过大锅继续补配菜。")
+	print("Staple stock after emergency purchase: ", staple_stock)
 
-	if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
-		refresh_cart_pot_panel()
+	if not reserve_stock_after_emergency_purchase(customer):
+		print("Emergency purchase completed, but customer order still cannot be prepared.")
+		return false
 
+	print("Emergency purchase completed for customer.")
 	return true
 
 
@@ -3012,25 +3186,35 @@ func reserve_stock_after_emergency_purchase(customer: Node) -> bool:
 	if customer == null or not is_instance_valid(customer):
 		return false
 
-	if bool(customer.get_meta("ingredients_deducted_at_checkout", false)):
-		customer.needs_emergency_purchase = false
-		return true
+	var remaining_shortage := get_customer_order_shortage_for_emergency(customer)
 
-	var fulfillment_status: String = get_order_fulfillment_status(customer.get_ingredients())
-
-	if fulfillment_status == "unfulfillable":
+	if not remaining_shortage.is_empty():
 		print("Still cannot fulfill order after emergency purchase.")
-		print("Remaining shortage: ", get_order_shortage(customer.get_ingredients()))
+		print("Remaining shortage: ", remaining_shortage)
 		return false
 
-	prepare_stock_for_waiting_order(customer, fulfillment_status)
+	if not bool(customer.get_meta("ingredients_deducted_at_checkout", false)):
+		if not customer.get_ingredients().is_empty():
+			if not bool(customer.needs_ingredient_cooking):
+				var fulfillment_status := get_order_fulfillment_status(customer.get_ingredients())
 
+				if fulfillment_status == "unfulfillable":
+					print("Still cannot fulfill ingredients after emergency purchase.")
+					print("Remaining ingredient shortage: ", get_order_shortage(customer.get_ingredients()))
+					return false
+
+				prepare_stock_for_waiting_order(customer, fulfillment_status)
+
+	if customer_has_main_food(customer):
+		customer.needs_main_food_cooking = true
+
+	customer.needs_ingredient_cooking = not get_customer_ingredients_to_cook(customer).is_empty()
 	customer.needs_emergency_purchase = false
 
-	if fulfillment_status == "waitable":
-		customer.needs_ingredient_cooking = true
-	else:
-		customer.needs_ingredient_cooking = false
+	print("Emergency purchase stock prepared for customer.")
+	print("Raw stock after emergency preparation: ", raw_stock)
+	print("Cooked stock after emergency preparation: ", cooked_stock)
+	print("Staple stock after emergency preparation: ", staple_stock)
 
 	return true
 
@@ -3395,12 +3579,44 @@ func can_finish_day_now() -> bool:
 
 	return true
 
+func clear_staple_ladle_and_held_food_at_day_end() -> Dictionary:
+	var discarded: Dictionary = {
+		"held": "",
+		"ladles": []
+	}
+
+	if held_staple_food_id != "":
+		discarded["held"] = held_staple_food_id
+		held_staple_food_id = ""
+
+	for i in range(staple_ladle_slots.size()):
+		var slot: Dictionary = staple_ladle_slots[i] as Dictionary
+		var state := str(slot.get("state", "empty"))
+		var main_food_id := str(slot.get("main_food_id", ""))
+
+		if state != "empty" or main_food_id != "":
+			discarded["ladles"].append({
+				"slot": i,
+				"state": state,
+				"main_food_id": main_food_id
+			})
+
+		slot["state"] = "empty"
+		slot["main_food_id"] = ""
+		slot["time_left"] = 0.0
+		slot["is_ready"] = false
+
+		staple_ladle_slots[i] = slot
+
+	return discarded
+
 func finish_day() -> void:
 	has_round_finished = true
 
 	var remaining_cooked_stock := cooked_stock.duplicate(true)
 	var remaining_raw_stock := raw_stock.duplicate(true)
 	var remaining_staple_stock := staple_stock.duplicate(true)
+	var discarded_staple_food := clear_staple_ladle_and_held_food_at_day_end()
 
 	RunSetupData.run_money = money
 	RunSetupData.run_total_income = round_income
@@ -3438,6 +3654,8 @@ func finish_day() -> void:
 		"raw_stock_data": remaining_raw_stock,
 		"staple_stock_data": remaining_staple_stock,
 
+		"discarded_staple_food": discarded_staple_food,
+
 		"today_reputation_delta": RunSetupData.today_reputation_delta,
 		"shop_reputation": RunSetupData.shop_reputation,
 		"today_echo_lines": RunSetupData.get_today_stall_echo_lines(),
@@ -3465,6 +3683,7 @@ func finish_day() -> void:
 	print("Cooked stock will not carry over to next day.")
 	print("Raw stock carried over: ", remaining_raw_stock)
 	print("Staple stock carried over: ", remaining_staple_stock)
+	print("Discarded staple food at day end: ", discarded_staple_food)
 	print("Generated night queue: ", RunSetupData.generated_night_queue)
 
 	get_tree().call_deferred("change_scene_to_file", "res://settlement_result.tscn")

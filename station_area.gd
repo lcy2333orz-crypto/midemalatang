@@ -22,6 +22,7 @@ func interact() -> void:
 				return
 
 		var customer = game_manager.get_counter_customer()
+
 		print("Counter customer: ", customer)
 
 		if customer == null:
@@ -29,7 +30,6 @@ func interact() -> void:
 				print("未开业或已收摊，当前没有柜台顾客。")
 			else:
 				print("No customer at counter.")
-
 			return
 
 		if not customer.order_revealed:
@@ -53,7 +53,16 @@ func interact() -> void:
 		return
 
 	if station_name == "Cooker":
-		game_manager.start_cooking_pending_order()
+		if game_manager.has_method("open_cart_pot_panel"):
+			game_manager.open_cart_pot_panel()
+			return
+
+		# 兼容旧版本：如果大锅面板函数不存在，才走旧逐单烹饪。
+		if game_manager.has_method("start_cooking_pending_order"):
+			game_manager.start_cooking_pending_order()
+			return
+
+		print("No cooker interaction method found.")
 		return
 
 	if station_name == "DeliveryPoint":
