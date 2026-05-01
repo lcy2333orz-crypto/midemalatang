@@ -1599,53 +1599,65 @@ func max_add_to_cart_pot_selection(item_id: String) -> void:
 
 func start_cart_pot_batch_cooking() -> void:
 	if cart_pot_is_cooking:
-		print("大锅正在煮，暂时不能加入新配菜。")
+		print("大锅已经在煮了。")
 		return
 
 	if cart_pot_selection.is_empty():
-		print("还没有选择要煮的配菜。")
-		return
-
-	if get_cart_pot_total_capacity_with_selection() > cart_pot_capacity:
-		print("大锅容量不足，不能开始烹饪。")
-		refresh_cart_pot_panel()
+		print("没有选择要煮的配菜。")
 		return
 
 	var batch: Dictionary = {}
 
 	for item_id in cart_pot_selection.keys():
-		var item_key := str(item_id)
-		var amount := int(cart_pot_selection.get(item_key, 0))
+		var item_key: String = str(item_id)
+		var amount: int = int(cart_pot_selection.get(item_key, 0))
 
 		if amount <= 0:
 			continue
 
-		if int(raw_stock.get(item_key, 0)) < amount:
-			print("生食材不足：", item_key)
-			refresh_cart_pot_panel()
-			return
+		var raw_amount: int = int(raw_stock.get(item_key, 0))
 
-		batch[item_key] = amount
+		if raw_amount <= 0:
+			continue
+
+		var actual_amount: int = min(amount, raw_amount)
+
+		if actual_amount <= 0:
+			continue
+
+		batch[item_key] = actual_amount
 
 	if batch.is_empty():
-		print("没有有效的烹饪批次。")
+		print("本次选择没有可煮的配菜。")
+		cart_pot_selection.clear()
+		refresh_cart_pot_panel()
+		return
+
+	if get_cart_pot_total_capacity_with_selection() > cart_pot_capacity:
+		print("大锅容量不足，不能开始煮。")
+		refresh_cart_pot_panel()
 		return
 
 	for item_id in batch.keys():
-		var amount := int(batch.get(item_id, 0))
-		raw_stock[item_id] = max(int(raw_stock.get(item_id, 0)) - amount, 0)
+		var item_key: String = str(item_id)
+		var amount: int = int(batch.get(item_key, 0))
+		raw_stock[item_key] = int(raw_stock.get(item_key, 0)) - amount
 
-	cart_pot_cooking_batch = batch.duplicate(true)
-	cart_pot_selection.clear()
 	cart_pot_is_cooking = true
-	cart_pot_time_left = cart_pot_batch_duration
+	cart_pot_cooking_batch = batch.duplicate(true)
+	cart_pot_time_left = get_effective_cart_pot_batch_duration()
+	cart_pot_selection.clear()
 
 	RunSetupData.current_raw_stock = raw_stock.duplicate(true)
 
 	print("=== 大锅开始批量烹饪 ===")
 	print("Batch: ", cart_pot_cooking_batch)
+	print("大锅本次烹饪时间：", cart_pot_time_left)
 	print("Raw stock after starting cart pot: ", raw_stock)
-	print("Cart pot capacity used: ", get_cart_pot_used_capacity(), "/", cart_pot_capacity)
+	print("Cart pot capacity used: %d/%d" % [
+		get_cart_pot_total_capacity_with_selection(),
+		cart_pot_capacity
+	])
 
 	refresh_cart_pot_panel()
 
@@ -1858,44 +1870,26 @@ func can_start_staple_ladle_cooking(slot_index: int, main_food_id: String) -> bo
 	return true
 
 func start_staple_ladle_cooking(slot_index: int, main_food_id: String) -> void:
-	if slot_index < 0 or slot_index >= staple_ladle_slots.size():
-		print("漏勺编号不存在：", slot_index)
-		return
-
-	if main_food_id == "":
-		print("没有指定主食。")
-		return
-
-	if not RunSetupData.is_staple_item(main_food_id):
-		print("这不是可用主食：", main_food_id)
+	if not can_start_staple_ladle_cooking(slot_index, main_food_id):
+		print("不能开始煮主食：", main_food_id, " slot=", slot_index)
 		return
 
 	var slot: Dictionary = staple_ladle_slots[slot_index] as Dictionary
-	var state: String = str(slot.get("state", "empty"))
-
-	if state != "empty":
-		print("漏勺 ", slot_index + 1, " 不是空的，不能放入新主食。")
-		return
-
-	var current_stock: int = int(staple_stock.get(main_food_id, 0))
-
-	if current_stock <= 0:
-		print(get_ingredient_display_name(main_food_id), " 库存不足，不能下漏勺。")
-		return
-
-	staple_stock[main_food_id] = current_stock - 1
-	RunSetupData.current_staple_stock = staple_stock.duplicate(true)
 
 	slot["state"] = "cooking"
 	slot["main_food_id"] = main_food_id
-	slot["time_left"] = staple_ladle_duration
+	slot["time_left"] = get_effective_staple_ladle_duration()
+	slot["is_ready"] = false
 	staple_ladle_slots[slot_index] = slot
 
+	staple_stock[main_food_id] = int(staple_stock.get(main_food_id, 0)) - 1
+	RunSetupData.current_staple_stock = staple_stock.duplicate(true)
+
 	print("漏勺 ", slot_index + 1, " 开始煮：", get_ingredient_display_name(main_food_id))
+	print("漏勺本次烹饪时间：", slot["time_left"])
 	print("Staple stock after putting into ladle: ", staple_stock)
 
-	if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
-		call_deferred("refresh_cart_pot_panel")
+	request_cart_pot_panel_refresh()
 
 
 func take_ready_staple_from_ladle(slot_index: int) -> void:
@@ -3757,6 +3751,58 @@ func add_money(amount: int) -> void:
 
 	print("Money earned: ", amount)
 	print("Current money: ", money)
+
+func get_active_effect_records() -> Array:
+	var result: Array = []
+
+	var active_effects_value = RunSetupData.get("active_effects")
+	if typeof(active_effects_value) == TYPE_ARRAY:
+		for effect_data in active_effects_value:
+			if typeof(effect_data) == TYPE_DICTIONARY:
+				result.append(effect_data)
+
+	var acquired_effects_value = RunSetupData.get("acquired_effects")
+	if typeof(acquired_effects_value) == TYPE_ARRAY:
+		for effect_data in acquired_effects_value:
+			if typeof(effect_data) == TYPE_DICTIONARY:
+				result.append(effect_data)
+
+	return result
+
+
+func has_effect(effect_id: String) -> bool:
+	if effect_id == "":
+		return false
+
+	for effect_data in get_active_effect_records():
+		var record_effect_id: String = str(effect_data.get("effect_id", ""))
+		var record_id: String = str(effect_data.get("id", ""))
+
+		if record_effect_id == effect_id:
+			return true
+
+		if record_id == effect_id:
+			return true
+
+	return false
+
+
+func get_effective_cart_pot_batch_duration() -> float:
+	var duration: float = cart_pot_batch_duration
+
+	if has_effect("claw_dance"):
+		duration *= 0.8
+
+	return max(duration, 0.2)
+
+
+func get_effective_staple_ladle_duration() -> float:
+	var duration: float = staple_ladle_duration
+
+	if has_effect("claw_dance"):
+		duration *= 0.8
+
+	return max(duration, 0.2)
 
 func change_reputation(delta: int, reason: String = "") -> void:
 	var before_reputation: int = RunSetupData.reputation
