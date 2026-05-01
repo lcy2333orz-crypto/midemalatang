@@ -1,10 +1,10 @@
 [gd_scene format=3 uid="uid://cx2o1airlm22"]
 
-[ext_resource type="Script" uid="uid://b10ky6ti6tnqq" path="res://station_area.gd" id="1_0xm2m"]
-[ext_resource type="PackedScene" uid="uid://c8eg3meju24nj" path="res://player.tscn" id="1_ig7tw"]
-[ext_resource type="PackedScene" uid="uid://dxv8fg3rkxamc" path="res://customer.tscn" id="3_h2yge"]
-[ext_resource type="Script" uid="uid://c2ciya17b656e" path="res://ui_layer.gd" id="3_lquwl"]
-[ext_resource type="Script" uid="uid://c682ebjbspsim" path="res://game_manager.gd" id="4_1bvp3"]
+[ext_resource type="Script" uid="uid://b10ky6ti6tnqq" path="res://scenes/stations/station_area.gd" id="1_0xm2m"]
+[ext_resource type="PackedScene" uid="uid://c8eg3meju24nj" path="res://scenes/gameplay/player.tscn" id="1_ig7tw"]
+[ext_resource type="PackedScene" uid="uid://dxv8fg3rkxamc" path="res://scenes/gameplay/customer.tscn" id="3_h2yge"]
+[ext_resource type="Script" uid="uid://c2ciya17b656e" path="res://scenes/ui/ui_layer.gd" id="3_lquwl"]
+[ext_resource type="Script" uid="uid://c682ebjbspsim" path="res://scenes/gameplay/game_manager.gd" id="4_1bvp3"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_7dm0k"]
 size = Vector2(180, 120)

@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://crsmhl4higunm"]
 
-[ext_resource type="Script" uid="uid://5c0a0bivdp4r" path="res://settlement_result.gd" id="1_q51vo"]
+[ext_resource type="Script" uid="uid://5c0a0bivdp4r" path="res://scenes/settlement/settlement_result.gd" id="1_q51vo"]
 
 [node name="SettlementResult" type="Control" unique_id=1815144626]
 layout_mode = 3

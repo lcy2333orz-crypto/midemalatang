@@ -22,7 +22,7 @@ func _ready() -> void:
 	message_label.text = ""
 
 func _on_start_button_pressed() -> void:
-	get_tree().change_scene_to_file("res://home_menu.tscn")
+	get_tree().change_scene_to_file("res://scenes/menus/home_menu.tscn")
 
 func _on_settings_button_pressed() -> void:
 	message_label.text = TextDB.get_text("UI_TITLE_SETTINGS_NOT_READY")

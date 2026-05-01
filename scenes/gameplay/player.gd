@@ -31,7 +31,11 @@ func try_interact() -> void:
 		print("No station nearby")
 		return
 
-	var target_station = nearby_stations[0]
+	var target_station = get_nearest_station()
+	if target_station == null:
+		print("No valid station nearby")
+		return
+
 	print("Trying to interact with: ", target_station.name)
 
 	if target_station.has_method("interact"):
@@ -44,10 +48,30 @@ func try_toggle_business() -> void:
 		print("No station nearby for toggle")
 		return
 
-	var target_station = nearby_stations[0]
+	var target_station = get_nearest_station()
+	if target_station == null:
+		print("No valid station nearby for toggle")
+		return
+
 	print("Trying to toggle business with: ", target_station.name)
 
 	if target_station.has_method("toggle_business"):
 		target_station.toggle_business()
 	else:
 		print("Target station cannot toggle business.")
+
+
+func get_nearest_station() -> Area2D:
+	var nearest_station: Area2D = null
+	var nearest_distance := INF
+
+	for station in nearby_stations:
+		if station == null or not is_instance_valid(station):
+			continue
+
+		var distance := global_position.distance_squared_to(station.global_position)
+		if distance < nearest_distance:
+			nearest_distance = distance
+			nearest_station = station
+
+	return nearest_station

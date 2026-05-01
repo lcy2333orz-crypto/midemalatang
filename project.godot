@@ -11,16 +11,17 @@ config_version=5
 [application]
 
 config/name="malatang"
+run/main_scene="res://scenes/menus/title_menu.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
 
 [autoload]
 
-ProgressData="*uid://dm4v0byf7w6vv"
-RunSetupData="*uid://cpk17lqocd0tb"
-TextDB="*uid://c52osjtmkbqct"
-GlobalRunMenu="*uid://bi8h32tjobgje"
-EffectManager="*uid://dfjty5whh7t1p"
+ProgressData="*res://autoload/progress_data.gd"
+RunSetupData="*res://autoload/run_setup_data.gd"
+TextDB="*res://autoload/text_db.gd"
+GlobalRunMenu="*res://autoload/global_run_menu.gd"
+EffectManager="*res://autoload/effect_manager.gd"
 
 [input]
 

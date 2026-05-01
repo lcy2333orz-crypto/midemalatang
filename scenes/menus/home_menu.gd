@@ -22,7 +22,7 @@ func _ready() -> void:
 	message_label.text = TextDB.get_text("UI_HOME_MAIN_HINT")
 
 func _on_stage_select_button_pressed() -> void:
-	get_tree().change_scene_to_file("res://stage_select.tscn")
+	get_tree().change_scene_to_file("res://scenes/menus/stage_select.tscn")
 
 func _on_notebook_button_pressed() -> void:
 	message_label.text = TextDB.get_text("UI_HOME_NOTEBOOK_NOT_READY")
@@ -31,4 +31,4 @@ func _on_map_button_pressed() -> void:
 	message_label.text = TextDB.get_text("UI_HOME_MAP_NOT_READY")
 
 func _on_back_button_pressed() -> void:
-	get_tree().change_scene_to_file("res://title_menu.tscn")
+	get_tree().change_scene_to_file("res://scenes/menus/title_menu.tscn")

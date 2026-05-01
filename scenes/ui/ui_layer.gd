@@ -17,7 +17,7 @@ extends CanvasLayer
 @onready var cards_container: HBoxContainer = $PendingOrdersPanel/CardsContainer
 
 var stock_visibility_token: int = 0
-var pending_order_card_scene: PackedScene = preload("res://pending_order_card.tscn")
+var pending_order_card_scene: PackedScene = preload("res://scenes/ui/pending_order_card.tscn")
 
 
 func _ready() -> void:

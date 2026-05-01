@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://m3ktxf1h1a07"]
 
-[ext_resource type="Script" uid="uid://bvuyyoutswavb" path="res://stage_select.gd" id="1_d2q2k"]
+[ext_resource type="Script" uid="uid://bvuyyoutswavb" path="res://scenes/menus/stage_select.gd" id="1_d2q2k"]
 
 [node name="StageSelect" type="Control" unique_id=1258329786]
 layout_mode = 3

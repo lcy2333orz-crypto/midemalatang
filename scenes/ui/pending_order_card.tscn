@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://vb7i5kmec4as"]
 
-[ext_resource type="Script" uid="uid://bgago6mmrpgu7" path="res://pending_order_card.gd" id="1_v3r1o"]
+[ext_resource type="Script" uid="uid://bgago6mmrpgu7" path="res://scenes/ui/pending_order_card.gd" id="1_v3r1o"]
 
 [node name="PendingOrderCard" type="Panel" unique_id=1593253297]
 offset_right = 40.0

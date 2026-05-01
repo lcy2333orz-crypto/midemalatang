@@ -1,5 +1,7 @@
 extends Node
 
+const ItemIds := preload("res://gameplay/models/item_ids.gd")
+
 var selected_stage_id: String = ""
 var selected_difficulty_days: int = 7
 
@@ -33,14 +35,14 @@ var starting_money: int = 70
 var supplier_delivery_seconds: float = 6.0
 
 var basic_ingredient_ids: Array[String] = [
-	"spinach",
-	"potato_slice",
-	"tofu_puff"
+	ItemIds.SPINACH,
+	ItemIds.POTATO_SLICE,
+	ItemIds.TOFU_PUFF
 ]
 
 var staple_item_ids: Array[String] = [
-	"glass_noodle",
-	"noodle"
+	ItemIds.GLASS_NOODLE,
+	ItemIds.NOODLE
 ]
 
 var supplier_base_prices: Dictionary = {

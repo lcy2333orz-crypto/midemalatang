@@ -226,7 +226,7 @@ func _create_cat_feed_widgets() -> void:
 	cat_feed_area.size = Vector2(170, 145)
 	cat_feed_area.z_index = 2
 	cat_feed_area.mouse_filter = Control.MOUSE_FILTER_STOP
-	cat_feed_area.set_script(preload("res://cat_feed_area.gd"))
+	cat_feed_area.set_script(preload("res://scenes/settlement/cat_feed_area.gd"))
 	add_child(cat_feed_area)
 
 	var cat_label := Label.new()
@@ -561,7 +561,7 @@ func _refresh_leftover_food_buttons() -> void:
 			continue
 
 		var button := Button.new()
-		button.set_script(preload("res://draggable_leftover_food_button.gd"))
+		button.set_script(preload("res://scenes/settlement/draggable_leftover_food_button.gd"))
 		button.custom_minimum_size = Vector2(120, 36)
 		button.size = Vector2(120, 36)
 		button.call("setup", item_id, _get_food_display_name(item_id), amount)
@@ -880,14 +880,14 @@ func _on_retry_button_pressed() -> void:
 		clear_leftover_food_for_next_day()
 
 		RunSetupData.current_day_in_run += 1
-		get_tree().change_scene_to_file("res://main.tscn")
+		get_tree().change_scene_to_file("res://scenes/gameplay/main.tscn")
 		return
 
 	clear_leftover_food_for_next_day()
 
 	RunSetupData.reset_run_setup()
-	get_tree().change_scene_to_file("res://home_menu.tscn")
+	get_tree().change_scene_to_file("res://scenes/menus/home_menu.tscn")
 
 func _on_back_home_button_pressed() -> void:
 	RunSetupData.reset_run_setup()
-	get_tree().change_scene_to_file("res://home_menu.tscn")
+	get_tree().change_scene_to_file("res://scenes/menus/home_menu.tscn")

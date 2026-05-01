@@ -1,5 +1,7 @@
 extends CharacterBody2D
 
+const ItemIds := preload("res://gameplay/models/item_ids.gd")
+
 enum CustomerState {
 	MOVING_TO_QUEUE,
 	WAITING_IN_QUEUE,
@@ -10,12 +12,12 @@ enum CustomerState {
 	MOVING_TO_EXIT
 }
 
-const ITEM_NONE := "none"
-const ITEM_GLASS_NOODLE := "glass_noodle"
-const ITEM_NOODLE := "noodle"
-const ITEM_SPINACH := "spinach"
-const ITEM_POTATO_SLICE := "potato_slice"
-const ITEM_TOFU_PUFF := "tofu_puff"
+const ITEM_NONE := ItemIds.NONE
+const ITEM_GLASS_NOODLE := ItemIds.GLASS_NOODLE
+const ITEM_NOODLE := ItemIds.NOODLE
+const ITEM_SPINACH := ItemIds.SPINACH
+const ITEM_POTATO_SLICE := ItemIds.POTATO_SLICE
+const ITEM_TOFU_PUFF := ItemIds.TOFU_PUFF
 
 @export var move_speed: float = 120.0
 @export var target_position: Vector2 = Vector2.ZERO

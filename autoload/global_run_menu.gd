@@ -23,10 +23,21 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if not _can_open_for_current_scene():
+		return
+
 	if event is InputEventKey:
 		if event.pressed and not event.echo and event.keycode == KEY_TAB:
 			toggle_menu()
 			get_viewport().set_input_as_handled()
+
+
+func _can_open_for_current_scene() -> bool:
+	var current_scene := get_tree().current_scene
+	if current_scene == null:
+		return false
+
+	return current_scene.scene_file_path == "res://scenes/gameplay/main.tscn"
 
 
 func _create_menu() -> void:
@@ -129,6 +140,9 @@ func toggle_menu() -> void:
 
 func open_menu() -> void:
 	if root == null:
+		return
+
+	if not _can_open_for_current_scene():
 		return
 
 	_position_menu()
@@ -323,4 +337,4 @@ func _on_abandon_button_pressed() -> void:
 		root.visible = false
 
 	RunSetupData.reset_run_setup()
-	get_tree().change_scene_to_file("res://home_menu.tscn")
+	get_tree().change_scene_to_file("res://scenes/menus/home_menu.tscn")
