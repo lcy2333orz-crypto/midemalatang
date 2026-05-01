@@ -17,34 +17,23 @@ func debug_validate() -> Array[String]:
 	return warnings
 
 
-func build_day_summary(
-	remaining_cooked_stock: Dictionary,
-	remaining_raw_stock: Dictionary,
-	remaining_staple_stock: Dictionary,
-	discarded_staple_food: Dictionary
-) -> Dictionary:
-	if manager == null or not is_instance_valid(manager):
-		return {}
-
+func build_day_summary(input: Dictionary) -> Dictionary:
 	return {
 		"day_index": RunSetupData.current_day_in_run,
 		"total_days": RunSetupData.total_days_in_run,
-		"today_gross_income": manager.today_gross_income,
-		"today_expense": manager.today_expense,
-		"today_net_income": manager.today_income,
-		"run_gross_income": manager.round_gross_income,
-		"run_expense": manager.round_expense,
-		"run_net_income": manager.round_income,
-		"current_money": manager.money,
-		"cooked_stock_text": manager.get_cooked_stock_text(),
-		"raw_stock_text": "%s\nÃ¤Â¸Â»Ã©Â£Å¸Ã¥Âºâ€œÃ¥Â­ËœÃ¯Â¼Å¡%s" % [
-			manager.get_raw_stock_text(),
-			manager.get_staple_stock_text()
-		],
-		"cooked_stock_data": remaining_cooked_stock,
-		"raw_stock_data": remaining_raw_stock,
-		"staple_stock_data": remaining_staple_stock,
-		"discarded_staple_food": discarded_staple_food,
+		"today_gross_income": int(input.get("today_gross_income", 0)),
+		"today_expense": int(input.get("today_expense", 0)),
+		"today_net_income": int(input.get("today_net_income", 0)),
+		"run_gross_income": int(input.get("run_gross_income", 0)),
+		"run_expense": int(input.get("run_expense", 0)),
+		"run_net_income": int(input.get("run_net_income", 0)),
+		"current_money": int(input.get("current_money", 0)),
+		"cooked_stock_text": str(input.get("cooked_stock_text", "")),
+		"raw_stock_text": str(input.get("raw_stock_text", "")),
+		"cooked_stock_data": input.get("cooked_stock_data", {}),
+		"raw_stock_data": input.get("raw_stock_data", {}),
+		"staple_stock_data": input.get("staple_stock_data", {}),
+		"discarded_staple_food": input.get("discarded_staple_food", {}),
 		"today_reputation_delta": RunSetupData.today_reputation_delta,
 		"shop_reputation": RunSetupData.shop_reputation,
 		"today_echo_lines": RunSetupData.get_today_stall_echo_lines(),
@@ -52,37 +41,23 @@ func build_day_summary(
 	}
 
 
-func build_run_summary(
-	remaining_cooked_stock: Dictionary,
-	remaining_raw_stock: Dictionary,
-	remaining_staple_stock: Dictionary
-) -> Dictionary:
-	if manager == null or not is_instance_valid(manager):
-		return {}
-
+func build_run_summary(input: Dictionary) -> Dictionary:
 	return {
 		"total_days": RunSetupData.total_days_in_run,
-		"today_gross_income": manager.today_gross_income,
-		"today_expense": manager.today_expense,
-		"today_net_income": manager.today_income,
-		"run_gross_income": manager.round_gross_income,
-		"run_expense": manager.round_expense,
-		"run_net_income": manager.round_income,
-		"current_money": manager.money,
-		"cooked_stock_text": manager.get_cooked_stock_text(),
-		"raw_stock_text": "%s\nÃ¤Â¸Â»Ã©Â£Å¸Ã¥Âºâ€œÃ¥Â­ËœÃ¯Â¼Å¡%s" % [
-			manager.get_raw_stock_text(),
-			manager.get_staple_stock_text()
-		],
-		"cooked_stock_data": remaining_cooked_stock,
-		"raw_stock_data": remaining_raw_stock,
-		"staple_stock_data": remaining_staple_stock,
+		"today_gross_income": int(input.get("today_gross_income", 0)),
+		"today_expense": int(input.get("today_expense", 0)),
+		"today_net_income": int(input.get("today_net_income", 0)),
+		"run_gross_income": int(input.get("run_gross_income", 0)),
+		"run_expense": int(input.get("run_expense", 0)),
+		"run_net_income": int(input.get("run_net_income", 0)),
+		"current_money": int(input.get("current_money", 0)),
+		"cooked_stock_text": str(input.get("cooked_stock_text", "")),
+		"raw_stock_text": str(input.get("raw_stock_text", "")),
+		"cooked_stock_data": input.get("cooked_stock_data", {}),
+		"raw_stock_data": input.get("raw_stock_data", {}),
+		"staple_stock_data": input.get("staple_stock_data", {}),
 		"today_reputation_delta": RunSetupData.today_reputation_delta,
 		"shop_reputation": RunSetupData.shop_reputation,
 		"today_echo_lines": RunSetupData.get_today_stall_echo_lines(),
 		"cooked_stock_discarded": true
 	}
-
-
-# TODO: Move day/run summary dictionary construction out of GameManager.
-# GameManager should only decide when to finish, then ask this builder for data.

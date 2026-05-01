@@ -1,6 +1,8 @@
 ﻿class_name CustomerQueueSystem
 extends RefCounted
 
+const CustomerOrderState := preload("res://gameplay/models/customer_order_state.gd")
+
 var manager = null
 var spawn_policy: Dictionary = {}
 
@@ -44,8 +46,8 @@ func get_active_queue_snapshot() -> Array:
 
 		snapshot.append({
 			"name": customer.name,
-			"queue_index": int(customer.get("queue_index")),
-			"state": int(customer.get("current_state"))
+			"queue_index": CustomerOrderState.get_queue_index(customer),
+			"state": CustomerOrderState.get_current_state_id(customer)
 		})
 
 	return snapshot
@@ -152,9 +154,7 @@ func remove_customer_from_queue(customer: Node) -> void:
 
 
 func remove_customer_from_pending(customer: Node) -> void:
-	var idx := manager.pending_customers.find(customer)
-	if idx != -1:
-		manager.pending_customers.remove_at(idx)
+	manager.pending_order_system.remove(customer)
 
 
 func release_counter_customer(customer: Node) -> void:
@@ -166,11 +166,8 @@ func notify_customer_leaving(customer: Node) -> void:
 	var paid_price := 0
 
 	if customer != null and is_instance_valid(customer):
-		if customer.is_checked_out and not customer.order_served:
-			if customer.has_method("get_paid_price"):
-				paid_price = customer.get_paid_price()
-			else:
-				paid_price = customer.get_order_price()
+		if CustomerOrderState.is_checked_out(customer) and not CustomerOrderState.is_served(customer):
+			paid_price = CustomerOrderState.get_paid_price(customer)
 
 	if paid_price > 0:
 		manager.money = max(manager.money - paid_price, 0)

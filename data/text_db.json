@@ -75,7 +75,13 @@
 	"UI_SETTLEMENT_NEXT_DAY": "进入下一天",
 	"UI_SETTLEMENT_ABORT_RUN": "放弃本轮并返回主页",
 	"UI_SETTLEMENT_RESTART_RUN": "再次挑战本关",
-	"UI_SETTLEMENT_TOTAL_DAYS": "总经营天数：%d"
+	"UI_SETTLEMENT_TOTAL_DAYS": "总经营天数：%d",
+	"UI_DAY_GIFT_DEFAULT_TITLE": "特殊客人的礼物",
+	"UI_DAY_GIFT_DESC": "特殊客人留下了一个小小的回响。选择其中一种影响。",
+	"UI_DAY_GIFT_CLOSE": "先不打开",
+	"UI_SETTLEMENT_CAT_LABEL": "小猫",
+	"UI_SETTLEMENT_CAT_HINT": "拖熟食来喂\n或点击摸头",
+	"UI_SETTLEMENT_CAT_NO_LEFTOVER": "今天没有剩余熟食，可以摸摸小猫。"
   },
   "en": {
 	"UI_MONEY": "Money: %d",
@@ -153,6 +159,12 @@
 	"UI_SETTLEMENT_NEXT_DAY": "Next Day",
 	"UI_SETTLEMENT_ABORT_RUN": "Quit Run and Return Home",
 	"UI_SETTLEMENT_RESTART_RUN": "Retry This Stage",
-	"UI_SETTLEMENT_TOTAL_DAYS": "Total Days: %d"
+	"UI_SETTLEMENT_TOTAL_DAYS": "Total Days: %d",
+	"UI_DAY_GIFT_DEFAULT_TITLE": "Special Customer Gift",
+	"UI_DAY_GIFT_DESC": "A special customer left a small echo. Choose one effect.",
+	"UI_DAY_GIFT_CLOSE": "Not Now",
+	"UI_SETTLEMENT_CAT_LABEL": "Cat",
+	"UI_SETTLEMENT_CAT_HINT": "Drag cooked food here\nor pet the cat",
+	"UI_SETTLEMENT_CAT_NO_LEFTOVER": "No cooked leftovers today. You can pet the cat."
   }
 }

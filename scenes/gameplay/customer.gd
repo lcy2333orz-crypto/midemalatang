@@ -283,6 +283,74 @@ func mark_payment_completed(quoted_price: int, true_price: int) -> void:
 	price_reaction_result = "accept"
 	print("Customer payment completed. Paid: ", quoted_price, " True price: ", true_price)
 
+func is_order_served() -> bool:
+	return order_served
+
+func is_checkout_completed() -> bool:
+	return is_checked_out
+
+func set_order_revealed(value: bool) -> void:
+	order_revealed = value
+
+func is_leaving_for_patience() -> bool:
+	return leaving_due_to_patience
+
+func get_queue_index() -> int:
+	return queue_index
+
+func get_current_state_id() -> int:
+	return int(current_state)
+
+func is_waiting_for_main_food() -> bool:
+	return needs_main_food_cooking
+
+func set_waiting_for_main_food(value: bool) -> void:
+	needs_main_food_cooking = value
+	_refresh_cart_ready_for_delivery()
+
+func is_waiting_for_ingredients() -> bool:
+	return needs_ingredient_cooking
+
+func set_waiting_for_ingredients(value: bool) -> void:
+	needs_ingredient_cooking = value
+	_refresh_cart_ready_for_delivery()
+
+func is_waiting_for_emergency_purchase() -> bool:
+	return needs_emergency_purchase
+
+func set_waiting_for_emergency_purchase(value: bool) -> void:
+	needs_emergency_purchase = value
+	_refresh_cart_ready_for_delivery()
+
+func is_cart_main_food_ready() -> bool:
+	return cart_main_food_ready
+
+func set_cart_main_food_ready(value: bool) -> void:
+	cart_main_food_ready = value
+	_refresh_cart_ready_for_delivery()
+
+func is_cart_ingredients_ready() -> bool:
+	return cart_ingredients_ready
+
+func set_cart_ingredients_ready(value: bool) -> void:
+	cart_ingredients_ready = value
+	_refresh_cart_ready_for_delivery()
+
+func has_special_customer_flag() -> bool:
+	return is_special_customer
+
+func has_special_result_recorded() -> bool:
+	return special_result_recorded
+
+func set_special_result_recorded(value: bool) -> void:
+	special_result_recorded = value
+
+func get_special_customer_type() -> String:
+	return special_customer_type
+
+func get_special_customer_name() -> String:
+	return special_customer_name
+
 func start_waiting_for_food(main_food_cooking: bool, ingredient_cooking: bool) -> void:
 	is_waiting_for_food = true
 	is_ready_for_delivery = false

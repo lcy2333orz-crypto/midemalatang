@@ -2,6 +2,7 @@
 
 const BusinessDaySystemScript := preload("res://gameplay/systems/business_day_system.gd")
 const CustomerQueueSystemScript := preload("res://gameplay/systems/customer_queue_system.gd")
+const PendingOrderSystemScript := preload("res://gameplay/systems/pending_order_system.gd")
 const OrderSystemScript := preload("res://gameplay/systems/order_system.gd")
 const InventorySystemScript := preload("res://gameplay/systems/inventory_system.gd")
 const CookingSystemScript := preload("res://gameplay/systems/cooking_system.gd")
@@ -10,11 +11,15 @@ const EmergencyPurchaseSystemScript := preload("res://gameplay/systems/emergency
 const ReputationSystemScript := preload("res://gameplay/systems/reputation_system.gd")
 const SettlementBuilderScript := preload("res://gameplay/systems/settlement_builder.gd")
 const StockUtils := preload("res://gameplay/models/stock_utils.gd")
+const CustomerOrderState := preload("res://gameplay/models/customer_order_state.gd")
+const DayGiftPanelControllerScript := preload("res://scenes/ui/day_gift_panel_controller.gd")
+const MorningInfoPanelControllerScript := preload("res://scenes/ui/morning_info_panel_controller.gd")
 
 @export var customer_scene: PackedScene
 
 var business_day_system: BusinessDaySystem
 var customer_queue_system: CustomerQueueSystem
+var pending_order_system: PendingOrderSystem
 var order_system: OrderSystem
 var inventory_system: InventorySystem
 var cooking_system: CookingSystem
@@ -22,6 +27,8 @@ var supplier_system: SupplierSystem
 var emergency_purchase_system: EmergencyPurchaseSystem
 var reputation_system: ReputationSystem
 var settlement_builder: SettlementBuilder
+var day_gift_panel_controller: DayGiftPanelController
+var morning_info_panel_controller: MorningInfoPanelController
 
 var queued_customers: Array = []
 var pending_customers: Array = []
@@ -49,7 +56,6 @@ var morning_info_layer: CanvasLayer = null
 var base_spawn_timer_wait_time: float = 1.0
 
 var day_gift_layer: CanvasLayer = null
-var day_gift_panel: Panel = null
 var day_gift_current_gift_id: String = ""
 var day_gift_current_options: Array = []
 
@@ -74,39 +80,6 @@ var raw_stock: Dictionary = {}
 var cooked_stock: Dictionary = {}
 var staple_stock: Dictionary = {}
 
-# æŽ¨è½¦é˜¶æ®µï¼šå¤§é”…æ‰¹é‡ç…®é…èœ
-var cart_pot_capacity: int = 6
-var cart_pot_batch_duration: float = 3.0
-var cart_pot_is_cooking: bool = false
-var cart_pot_time_left: float = 0.0
-var cart_pot_cooking_batch: Dictionary = {}
-var cart_pot_selection: Dictionary = {}
-
-var cart_pot_layer: CanvasLayer = null
-var cart_pot_panel: Panel = null
-var cart_pot_scroll: ScrollContainer = null
-var cart_pot_content: VBoxContainer = null
-
-var cart_pot_status_label: Label = null
-var cart_pot_row_labels: Dictionary = {}
-var cart_pot_minus_buttons: Dictionary = {}
-var cart_pot_plus_buttons: Dictionary = {}
-var cart_pot_max_buttons: Dictionary = {}
-var cart_pot_start_button: Button = null
-
-# æŽ¨è½¦é˜¶æ®µï¼šä¸»é£Ÿæ¼å‹º
-var staple_ladle_duration: float = 3.0
-var staple_ladle_slots: Array = []
-var held_raw_staple_food_id: String = ""
-var held_staple_food_id: String = ""
-
-
-var supplier_order_layer: CanvasLayer = null
-var supplier_order_panel: Panel = null
-var supplier_order_status_label: Label = null
-var supplier_order_buttons: Array[Button] = []
-var supplier_orders: Array = []
-var supplier_order_sequence_id: int = 0
 var has_opened_for_business_today: bool = false
 
 var max_queue_size: int = 3
@@ -173,6 +146,7 @@ func _ready() -> void:
 func initialize_systems() -> void:
 	business_day_system = BusinessDaySystemScript.new()
 	customer_queue_system = CustomerQueueSystemScript.new()
+	pending_order_system = PendingOrderSystemScript.new()
 	order_system = OrderSystemScript.new()
 	inventory_system = InventorySystemScript.new()
 	cooking_system = CookingSystemScript.new()
@@ -180,10 +154,13 @@ func initialize_systems() -> void:
 	emergency_purchase_system = EmergencyPurchaseSystemScript.new()
 	reputation_system = ReputationSystemScript.new()
 	settlement_builder = SettlementBuilderScript.new()
+	day_gift_panel_controller = DayGiftPanelControllerScript.new()
+	morning_info_panel_controller = MorningInfoPanelControllerScript.new()
 
 	for system in [
 		business_day_system,
 		customer_queue_system,
+		pending_order_system,
 		order_system,
 		inventory_system,
 		cooking_system,
@@ -193,6 +170,10 @@ func initialize_systems() -> void:
 		settlement_builder
 	]:
 		system.bind(self)
+
+	pending_customers = pending_order_system.pending_customers
+	day_gift_panel_controller.bind(self)
+	morning_info_panel_controller.bind(self)
 
 
 func set_spawn_policy(policy: Dictionary) -> void:
@@ -209,6 +190,7 @@ func get_system_debug_report() -> Array[String]:
 	for system in [
 		business_day_system,
 		customer_queue_system,
+		pending_order_system,
 		order_system,
 		inventory_system,
 		cooking_system,
@@ -265,6 +247,9 @@ func debug_validate_runtime() -> bool:
 
 	if get_node_or_null("/root/RunSetupData") == null:
 		blocking_errors.append("GameManager: RunSetupData autoload is missing.")
+	elif RunSetupData.has_method("debug_validate"):
+		for warning in RunSetupData.debug_validate():
+			warnings.append(str(warning))
 
 	if get_node_or_null("/root/ProgressData") == null:
 		blocking_errors.append("GameManager: ProgressData autoload is missing.")
@@ -293,12 +278,6 @@ func debug_validate_runtime() -> bool:
 	if typeof(cooker_slots) != TYPE_ARRAY:
 		blocking_errors.append("GameManager: cooker_slots is not an Array.")
 
-	if typeof(staple_ladle_slots) != TYPE_ARRAY:
-		blocking_errors.append("GameManager: staple_ladle_slots is not an Array.")
-
-	if typeof(supplier_orders) != TYPE_ARRAY:
-		blocking_errors.append("GameManager: supplier_orders is not an Array.")
-
 	for warning in get_system_debug_report():
 		warnings.append(warning)
 
@@ -312,10 +291,8 @@ func debug_validate_runtime() -> bool:
 
 func _process(delta: float) -> void:
 	update_day_timer(delta)
-	update_supplier_orders(delta)
-	update_cooker_slots(delta)
-	update_cart_pot(delta)
-	update_staple_ladle_slots(delta)
+	supplier_system.update(delta)
+	cooking_system.update(delta)
 
 	if is_round_closing and not has_round_finished and not is_cleanup_phase:
 		try_finish_day()
@@ -335,9 +312,9 @@ func _process(delta: float) -> void:
 	game_ui.hide_patience()
 
 	var order_cards: Array = []
-	for customer in pending_customers:
+	for customer in pending_order_system.get_all():
 		if customer != null and is_instance_valid(customer):
-			if not customer.order_served:
+			if not CustomerOrderState.is_served(customer):
 				order_cards.append(get_pending_order_card_data(customer))
 
 	if order_cards.is_empty():
@@ -390,9 +367,7 @@ func start_round() -> void:
 	has_round_finished = false
 
 	has_opened_for_business_today = false
-	supplier_orders.clear()
-	supplier_order_sequence_id = 0
-	close_supplier_order_panel()
+	supplier_system.clear_day_state()
 
 	day_time_left = day_duration_seconds
 	auto_close_triggered = false
@@ -430,7 +405,7 @@ func start_round() -> void:
 		)
 
 	queued_customers.clear()
-	pending_customers.clear()
+	pending_order_system.clear()
 
 	if spawn_timer != null and is_instance_valid(spawn_timer):
 		spawn_timer.stop()
@@ -440,641 +415,66 @@ func start_round() -> void:
 	show_pending_morning_info_if_any()
 	debug_validate_runtime()
 
+# External compatibility wrappers: station/UI/customer scripts still enter gameplay
+# through GameManager while systems own the real state and behavior.
 func can_use_supplier_ordering() -> bool:
-	if has_round_finished:
-		return false
-
-	if is_round_closing:
-		return false
-
-	if is_cleanup_phase:
-		return false
-
-	if is_open_for_business:
-		return false
-
-	if has_opened_for_business_today:
-		return false
-
-	return true
+	return supplier_system.can_use_ordering()
 
 
 func open_supplier_order_panel() -> void:
-	if not can_use_supplier_ordering():
-		print("æ™®é€šä¾›è´§å•†åªåœ¨å¼€ä¸šå‰æŽ¥å•ã€‚å¼€ä¸šåŽåªèƒ½åŽ» EmergencyShop æ‰¾éš”å£ä¸´æ—¶å€Ÿè´§ã€‚")
-		show_storage_stock_only()
-		return
-
-	if supplier_order_layer != null and is_instance_valid(supplier_order_layer):
-		refresh_supplier_order_panel()
-		return
-
-	supplier_order_layer = CanvasLayer.new()
-	supplier_order_layer.name = "SupplierOrderLayer"
-	supplier_order_layer.layer = 90
-	add_child(supplier_order_layer)
-
-	var viewport_size := get_viewport().get_visible_rect().size
-
-	supplier_order_panel = Panel.new()
-	supplier_order_panel.name = "SupplierOrderPanel"
-	supplier_order_panel.size = Vector2(640, 430)
-	supplier_order_panel.position = Vector2(
-		viewport_size.x * 0.5 - 320,
-		viewport_size.y * 0.5 - 215
-	)
-	supplier_order_layer.add_child(supplier_order_panel)
-
-	var title_label := Label.new()
-	title_label.name = "SupplierOrderTitle"
-	title_label.text = "æ—©å¸‚ä¾›è´§å•†"
-	title_label.position = Vector2(24, 14)
-	title_label.size = Vector2(592, 32)
-	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	title_label.add_theme_font_size_override("font_size", 22)
-	supplier_order_panel.add_child(title_label)
-
-	var desc_label := Label.new()
-	desc_label.name = "SupplierOrderDesc"
-	desc_label.text = "å¼€ä¸šå‰å¯ä»¥æ‰¹é‡è®¢è´§ã€‚é£Ÿæå’Œä¸»é£Ÿéƒ½æŒ‰ç¯®/ç®±é€è¾¾ï¼›å¼€ä¸šåŽä¾›è´§å•†å°±ä¸æŽ¥å•äº†ã€‚"
-	desc_label.position = Vector2(36, 48)
-	desc_label.size = Vector2(568, 44)
-	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	desc_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	desc_label.add_theme_font_size_override("font_size", 13)
-	supplier_order_panel.add_child(desc_label)
-
-	supplier_order_status_label = Label.new()
-	supplier_order_status_label.name = "SupplierOrderStatus"
-	supplier_order_status_label.position = Vector2(34, 92)
-	supplier_order_status_label.size = Vector2(572, 108)
-	supplier_order_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	supplier_order_status_label.add_theme_font_size_override("font_size", 13)
-	supplier_order_panel.add_child(supplier_order_status_label)
-
-	supplier_order_buttons.clear()
-
-	var item_ids := RunSetupData.get_supplier_order_item_ids()
-	var package_options := RunSetupData.get_supplier_package_options()
-
-	var start_x := 34
-	var start_y := 210
-	var button_w := 112
-	var button_h := 48
-	var gap_x := 8
-	var gap_y := 10
-
-	var button_index := 0
-
-	for item_id in item_ids:
-		for package_data in package_options:
-			if typeof(package_data) != TYPE_DICTIONARY:
-				continue
-
-			var amount := int(package_data.get("amount", 1))
-			var package_id := str(package_data.get("id", "package"))
-			var package_name := str(package_data.get("name", "ä¸€æ‰¹"))
-
-			var button := Button.new()
-			button.name = "Order_%s_%s_Button" % [item_id, package_id]
-			button.position = Vector2(
-				start_x + (button_index % 5) * (button_w + gap_x),
-				start_y + int(button_index / 5) * (button_h + gap_y)
-			)
-			button.size = Vector2(button_w, button_h)
-			button.mouse_filter = Control.MOUSE_FILTER_STOP
-
-			button.set_meta("item_id", item_id)
-			button.set_meta("amount", amount)
-			button.set_meta("package_name", package_name)
-
-			button.pressed.connect(_on_supplier_order_button_pressed.bind(item_id, amount))
-
-			supplier_order_panel.add_child(button)
-			supplier_order_buttons.append(button)
-
-			button_index += 1
-
-	var close_button := Button.new()
-	close_button.name = "SupplierOrderCloseButton"
-	close_button.text = "å…³é—­"
-	close_button.position = Vector2(250, 370)
-	close_button.size = Vector2(140, 42)
-	close_button.mouse_filter = Control.MOUSE_FILTER_STOP
-	close_button.pressed.connect(close_supplier_order_panel)
-	supplier_order_panel.add_child(close_button)
-
-	refresh_supplier_order_panel()
+	supplier_system.open_panel()
 
 func refresh_supplier_order_panel() -> void:
-	if supplier_order_panel == null:
-		return
-
-	if supplier_order_status_label != null:
-		var lines: Array[String] = []
-
-		lines.append("å½“å‰èµ„é‡‘ï¼š%d" % money)
-		lines.append("ç”Ÿé£Ÿæï¼š%s" % get_raw_stock_text())
-		lines.append("ä¸»é£Ÿåº“å­˜ï¼š%s" % get_staple_stock_text())
-
-		if supplier_orders.is_empty():
-			lines.append("å¾…é€è¾¾ï¼šæ— ")
-		else:
-			lines.append("å¾…é€è¾¾ï¼š")
-
-			for order_data in supplier_orders:
-				if typeof(order_data) != TYPE_DICTIONARY:
-					continue
-
-				var order_items: Dictionary = order_data.get("items", {})
-				var time_left := float(order_data.get("time_left", 0.0))
-
-				lines.append("- %sï¼Œçº¦ %.1f ç§’åŽé€è¾¾" % [
-					get_items_text(order_items),
-					time_left
-				])
-
-		supplier_order_status_label.text = "\n".join(lines)
-
-	for button in supplier_order_buttons:
-		if button == null or not is_instance_valid(button):
-			continue
-
-		var item_id := str(button.get_meta("item_id", ""))
-		var amount := int(button.get_meta("amount", 1))
-		var package_name := str(button.get_meta("package_name", "ä¸€æ‰¹"))
-
-		if item_id == "":
-			continue
-
-		var price := RunSetupData.get_supplier_order_price(item_id, amount)
-		var current_amount := 0
-
-		if RunSetupData.is_staple_item(item_id):
-			current_amount = int(staple_stock.get(item_id, 0))
-		else:
-			current_amount = int(raw_stock.get(item_id, 0))
-
-		var pending_amount := get_pending_supplier_order_amount(item_id)
-		var display_name := get_ingredient_display_name(item_id)
-
-		if pending_amount > 0:
-			button.text = "%s %s x%d\n%dé‡‘ï½œåº“%d å¾…%d" % [
-				display_name,
-				package_name,
-				amount,
-				price,
-				current_amount,
-				pending_amount
-			]
-		else:
-			button.text = "%s %s x%d\n%dé‡‘ï½œåº“å­˜%d" % [
-				display_name,
-				package_name,
-				amount,
-				price,
-				current_amount
-			]
-
-		button.disabled = money < price or not can_use_supplier_ordering()
+	supplier_system.refresh_panel()
 
 func close_supplier_order_panel() -> void:
-	if supplier_order_layer != null and is_instance_valid(supplier_order_layer):
-		supplier_order_layer.queue_free()
-
-	supplier_order_layer = null
-	supplier_order_panel = null
-	supplier_order_status_label = null
-	supplier_order_buttons.clear()
+	supplier_system.close_panel()
 
 
 func get_pending_supplier_order_amount(item_id: String) -> int:
-	var total := 0
-
-	for order_data in supplier_orders:
-		if typeof(order_data) != TYPE_DICTIONARY:
-			continue
-
-		var items = order_data.get("items", {})
-
-		if typeof(items) != TYPE_DICTIONARY:
-			continue
-
-		total += int(items.get(item_id, 0))
-
-	return total
+	return supplier_system.get_pending_amount(item_id)
 
 
 func _on_supplier_order_button_pressed(item_id: String, amount: int = 1) -> void:
-	if not can_use_supplier_ordering():
-		print("æ™®é€šä¾›è´§å•†åªåœ¨å¼€ä¸šå‰æŽ¥å•ã€‚")
-		refresh_supplier_order_panel()
-		return
+	supplier_system.place_order(item_id, amount)
 
-	var price := RunSetupData.get_supplier_order_price(item_id, amount)
-
-	if not spend_money(price):
-		print("è®¢è´§å¤±è´¥ï¼Œèµ„é‡‘ä¸è¶³ã€‚")
-		refresh_supplier_order_panel()
-		return
-
-	supplier_order_sequence_id += 1
-
-	var order_data := {
-		"order_id": "supplier_order_%d" % supplier_order_sequence_id,
-		"items": {
-			item_id: amount
-		},
-		"time_left": RunSetupData.get_supplier_delivery_seconds()
-	}
-
-	supplier_orders.append(order_data)
-
-	print("Supplier order placed: ", order_data)
-	print("Supplier order cost: ", price)
-
-	refresh_supplier_order_panel()
-
-
-func update_supplier_orders(delta: float) -> void:
-	if supplier_orders.is_empty():
-		return
-
-	var delivered_orders: Array = []
-
-	for i in range(supplier_orders.size()):
-		var order_data: Dictionary = supplier_orders[i]
-
-		var time_left := float(order_data.get("time_left", 0.0))
-		time_left -= delta
-		order_data["time_left"] = time_left
-		supplier_orders[i] = order_data
-
-		if time_left <= 0.0:
-			delivered_orders.append(order_data)
-
-	for order_data in delivered_orders:
-		deliver_supplier_order(order_data)
-		supplier_orders.erase(order_data)
-
-	if supplier_order_layer != null and is_instance_valid(supplier_order_layer):
-		refresh_supplier_order_panel()
-
-
-func deliver_supplier_order(order_data: Dictionary) -> void:
-	var items = order_data.get("items", {})
-
-	if typeof(items) != TYPE_DICTIONARY:
-		return
-
-	for item_id in items.keys():
-		var amount := int(items.get(item_id, 0))
-		var item_key := str(item_id)
-
-		if amount <= 0:
-			continue
-
-		if RunSetupData.is_staple_item(item_key):
-			if not staple_stock.has(item_key):
-				staple_stock[item_key] = 0
-
-			staple_stock[item_key] = int(staple_stock.get(item_key, 0)) + amount
-		else:
-			if not raw_stock.has(item_key):
-				raw_stock[item_key] = 0
-
-			raw_stock[item_key] = int(raw_stock.get(item_key, 0)) + amount
-
-	RunSetupData.current_raw_stock = raw_stock.duplicate(true)
-	RunSetupData.current_staple_stock = staple_stock.duplicate(true)
-
-	print("Supplier order delivered: ", items)
-	print("Raw stock after supplier delivery: ", raw_stock)
-	print("Staple stock after supplier delivery: ", staple_stock)
-
-	if supplier_order_layer != null and is_instance_valid(supplier_order_layer):
-		refresh_supplier_order_panel()
 
 func open_cart_pot_panel() -> void:
-	if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
-		refresh_cart_pot_panel()
-		return
-
-	cart_pot_layer = CanvasLayer.new()
-	cart_pot_layer.name = "CartPotLayer"
-	cart_pot_layer.layer = 95
-	add_child(cart_pot_layer)
-
-	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
-
-	cart_pot_panel = Panel.new()
-	cart_pot_panel.name = "CartPotPanel"
-	cart_pot_panel.size = Vector2(720, 430)
-	cart_pot_panel.position = Vector2(
-		viewport_size.x * 0.5 - 360,
-		viewport_size.y * 0.5 - 215
-	)
-	cart_pot_layer.add_child(cart_pot_panel)
-
-	var title_label := Label.new()
-	title_label.name = "CartPotTitle"
-	title_label.text = "å¤§é”…ï¼šæ‰¹é‡ç…®é…èœ"
-	title_label.position = Vector2(24, 14)
-	title_label.size = Vector2(672, 32)
-	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	title_label.add_theme_font_size_override("font_size", 22)
-	cart_pot_panel.add_child(title_label)
-
-	var desc_label := Label.new()
-	desc_label.name = "CartPotDesc"
-	desc_label.text = "é€‰æ‹©è¿™æ¬¡è¦åŠ å…¥å¤§é”…çš„é…èœæ•°é‡ã€‚å…³ä¸Šé”…ç›–åŽï¼Œå¦‚æžœæœ¬æ¬¡å‡†å¤‡ä¸ä¸ºç©ºï¼Œå°±ä¼šè‡ªåŠ¨å¼€å§‹ç…®ã€‚"
-	desc_label.position = Vector2(40, 48)
-	desc_label.size = Vector2(640, 42)
-	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	desc_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	desc_label.add_theme_font_size_override("font_size", 13)
-	cart_pot_panel.add_child(desc_label)
-
-	cart_pot_status_label = Label.new()
-	cart_pot_status_label.name = "CartPotStatus"
-	cart_pot_status_label.position = Vector2(36, 94)
-	cart_pot_status_label.size = Vector2(648, 96)
-	cart_pot_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	cart_pot_status_label.add_theme_font_size_override("font_size", 13)
-	cart_pot_panel.add_child(cart_pot_status_label)
-
-	cart_pot_row_labels.clear()
-	cart_pot_minus_buttons.clear()
-	cart_pot_plus_buttons.clear()
-	cart_pot_max_buttons.clear()
-
-	var item_ids: Array = get_cart_pot_ingredient_ids()
-	var start_y: int = 205
-	var row_h: int = 46
-
-	for i in range(item_ids.size()):
-		var item_id: String = str(item_ids[i])
-		var row_y: int = start_y + i * row_h
-
-		var row_label := Label.new()
-		row_label.name = "CartPot_%s_Label" % item_id
-		row_label.position = Vector2(40, row_y)
-		row_label.size = Vector2(360, 34)
-		row_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		row_label.add_theme_font_size_override("font_size", 15)
-		cart_pot_panel.add_child(row_label)
-		cart_pot_row_labels[item_id] = row_label
-
-		var minus_button := Button.new()
-		minus_button.name = "CartPot_%s_MinusButton" % item_id
-		minus_button.text = "-"
-		minus_button.position = Vector2(420, row_y)
-		minus_button.size = Vector2(48, 34)
-		minus_button.pressed.connect(_on_cart_pot_minus_pressed.bind(item_id))
-		cart_pot_panel.add_child(minus_button)
-		cart_pot_minus_buttons[item_id] = minus_button
-
-		var plus_button := Button.new()
-		plus_button.name = "CartPot_%s_PlusButton" % item_id
-		plus_button.text = "+"
-		plus_button.position = Vector2(478, row_y)
-		plus_button.size = Vector2(48, 34)
-		plus_button.pressed.connect(_on_cart_pot_plus_pressed.bind(item_id))
-		cart_pot_panel.add_child(plus_button)
-		cart_pot_plus_buttons[item_id] = plus_button
-
-		var max_button := Button.new()
-		max_button.name = "CartPot_%s_MaxButton" % item_id
-		max_button.text = "æœ€å¤§"
-		max_button.position = Vector2(538, row_y)
-		max_button.size = Vector2(72, 34)
-		max_button.pressed.connect(_on_cart_pot_max_pressed.bind(item_id))
-		cart_pot_panel.add_child(max_button)
-		cart_pot_max_buttons[item_id] = max_button
-
-	cart_pot_start_button = null
-
-	var close_button := Button.new()
-	close_button.name = "CartPotCloseButton"
-	close_button.text = "ç›–ä¸Šé”…ç›–"
-	close_button.position = Vector2(290, 360)
-	close_button.size = Vector2(140, 42)
-	close_button.pressed.connect(close_cart_pot_panel_and_auto_start)
-	cart_pot_panel.add_child(close_button)
-
-	refresh_cart_pot_panel()
+	cooking_system.open_cart_pot_panel()
 
 func _build_ladle_row(ladle_index: int) -> HBoxContainer:
-	var slot_index: int = ladle_index - 1
-
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-
-	var state_label := Label.new()
-	state_label.custom_minimum_size = Vector2(190, 28)
-	state_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	state_label.text = _get_ladle_state_text(ladle_index)
-	row.add_child(state_label)
-
-	var slot_state: String = "empty"
-
-	if slot_index >= 0 and slot_index < staple_ladle_slots.size():
-		var slot: Dictionary = staple_ladle_slots[slot_index] as Dictionary
-		slot_state = str(slot.get("state", "empty"))
-
-	var cook_glass_button := Button.new()
-	cook_glass_button.text = "ç…®ç²‰ä¸"
-	cook_glass_button.custom_minimum_size = Vector2(74, 28)
-	cook_glass_button.disabled = not can_start_staple_ladle_cooking(slot_index, "glass_noodle")
-	row.add_child(cook_glass_button)
-
-	var cook_noodle_button := Button.new()
-	cook_noodle_button.text = "ç…®é¢"
-	cook_noodle_button.custom_minimum_size = Vector2(74, 28)
-	cook_noodle_button.disabled = not can_start_staple_ladle_cooking(slot_index, "noodle")
-	row.add_child(cook_noodle_button)
-
-	var take_out_button := Button.new()
-	take_out_button.text = "å–å‡º"
-	take_out_button.custom_minimum_size = Vector2(64, 28)
-	take_out_button.disabled = slot_state != "ready" or held_staple_food_id != ""
-	row.add_child(take_out_button)
-
-	return row
+	return cooking_system._build_ladle_row(ladle_index)
 
 func _get_ladle_state_text(ladle_index: int) -> String:
-	var slot_index := ladle_index - 1
-
-	if slot_index < 0 or slot_index >= staple_ladle_slots.size():
-		return "æ¼å‹º%dï¼šç©º" % ladle_index
-
-	return get_staple_ladle_text(slot_index)
+	return cooking_system._get_ladle_state_text(ladle_index)
 
 func request_cart_pot_panel_refresh() -> void:
-	if cart_pot_panel == null or not is_instance_valid(cart_pot_panel):
-		return
-
-	call_deferred("refresh_cart_pot_panel")
+	cooking_system.request_cart_pot_panel_refresh()
 
 func refresh_cart_pot_panel() -> void:
-	if cart_pot_panel == null:
-		return
-
-	if cart_pot_status_label != null:
-		var lines: Array[String] = []
-		lines.append("å¤§é”…å®¹é‡ï¼š%d / %d" % [
-			get_cart_pot_total_capacity_with_selection(),
-			cart_pot_capacity
-		])
-		lines.append("é”…ä¸­ç†Ÿé…èœï¼š%s" % get_cooked_stock_text())
-
-		if cart_pot_is_cooking:
-			lines.append("æ­£åœ¨ç…®ï¼š%sï¼Œå‰©ä½™ %.1f ç§’" % [
-				get_items_text(cart_pot_cooking_batch),
-				max(cart_pot_time_left, 0.0)
-			])
-		else:
-			lines.append("æ­£åœ¨ç…®ï¼šæ— ")
-
-		if cart_pot_selection.is_empty():
-			lines.append("æœ¬æ¬¡å‡†å¤‡ï¼šæ— ")
-		else:
-			lines.append("æœ¬æ¬¡å‡†å¤‡ï¼š%s" % get_items_text(cart_pot_selection))
-
-		cart_pot_status_label.text = "\n".join(lines)
-
-	var disabled_by_cooking := cart_pot_is_cooking
-
-	for item_id in get_cart_pot_ingredient_ids():
-		var item_key := str(item_id)
-		var raw_amount := int(raw_stock.get(item_key, 0))
-		var cooked_amount := int(cooked_stock.get(item_key, 0))
-		var selected_amount := int(cart_pot_selection.get(item_key, 0))
-		var display_name := get_ingredient_display_name(item_key)
-
-		if cart_pot_row_labels.has(item_key):
-			var row_label: Label = cart_pot_row_labels[item_key]
-			row_label.text = "%s ç”Ÿ x%d é”…ä¸­ç†Ÿ x%d æœ¬æ¬¡ç…® x%d" % [
-				display_name,
-				raw_amount,
-				cooked_amount,
-				selected_amount
-			]
-
-		if cart_pot_minus_buttons.has(item_key):
-			var minus_button: Button = cart_pot_minus_buttons[item_key]
-			minus_button.disabled = disabled_by_cooking or selected_amount <= 0
-
-		if cart_pot_plus_buttons.has(item_key):
-			var plus_button: Button = cart_pot_plus_buttons[item_key]
-			plus_button.disabled = not can_add_to_cart_pot_selection(item_key, 1)
-
-		if cart_pot_max_buttons.has(item_key):
-			var max_button: Button = cart_pot_max_buttons[item_key]
-			max_button.disabled = (
-				disabled_by_cooking
-				or raw_amount <= selected_amount
-				or get_cart_pot_available_capacity_for_selection() <= 0
-			)
+	cooking_system.refresh_cart_pot_panel()
 
 func close_cart_pot_panel_and_auto_start() -> void:
-	if cart_pot_is_cooking:
-		print("å¤§é”…æ­£åœ¨çƒ¹é¥ªä¸­ï¼Œå…³é—­é¢æ¿ã€‚")
-		close_cart_pot_panel()
-		return
-
-	if cart_pot_selection.is_empty():
-		print("æ²¡æœ‰é€‰æ‹©è¦ç…®çš„é…èœï¼Œå…³é—­å¤§é”…é¢æ¿ã€‚")
-		close_cart_pot_panel()
-		return
-
-	print("å…³é—­å¤§é”…é¢æ¿ï¼Œè‡ªåŠ¨å¼€å§‹çƒ¹é¥ªã€‚")
-	start_cart_pot_batch_cooking()
-	close_cart_pot_panel()
+	cooking_system.close_cart_pot_panel_and_auto_start()
 
 func close_cart_pot_panel() -> void:
-	if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
-		cart_pot_layer.queue_free()
-
-	cart_pot_layer = null
-	cart_pot_panel = null
-	cart_pot_status_label = null
-	cart_pot_start_button = null
-
-	cart_pot_row_labels.clear()
-	cart_pot_minus_buttons.clear()
-	cart_pot_plus_buttons.clear()
-	cart_pot_max_buttons.clear()
+	cooking_system.close_cart_pot_panel()
 
 
 func _on_cart_pot_minus_pressed(item_id: String) -> void:
-	if cart_pot_is_cooking:
-		print("å¤§é”…æ­£åœ¨ç…®ï¼Œä¸èƒ½è°ƒæ•´æœ¬æ¬¡å‡†å¤‡ã€‚")
-		request_cart_pot_panel_refresh()
-		return
-
-	var current_amount := int(cart_pot_selection.get(item_id, 0))
-
-	if current_amount <= 0:
-		cart_pot_selection.erase(item_id)
-		request_cart_pot_panel_refresh()
-		return
-
-	current_amount -= 1
-
-	if current_amount <= 0:
-		cart_pot_selection.erase(item_id)
-	else:
-		cart_pot_selection[item_id] = current_amount
-
-	request_cart_pot_panel_refresh()
+	cooking_system._on_cart_pot_minus_pressed(item_id)
 
 
 func _on_cart_pot_plus_pressed(item_id: String) -> void:
-	if cart_pot_is_cooking:
-		print("å¤§é”…æ­£åœ¨ç…®ï¼Œä¸èƒ½è°ƒæ•´æœ¬æ¬¡å‡†å¤‡ã€‚")
-		request_cart_pot_panel_refresh()
-		return
-
-	if not can_add_to_cart_pot_selection(item_id, 1):
-		print("ä¸èƒ½ç»§ç»­åŠ å…¥å¤§é”…é€‰æ‹©ï¼š", item_id)
-		request_cart_pot_panel_refresh()
-		return
-
-	cart_pot_selection[item_id] = int(cart_pot_selection.get(item_id, 0)) + 1
-
-	request_cart_pot_panel_refresh()
+	cooking_system._on_cart_pot_plus_pressed(item_id)
 
 
 func _on_cart_pot_max_pressed(item_id: String) -> void:
-	if cart_pot_is_cooking:
-		print("å¤§é”…æ­£åœ¨ç…®ï¼Œä¸èƒ½è°ƒæ•´æœ¬æ¬¡å‡†å¤‡ã€‚")
-		request_cart_pot_panel_refresh()
-		return
-
-	var raw_amount: int = int(raw_stock.get(item_id, 0))
-	var selected_amount: int = int(cart_pot_selection.get(item_id, 0))
-	var available_capacity: int = int(get_cart_pot_available_capacity_for_selection())
-
-	var raw_available: int = raw_amount - selected_amount
-	var can_add_amount: int = min(raw_available, available_capacity)
-
-	if can_add_amount <= 0:
-		print("æ²¡æœ‰æ›´å¤šå¯åŠ å…¥å¤§é”…çš„æ•°é‡ï¼š", item_id)
-		request_cart_pot_panel_refresh()
-		return
-
-	cart_pot_selection[item_id] = selected_amount + can_add_amount
-
-	request_cart_pot_panel_refresh()
+	cooking_system._on_cart_pot_max_pressed(item_id)
 
 
 func _on_cart_pot_start_pressed() -> void:
-	start_cart_pot_batch_cooking()
+	cooking_system._on_cart_pot_start_pressed()
 
 
 func show_storage_stock_only() -> void:
@@ -1100,7 +500,7 @@ func show_storage_stock_only() -> void:
 	print("Raw / staple stock text: ", raw_and_staple_text)
 
 func interact_with_gift_box() -> void:
-	if day_gift_layer != null and is_instance_valid(day_gift_layer):
+	if day_gift_panel_controller != null and day_gift_panel_controller.is_open():
 		print("ç¤¼ç‰©é€‰æ‹©é¢æ¿å·²ç»æ‰“å¼€ã€‚")
 		return
 
@@ -1132,72 +532,18 @@ func open_day_gift_choice_panel(gift_data: Dictionary) -> void:
 	else:
 		day_gift_current_options = saved_options
 
-	day_gift_layer = CanvasLayer.new()
-	day_gift_layer.name = "DayGiftLayer"
-	day_gift_layer.layer = 120
-	add_child(day_gift_layer)
-
-	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
-
-	day_gift_panel = Panel.new()
-	day_gift_panel.name = "DayGiftPanel"
-	day_gift_panel.size = Vector2(720, 360)
-	day_gift_panel.position = Vector2(
-		viewport_size.x * 0.5 - 360,
-		viewport_size.y * 0.5 - 180
-	)
-	day_gift_layer.add_child(day_gift_panel)
-
-	var title_label := Label.new()
-	title_label.name = "DayGiftTitle"
-	title_label.text = str(gift_data.get("display_name", "ç‰¹æ®Šå®¢äººçš„ç¤¼ç‰©"))
-	title_label.position = Vector2(24, 18)
-	title_label.size = Vector2(672, 34)
-	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	title_label.add_theme_font_size_override("font_size", 22)
-	day_gift_panel.add_child(title_label)
-
-	var desc_label := Label.new()
-	desc_label.name = "DayGiftDesc"
-	desc_label.text = "ç‰¹æ®Šå®¢äººç•™ä¸‹äº†ä¸€ä¸ªå°å°çš„å›žå“ã€‚é€‰æ‹©å…¶ä¸­ä¸€ç§å½±å“ã€‚"
-	desc_label.position = Vector2(48, 58)
-	desc_label.size = Vector2(624, 44)
-	desc_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	desc_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc_label.add_theme_font_size_override("font_size", 14)
-	day_gift_panel.add_child(desc_label)
-
-	for i in range(day_gift_current_options.size()):
-		var option_data: Dictionary = day_gift_current_options[i]
-		var button := Button.new()
-		button.name = "DayGiftOption%d" % i
-		button.position = Vector2(42 + i * 226, 125)
-		button.size = Vector2(196, 150)
-		button.text = get_day_gift_option_button_text(option_data)
-		button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		button.pressed.connect(_on_day_gift_option_pressed.bind(i))
-		day_gift_panel.add_child(button)
-
-	var close_button := Button.new()
-	close_button.name = "DayGiftCloseButton"
-	close_button.text = "å…ˆä¸æ‰“å¼€"
-	close_button.position = Vector2(290, 300)
-	close_button.size = Vector2(140, 38)
-	close_button.pressed.connect(close_day_gift_choice_panel)
-	day_gift_panel.add_child(close_button)
+	day_gift_panel_controller.open(gift_data, day_gift_current_options)
+	day_gift_layer = day_gift_panel_controller.layer
 
 	print("æ‰“å¼€ç™½å¤©ç¤¼ç‰©ï¼š", gift_data)
 	print("ç™½å¤©ç¤¼ç‰©é€‰é¡¹ï¼š", day_gift_current_options)
 
 
 func close_day_gift_choice_panel() -> void:
-	if day_gift_layer != null and is_instance_valid(day_gift_layer):
-		day_gift_layer.queue_free()
+	if day_gift_panel_controller != null:
+		day_gift_panel_controller.close()
 
 	day_gift_layer = null
-	day_gift_panel = null
 	day_gift_current_gift_id = ""
 	day_gift_current_options.clear()
 
@@ -1330,12 +676,7 @@ func apply_day_gift_choice(gift_data: Dictionary, chosen_card: Dictionary) -> vo
 		var amount: int = int(chosen_card.get("stock_amount", 0))
 
 		if item_id != "" and amount > 0:
-			if RunSetupData.is_staple_item(item_id):
-				staple_stock[item_id] = int(staple_stock.get(item_id, 0)) + amount
-				RunSetupData.current_staple_stock = staple_stock.duplicate(true)
-			else:
-				raw_stock[item_id] = int(raw_stock.get(item_id, 0)) + amount
-				RunSetupData.current_raw_stock = raw_stock.duplicate(true)
+			inventory_system.add_stock(item_id, amount)
 
 			print("ç¤¼ç‰©èŽ·å¾—åº“å­˜ï¼š", get_ingredient_display_name(item_id), " x", amount)
 
@@ -1406,13 +747,8 @@ func apply_random_raw_stock_bonus(amount: int) -> void:
 	for i in range(amount):
 		var item_id := item_pool[randi() % item_pool.size()]
 
-		if not raw_stock.has(item_id):
-			raw_stock[item_id] = 0
-
-		raw_stock[item_id] = int(raw_stock[item_id]) + 1
+		inventory_system.add_stock(item_id, 1)
 		gained[item_id] = int(gained.get(item_id, 0)) + 1
-
-	RunSetupData.current_raw_stock = raw_stock.duplicate(true)
 
 	print("Morning raw stock bonus applied: ", gained)
 	print("Raw stock after morning bonus: ", raw_stock)
@@ -1460,708 +796,122 @@ func show_pending_morning_info_if_any() -> void:
 	_create_morning_info_layer(lines)
 
 func _create_morning_info_layer(lines: Array[String]) -> void:
-	if morning_info_layer != null and is_instance_valid(morning_info_layer):
-		morning_info_layer.queue_free()
+	if morning_info_panel_controller == null:
+		return
 
-	morning_info_layer = CanvasLayer.new()
-	morning_info_layer.name = "MorningInfoLayer"
-	morning_info_layer.layer = 80
-	add_child(morning_info_layer)
-
-	var viewport_size := get_viewport().get_visible_rect().size
-
-	var panel := Panel.new()
-	panel.name = "MorningInfoPanel"
-	panel.size = Vector2(520, 165)
-	panel.position = Vector2(
-		viewport_size.x * 0.5 - 260,
-		62
-	)
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	morning_info_layer.add_child(panel)
-
-	var label := Label.new()
-	label.name = "MorningInfoLabel"
-	label.position = Vector2(20, 16)
-	label.size = Vector2(480, 132)
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override("font_size", 15)
-	label.text = "\n".join(lines)
-
-	panel.add_child(label)
-
-	var tween := create_tween()
-	tween.tween_interval(4.2)
-	tween.tween_property(panel, "modulate:a", 0.0, 0.8)
-
-	await get_tree().create_timer(5.1).timeout
-
-	if is_instance_valid(morning_info_layer):
-		morning_info_layer.queue_free()
-		morning_info_layer = null
+	morning_info_panel_controller.show(lines)
+	morning_info_layer = morning_info_panel_controller.layer
 
 func _apply_special_customer_plan_to_customer(customer: Node) -> void:
 	customer_queue_system.apply_special_customer_plan_to_customer(customer)
 
-func prepare_stock_for_waiting_order(customer: Node, fulfillment_status: String) -> void:
-	if customer == null or not is_instance_valid(customer):
-		return
-
-	var ingredients: Dictionary = customer.get_ingredients()
-	var reserved_cooked: Dictionary = {}
-	var remaining_to_cook: Dictionary = {}
-
-	if fulfillment_status == "instant":
-		deduct_cooked_stock(ingredients)
-
-		customer.set_meta("reserved_cooked_ingredients", ingredients.duplicate(true))
-		customer.set_meta("ingredients_to_cook", {})
-		customer.set_meta("ingredients_deducted_at_checkout", true)
-
-		RunSetupData.current_cooked_stock = cooked_stock.duplicate(true)
-		return
-
-	if fulfillment_status == "waitable":
-		print("Preparing cart waiting order...")
-		print("Before cooked stock: ", cooked_stock)
-		print("Before raw stock: ", raw_stock)
-
-		for ingredient_name in ingredients.keys():
-			var item_key: String = str(ingredient_name)
-			var needed_amount: int = int(ingredients.get(item_key, 0))
-
-			if needed_amount <= 0:
-				continue
-
-			var available_cooked: int = int(cooked_stock.get(item_key, 0))
-			if available_cooked < 0:
-				available_cooked = 0
-
-			var reserve_cooked_amount: int = needed_amount
-			if available_cooked < reserve_cooked_amount:
-				reserve_cooked_amount = available_cooked
-
-			var missing_amount: int = needed_amount - reserve_cooked_amount
-			if missing_amount < 0:
-				missing_amount = 0
-
-			if reserve_cooked_amount > 0:
-				reserved_cooked[item_key] = reserve_cooked_amount
-				cooked_stock[item_key] = available_cooked - reserve_cooked_amount
-
-			if missing_amount > 0:
-				remaining_to_cook[item_key] = missing_amount
-
-		customer.set_meta("reserved_cooked_ingredients", reserved_cooked)
-		customer.set_meta("ingredients_to_cook", remaining_to_cook)
-		customer.set_meta("ingredients_deducted_at_checkout", true)
-
-		RunSetupData.current_cooked_stock = cooked_stock.duplicate(true)
-
-		print("Reserved cooked ingredients: ", reserved_cooked)
-		print("Remaining ingredients to cook in cart pot: ", remaining_to_cook)
-		print("After cooked stock: ", cooked_stock)
-		print("Raw stock is NOT deducted at checkout in cart mode: ", raw_stock)
-		return
-
-	customer.set_meta("reserved_cooked_ingredients", {})
-	customer.set_meta("ingredients_to_cook", ingredients.duplicate(true))
-	customer.set_meta("ingredients_deducted_at_checkout", false)
-
-
-func get_customer_ingredients_to_cook(customer: Node) -> Dictionary:
-	if customer == null or not is_instance_valid(customer):
-		return {}
-
-	if customer.has_meta("ingredients_to_cook"):
-		var value = customer.get_meta("ingredients_to_cook")
-		if typeof(value) == TYPE_DICTIONARY:
-			return value
-
-	return {}
-
-	customer.set_meta("reserved_cooked_ingredients", {})
-	customer.set_meta("ingredients_to_cook", {})
-	customer.set_meta("ingredients_deducted_at_checkout", false)
-
 func initialize_round_stocks() -> void:
-	if RunSetupData.current_raw_stock.is_empty():
-		RunSetupData.current_raw_stock = planned_raw_stock.duplicate(true)
-
-	if RunSetupData.current_cooked_stock.is_empty():
-		RunSetupData.current_cooked_stock = planned_cooked_stock.duplicate(true)
-
-	if RunSetupData.current_staple_stock.is_empty():
-		RunSetupData.current_staple_stock = planned_staple_stock.duplicate(true)
-
-	raw_stock = RunSetupData.current_raw_stock.duplicate(true)
-	cooked_stock = RunSetupData.current_cooked_stock.duplicate(true)
-	staple_stock = RunSetupData.current_staple_stock.duplicate(true)
+	inventory_system.initialize_round_stocks(planned_raw_stock, planned_cooked_stock, planned_staple_stock)
 
 func get_cart_pot_ingredient_ids() -> Array:
-	var ids: Array = RunSetupData.get_basic_ingredient_ids()
-
-	if ids.is_empty():
-		ids = [
-			"spinach",
-			"potato_slice",
-			"tofu_puff"
-		]
-
-	return ids
+	return cooking_system.get_cart_pot_ingredient_ids()
 
 
 func get_stock_total(stock: Dictionary) -> int:
-	return StockUtils.get_total(stock)
+	return inventory_system.get_stock_total(stock)
 
 
 func get_cart_pot_cooked_capacity_used() -> int:
-	return get_stock_total(cooked_stock)
+	return cooking_system.get_cart_pot_cooked_capacity_used()
 
 
 func get_cart_pot_cooking_capacity_used() -> int:
-	return get_stock_total(cart_pot_cooking_batch)
+	return cooking_system.get_cart_pot_cooking_capacity_used()
 
 
 func get_cart_pot_selection_total() -> int:
-	return get_stock_total(cart_pot_selection)
+	return cooking_system.get_cart_pot_selection_total()
 
 
 func get_cart_pot_used_capacity() -> int:
-	return get_cart_pot_cooked_capacity_used() + get_cart_pot_cooking_capacity_used()
+	return cooking_system.get_cart_pot_used_capacity()
 
 
 func get_cart_pot_total_capacity_with_selection() -> int:
-	return get_cart_pot_used_capacity() + get_cart_pot_selection_total()
+	return cooking_system.get_cart_pot_total_capacity_with_selection()
 
 
 func get_cart_pot_available_capacity_for_selection() -> int:
-	return max(cart_pot_capacity - get_cart_pot_total_capacity_with_selection(), 0)
+	return cooking_system.get_cart_pot_available_capacity_for_selection()
 
 
 func can_add_to_cart_pot_selection(item_id: String, amount: int = 1) -> bool:
-	if amount <= 0:
-		return false
-
-	if cart_pot_is_cooking:
-		return false
-
-	var current_selected := int(cart_pot_selection.get(item_id, 0))
-	var current_raw := int(raw_stock.get(item_id, 0))
-
-	if current_selected + amount > current_raw:
-		return false
-
-	if get_cart_pot_total_capacity_with_selection() + amount > cart_pot_capacity:
-		return false
-
-	return true
+	return cooking_system.can_add_to_cart_pot_selection(item_id, amount)
 
 
 func add_to_cart_pot_selection(item_id: String, amount: int = 1) -> void:
-	if amount <= 0:
-		return
-
-	var actually_added := 0
-
-	for i in range(amount):
-		if not can_add_to_cart_pot_selection(item_id, 1):
-			break
-
-		cart_pot_selection[item_id] = int(cart_pot_selection.get(item_id, 0)) + 1
-		actually_added += 1
-
-	if actually_added > 0:
-		refresh_cart_pot_panel()
+	cooking_system.add_to_cart_pot_selection(item_id, amount)
 
 
 func remove_from_cart_pot_selection(item_id: String, amount: int = 1) -> void:
-	if amount <= 0:
-		return
-
-	var current_selected := int(cart_pot_selection.get(item_id, 0))
-	current_selected = max(current_selected - amount, 0)
-
-	if current_selected <= 0:
-		cart_pot_selection.erase(item_id)
-	else:
-		cart_pot_selection[item_id] = current_selected
-
-	refresh_cart_pot_panel()
+	cooking_system.remove_from_cart_pot_selection(item_id, amount)
 
 
 func max_add_to_cart_pot_selection(item_id: String) -> void:
-	if cart_pot_is_cooking:
-		return
-
-	var current_selected: int = int(cart_pot_selection.get(item_id, 0))
-	var current_raw: int = int(raw_stock.get(item_id, 0))
-
-	var raw_room: int = current_raw - current_selected
-	if raw_room < 0:
-		raw_room = 0
-
-	var capacity_room: int = get_cart_pot_available_capacity_for_selection()
-
-	var amount: int = raw_room
-	if capacity_room < amount:
-		amount = capacity_room
-
-	if amount <= 0:
-		return
-
-	add_to_cart_pot_selection(item_id, amount)
+	cooking_system.max_add_to_cart_pot_selection(item_id)
 
 
 func start_cart_pot_batch_cooking() -> void:
-	if cart_pot_is_cooking:
-		print("å¤§é”…å·²ç»åœ¨ç…®äº†ã€‚")
-		return
+	cooking_system.start_cart_pot_batch_cooking()
 
-	if cart_pot_selection.is_empty():
-		print("æ²¡æœ‰é€‰æ‹©è¦ç…®çš„é…èœã€‚")
-		return
-
-	var batch: Dictionary = {}
-
-	for item_id in cart_pot_selection.keys():
-		var item_key: String = str(item_id)
-		var amount: int = int(cart_pot_selection.get(item_key, 0))
-
-		if amount <= 0:
-			continue
-
-		var raw_amount: int = int(raw_stock.get(item_key, 0))
-
-		if raw_amount <= 0:
-			continue
-
-		var actual_amount: int = min(amount, raw_amount)
-
-		if actual_amount <= 0:
-			continue
-
-		batch[item_key] = actual_amount
-
-	if batch.is_empty():
-		print("æœ¬æ¬¡é€‰æ‹©æ²¡æœ‰å¯ç…®çš„é…èœã€‚")
-		cart_pot_selection.clear()
-		refresh_cart_pot_panel()
-		return
-
-	if get_cart_pot_total_capacity_with_selection() > cart_pot_capacity:
-		print("å¤§é”…å®¹é‡ä¸è¶³ï¼Œä¸èƒ½å¼€å§‹ç…®ã€‚")
-		refresh_cart_pot_panel()
-		return
-
-	for item_id in batch.keys():
-		var item_key: String = str(item_id)
-		var amount: int = int(batch.get(item_key, 0))
-		raw_stock[item_key] = int(raw_stock.get(item_key, 0)) - amount
-
-	cart_pot_is_cooking = true
-	cart_pot_cooking_batch = batch.duplicate(true)
-	cart_pot_time_left = get_effective_cart_pot_batch_duration()
-	cart_pot_selection.clear()
-
-	RunSetupData.current_raw_stock = raw_stock.duplicate(true)
-
-	print("=== å¤§é”…å¼€å§‹æ‰¹é‡çƒ¹é¥ª ===")
-	print("Batch: ", cart_pot_cooking_batch)
-	print("å¤§é”…æœ¬æ¬¡çƒ¹é¥ªæ—¶é—´ï¼š", cart_pot_time_left)
-	print("Raw stock after starting cart pot: ", raw_stock)
-	print("Cart pot capacity used: %d/%d" % [
-		get_cart_pot_total_capacity_with_selection(),
-		cart_pot_capacity
-	])
-
-	refresh_cart_pot_panel()
-
-
-func update_cart_pot(delta: float) -> void:
-	if not cart_pot_is_cooking:
-		return
-
-	cart_pot_time_left -= delta
-
-	if cart_pot_time_left > 0.0:
-		if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
-			refresh_cart_pot_panel()
-		return
-
-	finish_cart_pot_batch_cooking()
-
-
-func finish_cart_pot_batch_cooking() -> void:
-	if not cart_pot_is_cooking:
-		return
-
-	for item_id in cart_pot_cooking_batch.keys():
-		var item_key := str(item_id)
-		var amount := int(cart_pot_cooking_batch.get(item_key, 0))
-
-		if amount <= 0:
-			continue
-
-		if not cooked_stock.has(item_key):
-			cooked_stock[item_key] = 0
-
-		cooked_stock[item_key] = int(cooked_stock.get(item_key, 0)) + amount
-
-	print("=== å¤§é”…æ‰¹é‡çƒ¹é¥ªå®Œæˆ ===")
-	print("Cooked batch: ", cart_pot_cooking_batch)
-
-	cart_pot_is_cooking = false
-	cart_pot_time_left = 0.0
-	cart_pot_cooking_batch.clear()
-
-	RunSetupData.current_cooked_stock = cooked_stock.duplicate(true)
-
-	print("Cooked stock after cart pot: ", cooked_stock)
-	print("Cart pot capacity used: ", get_cart_pot_used_capacity(), "/", cart_pot_capacity)
-
-	refresh_cart_pot_panel()
-	print_stocks()
 
 func initialize_staple_ladle_slots() -> void:
-	staple_ladle_slots.clear()
-
-	for i in range(2):
-		staple_ladle_slots.append({
-			"state": "empty",
-			"main_food_id": "",
-			"time_left": 0.0
-		})
-
-	held_raw_staple_food_id = ""
-	held_staple_food_id = ""
+	cooking_system.initialize_staple_ladle_slots()
 
 
 func has_busy_staple_ladle() -> bool:
-	for i in range(staple_ladle_slots.size()):
-		var slot: Dictionary = staple_ladle_slots[i] as Dictionary
-		var state: String = str(slot.get("state", "empty"))
-
-		if state == "cooking":
-			return true
-
-	return false
-
-
-func update_staple_ladle_slots(delta: float) -> void:
-	if staple_ladle_slots.is_empty():
-		return
-
-	var changed := false
-
-	for i in range(staple_ladle_slots.size()):
-		var slot: Dictionary = staple_ladle_slots[i] as Dictionary
-		var state: String = str(slot.get("state", "empty"))
-
-		if state != "cooking":
-			continue
-
-		var time_left: float = float(slot.get("time_left", 0.0))
-		time_left -= delta
-
-		if time_left <= 0.0:
-			slot["state"] = "ready"
-			slot["time_left"] = 0.0
-			print("æ¼å‹º ", i + 1, " çš„ ", get_ingredient_display_name(str(slot.get("main_food_id", ""))), " ç…®å¥½äº†ã€‚")
-		else:
-			slot["time_left"] = time_left
-
-		staple_ladle_slots[i] = slot
-		changed = true
-
-	if changed and cart_pot_layer != null and is_instance_valid(cart_pot_layer):
-		refresh_cart_pot_panel()
+	return cooking_system.has_busy_staple_ladle()
 
 
 func get_first_pending_customer_waiting_for_main_food(main_food_id: String) -> Node:
-	for customer in pending_customers:
-		if customer == null or not is_instance_valid(customer):
-			continue
-
-		if bool(customer.get("order_served")):
-			continue
-
-		if bool(customer.get("needs_emergency_purchase")):
-			continue
-
-		if not customer_has_main_food(customer):
-			continue
-
-		if get_customer_main_food_stock_id(customer) != main_food_id:
-			continue
-
-		if not bool(customer.get("needs_main_food_cooking")):
-			continue
-
-		return customer
-
-	return null
+	return cooking_system.get_first_pending_customer_waiting_for_main_food(main_food_id)
 
 
 func has_waiting_main_food_order(main_food_id: String) -> bool:
-	return get_unassigned_waiting_main_food_count(main_food_id) > 0
+	return cooking_system.has_waiting_main_food_order(main_food_id)
 
 func get_waiting_main_food_count(main_food_id: String) -> int:
-	var count := 0
-
-	for customer in pending_customers:
-		if customer == null or not is_instance_valid(customer):
-			continue
-
-		if bool(customer.get("order_served")):
-			continue
-
-		if bool(customer.get("needs_emergency_purchase")):
-			continue
-
-		if not customer_has_main_food(customer):
-			continue
-
-		if get_customer_main_food_stock_id(customer) != main_food_id:
-			continue
-
-		if not bool(customer.get("needs_main_food_cooking")):
-			continue
-
-		count += 1
-
-	return count
+	return cooking_system.get_waiting_main_food_count(main_food_id)
 
 func get_assigned_staple_food_count(main_food_id: String) -> int:
-	var count: int = 0
-
-	for i in range(staple_ladle_slots.size()):
-		var slot: Dictionary = staple_ladle_slots[i] as Dictionary
-		var state: String = str(slot.get("state", "empty"))
-		var slot_food_id: String = str(slot.get("main_food_id", ""))
-
-		if state == "empty":
-			continue
-
-		if slot_food_id == main_food_id:
-			count += 1
-
-	if held_staple_food_id == main_food_id:
-		count += 1
-
-	return count
+	return cooking_system.get_assigned_staple_food_count(main_food_id)
 
 
 func get_unassigned_waiting_main_food_count(main_food_id: String) -> int:
-	var waiting_count: int = get_waiting_main_food_count(main_food_id)
-	var assigned_count: int = get_assigned_staple_food_count(main_food_id)
-
-	var available_count: int = waiting_count - assigned_count
-	if available_count < 0:
-		available_count = 0
-
-	return available_count
+	return cooking_system.get_unassigned_waiting_main_food_count(main_food_id)
 
 func can_start_staple_ladle_cooking(slot_index: int, main_food_id: String) -> bool:
-	if slot_index < 0 or slot_index >= staple_ladle_slots.size():
-		return false
-
-	if main_food_id == "":
-		return false
-
-	if not RunSetupData.is_staple_item(main_food_id):
-		return false
-
-	var slot: Dictionary = staple_ladle_slots[slot_index] as Dictionary
-	var state: String = str(slot.get("state", "empty"))
-
-	if state != "empty":
-		return false
-
-	var current_stock: int = int(staple_stock.get(main_food_id, 0))
-
-	if current_stock <= 0:
-		return false
-
-	return true
+	return cooking_system.can_start_staple_ladle_cooking(slot_index, main_food_id)
 
 func start_staple_ladle_cooking(slot_index: int, main_food_id: String) -> void:
-	if not can_start_staple_ladle_cooking(slot_index, main_food_id):
-		print("ä¸èƒ½å¼€å§‹ç…®ä¸»é£Ÿï¼š", main_food_id, " slot=", slot_index)
-		return
-
-	var slot: Dictionary = staple_ladle_slots[slot_index] as Dictionary
-
-	slot["state"] = "cooking"
-	slot["main_food_id"] = main_food_id
-	slot["time_left"] = get_effective_staple_ladle_duration()
-	slot["is_ready"] = false
-	staple_ladle_slots[slot_index] = slot
-
-	staple_stock[main_food_id] = int(staple_stock.get(main_food_id, 0)) - 1
-	RunSetupData.current_staple_stock = staple_stock.duplicate(true)
-
-	print("æ¼å‹º ", slot_index + 1, " å¼€å§‹ç…®ï¼š", get_ingredient_display_name(main_food_id))
-	print("æ¼å‹ºæœ¬æ¬¡çƒ¹é¥ªæ—¶é—´ï¼š", slot["time_left"])
-	print("Staple stock after putting into ladle: ", staple_stock)
-
-	request_cart_pot_panel_refresh()
+	cooking_system.start_staple_ladle_cooking(slot_index, main_food_id)
 
 
 func take_ready_staple_from_ladle(slot_index: int) -> void:
-	if slot_index < 0 or slot_index >= staple_ladle_slots.size():
-		return
-
-	if held_staple_food_id != "":
-		print("æ‰‹é‡Œå·²ç»æœ‰ä¸»é£Ÿï¼š", get_ingredient_display_name(held_staple_food_id), "ã€‚å…ˆåŽ»å‡ºé¤ç‚¹äº¤ä»˜ã€‚")
-		return
-
-	var slot: Dictionary = staple_ladle_slots[slot_index] as Dictionary
-	var state: String = str(slot.get("state", "empty"))
-
-	if state != "ready":
-		print("æ¼å‹º ", slot_index + 1, " è¿˜æ²¡æœ‰å¯ä»¥å–å‡ºçš„ä¸»é£Ÿã€‚")
-		return
-
-	var main_food_id: String = str(slot.get("main_food_id", ""))
-
-	if main_food_id == "":
-		return
-
-	held_staple_food_id = main_food_id
-
-	slot["state"] = "empty"
-	slot["main_food_id"] = ""
-	slot["time_left"] = 0.0
-	staple_ladle_slots[slot_index] = slot
-
-	print("ä»Žæ¼å‹º ", slot_index + 1, " å–å‡ºï¼š", get_ingredient_display_name(main_food_id), "ã€‚çŽ°åœ¨æ‰‹é‡Œæ‹¿ç€è¿™ä»½ä¸»é£Ÿã€‚")
-
-	refresh_cart_pot_panel()
+	cooking_system.take_ready_staple_from_ladle(slot_index)
 
 func interact_with_staple_basket(main_food_id: String) -> void:
-	if main_food_id == "":
-		print("æ²¡æœ‰æŒ‡å®šä¸»é£Ÿç­ã€‚")
-		return
-
-	if not RunSetupData.is_staple_item(main_food_id):
-		print("è¿™ä¸æ˜¯å¯ç”¨ä¸»é£Ÿï¼š", main_food_id)
-		return
-
-	var display_name: String = get_ingredient_display_name(main_food_id)
-
-	if held_staple_food_id != "":
-		print("æ‰‹é‡Œå·²ç»æ‹¿ç€ç†Ÿä¸»é£Ÿï¼š", get_ingredient_display_name(held_staple_food_id), "ã€‚å…ˆåŽ»å‡ºé¤ç‚¹äº¤ä»˜ã€‚")
-		return
-
-	if held_raw_staple_food_id == "":
-		var current_stock: int = int(staple_stock.get(main_food_id, 0))
-
-		if current_stock <= 0:
-			print(display_name, " åº“å­˜ä¸è¶³ï¼Œä¸èƒ½æ‹¿èµ·ã€‚")
-			return
-
-		held_raw_staple_food_id = main_food_id
-		print("æ‹¿èµ·ç”Ÿä¸»é£Ÿï¼š", display_name, "ã€‚æ­¤æ—¶ä¸æ‰£åº“å­˜ã€‚")
-		print("å½“å‰ä¸»é£Ÿåº“å­˜ï¼š", staple_stock)
-		return
-
-	if held_raw_staple_food_id == main_food_id:
-		print("æŠŠç”Ÿä¸»é£Ÿæ”¾å›žï¼š", display_name, "ã€‚å› ä¸ºè¿˜æ²¡ä¸‹æ¼å‹ºï¼Œæ‰€ä»¥ä¸æ‰£åº“å­˜ã€‚")
-		held_raw_staple_food_id = ""
-		return
-
-	print("æ‰‹é‡Œæ‹¿ç€çš„æ˜¯ï¼š", get_ingredient_display_name(held_raw_staple_food_id), "ã€‚è¦å›žå¯¹åº”ä¸»é£Ÿç­æ‰èƒ½æ”¾å›žã€‚")
+	cooking_system.interact_with_staple_basket(main_food_id)
 
 
 func interact_with_staple_ladle(slot_index: int) -> void:
-	if slot_index < 0 or slot_index >= staple_ladle_slots.size():
-		print("æ¼å‹ºç¼–å·ä¸å­˜åœ¨ï¼š", slot_index)
-		return
-
-	var slot: Dictionary = staple_ladle_slots[slot_index] as Dictionary
-	var state: String = str(slot.get("state", "empty"))
-
-	if state == "empty":
-		if held_raw_staple_food_id == "":
-			print("æ¼å‹º ", slot_index + 1, " æ˜¯ç©ºçš„ã€‚å…ˆåŽ»ç²‰ä¸ç­æˆ–é¢ç­æ‹¿ç”Ÿä¸»é£Ÿã€‚")
-			return
-
-		if held_staple_food_id != "":
-			print("æ‰‹é‡Œå·²ç»æ‹¿ç€ç†Ÿä¸»é£Ÿï¼š", get_ingredient_display_name(held_staple_food_id), "ã€‚å…ˆåŽ»å‡ºé¤ç‚¹äº¤ä»˜ã€‚")
-			return
-
-		var main_food_id: String = held_raw_staple_food_id
-
-		if not can_start_staple_ladle_cooking(slot_index, main_food_id):
-			print("ä¸èƒ½æŠŠ ", get_ingredient_display_name(main_food_id), " æ”¾å…¥æ¼å‹º ", slot_index + 1, "ã€‚")
-			return
-
-		start_staple_ladle_cooking(slot_index, main_food_id)
-		held_raw_staple_food_id = ""
-		print("å·²ç»æŠŠç”Ÿä¸»é£Ÿæ”¾å…¥æ¼å‹º ", slot_index + 1, "ã€‚è¿™æ—¶æ‰æ‰£åº“å­˜ã€‚")
-		return
-
-	if state == "cooking":
-		var cooking_food_id: String = str(slot.get("main_food_id", ""))
-		var time_left: float = float(slot.get("time_left", 0.0))
-		print("æ¼å‹º ", slot_index + 1, " æ­£åœ¨ç…® ", get_ingredient_display_name(cooking_food_id), "ï¼Œè¿˜å‰© %.1f ç§’ã€‚" % time_left)
-		return
-
-	if state == "ready":
-		if held_raw_staple_food_id != "":
-			print("æ‰‹é‡Œè¿˜æ‹¿ç€ç”Ÿä¸»é£Ÿï¼š", get_ingredient_display_name(held_raw_staple_food_id), "ã€‚å…ˆæ”¾å›žä¸»é£Ÿç­ï¼Œæˆ–è€…æ‰¾ç©ºæ¼å‹ºä¸‹é”…ã€‚")
-			return
-
-		take_ready_staple_from_ladle(slot_index)
-		return
-
-	print("æ¼å‹º ", slot_index + 1, " çŠ¶æ€å¼‚å¸¸ï¼š", state)
+	cooking_system.interact_with_staple_ladle(slot_index)
 
 
 func get_held_raw_staple_text() -> String:
-	if held_raw_staple_food_id == "":
-		return "ç©º"
-	return get_ingredient_display_name(held_raw_staple_food_id)
+	return cooking_system.get_held_raw_staple_text()
 
 func get_held_staple_text() -> String:
-	if held_staple_food_id == "":
-		return "ç©º"
-
-	return get_ingredient_display_name(held_staple_food_id)
+	return cooking_system.get_held_staple_text()
 
 
 func get_staple_ladle_text(slot_index: int) -> String:
-	if slot_index < 0 or slot_index >= staple_ladle_slots.size():
-		return "æ¼å‹ºä¸å­˜åœ¨"
-
-	var slot: Dictionary = staple_ladle_slots[slot_index] as Dictionary
-	var state: String = str(slot.get("state", "empty"))
-	var main_food_id: String = str(slot.get("main_food_id", ""))
-	var main_food_text := "æ— "
-
-	if main_food_id != "":
-		main_food_text = get_ingredient_display_name(main_food_id)
-
-	if state == "empty":
-		return "æ¼å‹º %dï¼šç©º" % [slot_index + 1]
-
-	if state == "cooking":
-		return "æ¼å‹º %dï¼šæ­£åœ¨ç…® %sï¼Œå‰©ä½™ %.1f ç§’" % [
-			slot_index + 1,
-			main_food_text,
-			float(slot.get("time_left", 0.0))
-		]
-
-	if state == "ready":
-		return "æ¼å‹º %dï¼š%s å·²ç…®å¥½ï¼Œç­‰å¾…å–å‡º" % [
-			slot_index + 1,
-			main_food_text
-		]
-
-	return "æ¼å‹º %dï¼šæœªçŸ¥çŠ¶æ€" % [slot_index + 1]
+	return cooking_system.get_staple_ladle_text(slot_index)
 
 func initialize_cooker_slots() -> void:
 	cooker_slots.clear()
@@ -2271,301 +1021,34 @@ func spawn_customer() -> void:
 
 
 func record_special_customer_result(customer: Node, result: String) -> void:
-	if customer == null or not is_instance_valid(customer):
-		return
-
-	if not bool(customer.get("is_special_customer")):
-		return
-
-	if bool(customer.get("special_result_recorded")):
-		return
-
-	var special_type: String = str(customer.get("special_customer_type"))
-	var special_name: String = str(customer.get("special_customer_name"))
-
-	var gift_data := RunSetupData.add_pending_gift(
-		special_type,
-		special_name,
-		result
-	)
-
-	var result_data := {
-		"type": special_type,
-		"name": special_name,
-		"result": result,
-		"gift_id": str(gift_data.get("gift_id", ""))
-	}
-
-	RunSetupData.today_special_customer_results.append(result_data)
-
-	customer.set("special_result_recorded", true)
-
-	print("Recorded special customer result: ", result_data)
-	print("Special customer left an echo: ", gift_data)
+	reputation_system.record_special_result(customer, result)
 
 func handle_customer_order_completed(customer: Node) -> void:
-	if customer == null or not is_instance_valid(customer):
-		return
-
-	RunSetupData.record_today_served_customer()
-
-	var delta := get_reputation_delta_for_customer(customer, "served")
-	change_shop_reputation(delta, "%s served" % get_customer_group(customer))
-	record_special_customer_result(customer, "good")
+	reputation_system.record_served(customer)
 
 func handle_customer_patience_timeout(customer: Node) -> void:
-	if customer == null or not is_instance_valid(customer):
-		return
-
-	RunSetupData.record_today_failed_customer()
-
-	var delta := get_reputation_delta_for_customer(customer, "failed")
-	change_shop_reputation(delta, "%s patience timeout" % get_customer_group(customer))
-	record_special_customer_result(customer, "bad")
+	reputation_system.record_failed(customer, "patience timeout")
 
 func get_counter_customer() -> Node:
 	return customer_queue_system.get_counter_customer()
 
 func begin_checkout_for_customer(customer: Node) -> bool:
-	if customer == null or not is_instance_valid(customer):
-		return false
-
-	if customer.is_checked_out:
-		print("This customer has already checked out.")
-		return false
-
-	customer.order_revealed = true
-	if customer.has_method("mark_checkout_started"):
-		customer.mark_checkout_started()
-
-	var game_ui = get_tree().get_first_node_in_group("game_ui")
-	if game_ui:
-		game_ui.show_order(
-			customer.get_order_name(),
-			customer.get_main_food(),
-			customer.get_ingredients_text()
-		)
-
-	print("Customer order revealed: ", customer.get_order_name())
-	print("Main food: ", customer.get_main_food())
-	print("Ingredients: ", customer.get_ingredients_text())
-	return true
+	return order_system.begin_checkout(customer)
 
 func evaluate_order_before_checkout(customer: Node) -> Dictionary:
-	var result := {
-		"status": "invalid",
-		"needs_waiting": false,
-		"needs_main_food_cooking": false,
-		"needs_ingredient_cooking": false,
-		"needs_emergency_purchase": false,
-		"fulfillment_status": "invalid",
-		"shortage": {}
-	}
-
-	if customer == null or not is_instance_valid(customer):
-		return result
-
-	var ingredients: Dictionary = customer.get_ingredients()
-	var fulfillment_status: String = get_order_fulfillment_status(ingredients)
-	var has_main_food: bool = customer.get_main_food_id() != "none"
-
-	var needs_main_food_cooking: bool = has_main_food
-	var needs_ingredient_cooking: bool = fulfillment_status != "instant"
-	var needs_emergency_purchase: bool = fulfillment_status == "unfulfillable"
-	var needs_waiting: bool = needs_main_food_cooking or needs_ingredient_cooking or needs_emergency_purchase
-
-	result["status"] = "ok"
-	result["needs_waiting"] = needs_waiting
-	result["needs_main_food_cooking"] = needs_main_food_cooking
-	result["needs_ingredient_cooking"] = needs_ingredient_cooking
-	result["needs_emergency_purchase"] = needs_emergency_purchase
-	result["fulfillment_status"] = fulfillment_status
-	result["shortage"] = get_order_shortage(ingredients)
-
-	return result
+	return order_system.evaluate_order_before_checkout(customer)
 
 func customer_can_checkout_now(customer: Node) -> bool:
-	if customer == null or not is_instance_valid(customer):
-		return false
-	return not customer.is_checked_out
+	return order_system.customer_can_checkout_now(customer)
 
 func get_counter_customer_stock_preview(customer: Node) -> Dictionary:
-	if customer == null or not is_instance_valid(customer):
-		return {}
-
-	return {
-		"cooked_text": get_cooked_stock_text(),
-		"raw_text": get_raw_stock_text(),
-		"shortage": get_order_shortage(customer.get_ingredients()),
-		"adjusted_order": get_adjusted_order(customer.get_ingredients())
-	}
+	return order_system.get_counter_customer_stock_preview(customer)
 
 func confirm_checkout_and_create_order(customer: Node, quoted_price: int = -1) -> Dictionary:
-	var result := {
-		"success": false,
-		"price_reaction": "accept",
-		"final_price": 0,
-		"route": "none",
-		"message": ""
-	}
-
-	if customer == null or not is_instance_valid(customer):
-		result["message"] = "Invalid customer."
-		return result
-
-	if customer.is_checked_out:
-		result["message"] = "Customer already checked out."
-		return result
-
-	var evaluation := evaluate_order_before_checkout(customer)
-	if evaluation["status"] != "ok":
-		result["message"] = "Order evaluation failed."
-		return result
-
-	var true_price: int = customer.get_order_price()
-	var final_price: int = true_price if quoted_price < 0 else quoted_price
-
-	var price_reaction: String = resolve_price_reaction(customer, final_price, true_price)
-	result["price_reaction"] = price_reaction
-	result["final_price"] = final_price
-
-	if price_reaction != "accept":
-		result["message"] = "Customer did not accept the quoted price yet."
-		return result
-
-	if customer.has_method("mark_payment_completed"):
-		customer.mark_payment_completed(final_price, true_price)
-	else:
-		customer.is_checked_out = true
-		customer.paid_price = final_price
-
-	add_money(final_price)
-
-	var game_ui = get_tree().get_first_node_in_group("game_ui")
-	if game_ui:
-		game_ui.hide_order()
-
-	var route_result := route_customer_after_payment(customer, evaluation)
-	result["success"] = true
-	result["route"] = route_result
-	result["message"] = "Checkout completed."
-
-	return result
+	return order_system.confirm_checkout(customer, quoted_price)
 
 func route_customer_after_payment(customer: Node, evaluation: Dictionary) -> String:
-	var fulfillment_status: String = str(evaluation.get("fulfillment_status", "invalid"))
-	var needs_waiting: bool = bool(evaluation.get("needs_waiting", false))
-	var needs_main_food_cooking: bool = bool(evaluation.get("needs_main_food_cooking", false))
-	var needs_ingredient_cooking: bool = bool(evaluation.get("needs_ingredient_cooking", false))
-	var needs_emergency_purchase: bool = bool(evaluation.get("needs_emergency_purchase", false))
-
-	if needs_emergency_purchase:
-		customer.needs_main_food_cooking = needs_main_food_cooking
-		customer.needs_ingredient_cooking = true
-		customer.needs_emergency_purchase = true
-
-		customer.set_meta("reserved_cooked_ingredients", {})
-		customer.set_meta("ingredients_to_cook", customer.get_ingredients().duplicate(true))
-		customer.set_meta("ingredients_deducted_at_checkout", false)
-
-		customer.start_waiting_for_food(needs_main_food_cooking, true)
-
-		var emergency_delivery_spot: Node = get_tree().get_first_node_in_group("delivery_spot") as Node
-		if emergency_delivery_spot:
-			customer.go_to_delivery(emergency_delivery_spot.global_position)
-		else:
-			print("No delivery spot found.")
-
-		pending_customers.append(customer)
-		release_counter_customer(customer)
-
-		print("Customer paid, but order currently needs emergency purchase.")
-		return "waiting_emergency"
-
-	if fulfillment_status == "instant":
-		prepare_stock_for_waiting_order(customer, fulfillment_status)
-
-		if not needs_waiting:
-			customer.mark_order_served()
-
-			if has_method("handle_customer_order_completed"):
-				handle_customer_order_completed(customer)
-
-			var instant_exit_point: Node = get_tree().get_first_node_in_group("exit_point") as Node
-			if instant_exit_point:
-				customer.go_to_exit(instant_exit_point.global_position)
-
-			release_counter_customer(customer)
-
-			print("Customer paid and took food immediately.")
-			return "instant_leave"
-
-		customer.needs_main_food_cooking = needs_main_food_cooking
-		customer.needs_ingredient_cooking = false
-		customer.needs_emergency_purchase = false
-
-		customer.start_waiting_for_food(needs_main_food_cooking, false)
-
-		var instant_delivery_spot: Node = get_tree().get_first_node_in_group("delivery_spot") as Node
-		if instant_delivery_spot:
-			customer.go_to_delivery(instant_delivery_spot.global_position)
-		else:
-			print("No delivery spot found.")
-
-		pending_customers.append(customer)
-		release_counter_customer(customer)
-
-		print("Customer paid and is now waiting for main food.")
-		return "waiting_delivery"
-
-	if fulfillment_status == "waitable":
-		prepare_stock_for_waiting_order(customer, fulfillment_status)
-
-		var ingredients_to_cook: Dictionary = get_customer_ingredients_to_cook(customer)
-		var still_needs_ingredients: bool = not ingredients_to_cook.is_empty()
-
-		customer.needs_main_food_cooking = needs_main_food_cooking
-		customer.needs_ingredient_cooking = still_needs_ingredients
-		customer.needs_emergency_purchase = false
-
-		customer.start_waiting_for_food(needs_main_food_cooking, still_needs_ingredients)
-
-		if not still_needs_ingredients and customer.has_method("mark_cart_ingredients_ready"):
-			customer.mark_cart_ingredients_ready()
-
-		var waitable_delivery_spot: Node = get_tree().get_first_node_in_group("delivery_spot") as Node
-		if waitable_delivery_spot:
-			customer.go_to_delivery(waitable_delivery_spot.global_position)
-		else:
-			print("No delivery spot found.")
-
-		pending_customers.append(customer)
-		release_counter_customer(customer)
-
-		print("Customer paid and is now waiting for food.")
-		return "waiting_delivery"
-
-	customer.needs_main_food_cooking = needs_main_food_cooking
-	customer.needs_ingredient_cooking = true
-	customer.needs_emergency_purchase = true
-
-	customer.set_meta("reserved_cooked_ingredients", {})
-	customer.set_meta("ingredients_to_cook", customer.get_ingredients().duplicate(true))
-	customer.set_meta("ingredients_deducted_at_checkout", false)
-
-	customer.start_waiting_for_food(needs_main_food_cooking, true)
-
-	var fallback_delivery_spot: Node = get_tree().get_first_node_in_group("delivery_spot") as Node
-	if fallback_delivery_spot:
-		customer.go_to_delivery(fallback_delivery_spot.global_position)
-	else:
-		print("No delivery spot found.")
-
-	pending_customers.append(customer)
-	release_counter_customer(customer)
-
-	print("Customer paid, but order currently needs emergency purchase.")
-	return "waiting_emergency"
+	return order_system.route_after_payment(customer, evaluation)
 
 func refresh_money_and_reputation_ui() -> void:
 	var game_ui = get_tree().get_first_node_in_group("game_ui")
@@ -2573,122 +1056,16 @@ func refresh_money_and_reputation_ui() -> void:
 		game_ui.update_money(money)
 
 func change_shop_reputation(delta: int, reason: String = "") -> void:
-	var old_value: int = RunSetupData.shop_reputation
-	RunSetupData.shop_reputation = clamp(RunSetupData.shop_reputation + delta, 0, 100)
-
-	var actual_delta: int = RunSetupData.shop_reputation - old_value
-	RunSetupData.today_reputation_delta += actual_delta
-
-	print("Reputation changed: ", old_value, " -> ", RunSetupData.shop_reputation, " | delta: ", actual_delta, " | reason: ", reason)
-
-	refresh_money_and_reputation_ui()
+	reputation_system.change_shop_reputation(delta, reason)
 
 func is_pending_customer_fully_submitted(customer: Node) -> bool:
-	if customer == null or not is_instance_valid(customer):
-		return false
-
-	if customer.order_served:
-		return false
-
-	var remaining_main_food_text: String = get_pending_order_remaining_main_food_text(customer)
-	var remaining_ingredients: Dictionary = get_pending_order_remaining_ingredients(customer)
-
-	return remaining_main_food_text == "" and remaining_ingredients.is_empty()
+	return order_system.is_pending_customer_fully_submitted(customer)
 
 func interact_with_delivery_point() -> void:
-	var changed_anything: bool = false
-	var completed_customer: Node = null
-
-	if held_staple_food_id != "":
-		var staple_customer: Node = hand_over_held_staple_to_waiting_customer()
-
-		if staple_customer == null:
-			print("æ²¡æœ‰ç­‰å¾…è¿™ä¸ªä¸»é£Ÿçš„é¡¾å®¢ã€‚")
-			return
-
-		changed_anything = true
-
-		if staple_customer.can_be_delivered() or is_pending_customer_fully_submitted(staple_customer):
-			completed_customer = staple_customer
-
-		if completed_customer != null:
-			complete_delivery_for_customer(completed_customer)
-			return
-
-		print("å·²æäº¤ä¸»é£Ÿã€‚è®¢å•è¿˜æ²¡å®Œæˆï¼Œè®¢å•å¡ä¼šç»§ç»­æ˜¾ç¤ºå‰©ä½™å†…å®¹ã€‚")
-
-		if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
-			refresh_cart_pot_panel()
-
-		return
-
-	for customer in pending_customers:
-		if customer == null or not is_instance_valid(customer):
-			continue
-
-		if customer.order_served:
-			continue
-
-		if customer.can_be_delivered() or is_pending_customer_fully_submitted(customer):
-			completed_customer = customer
-			break
-
-		if try_fulfill_cart_ingredients_for_customer(customer):
-			changed_anything = true
-
-			if customer.can_be_delivered() or is_pending_customer_fully_submitted(customer):
-				completed_customer = customer
-
-			break
-
-	if completed_customer != null:
-		complete_delivery_for_customer(completed_customer)
-		return
-
-	if changed_anything:
-		print("å·²æäº¤å½“å‰èƒ½äº¤çš„é…èœã€‚è®¢å•è¿˜æ²¡å®Œæˆï¼Œè®¢å•å¡ä¼šç»§ç»­æ˜¾ç¤ºå‰©ä½™å†…å®¹ã€‚")
-
-		if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
-			refresh_cart_pot_panel()
-
-		return
-
-	print("No deliverable customer.")
+	order_system.interact_with_delivery_point()
 
 func complete_delivery_for_customer(customer: Node) -> bool:
-	if customer == null or not is_instance_valid(customer):
-		print("Cannot deliver: invalid customer.")
-		return false
-
-	var can_complete: bool = customer.can_be_delivered() or is_pending_customer_fully_submitted(customer)
-
-	if not can_complete:
-		print("Cannot deliver: customer order is not ready.")
-		return false
-
-	customer.needs_emergency_purchase = false
-	customer.needs_main_food_cooking = false
-	customer.needs_ingredient_cooking = false
-	customer.cart_main_food_ready = true
-	customer.cart_ingredients_ready = true
-
-	customer.mark_order_served()
-
-	if has_method("handle_customer_order_completed"):
-		handle_customer_order_completed(customer)
-
-	remove_customer_from_pending(customer)
-
-	var exit_point = get_tree().get_first_node_in_group("exit_point")
-	if exit_point:
-		customer.go_to_exit(exit_point.global_position)
-
-	print("Delivered order to customer.")
-
-	if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
-		refresh_cart_pot_panel()
-
-	return true
+	return order_system.complete_delivery(customer)
 
 func build_night_queue_from_today_results() -> Array:
 	var queue: Array = [
@@ -2727,343 +1104,52 @@ func build_night_queue_from_today_results() -> Array:
 	return queue
 
 func handle_stock_shortage_for_customer(customer: Node) -> Dictionary:
-	var result := {
-		"has_alternative": false,
-		"adjusted_order": {},
-		"should_leave": false
-	}
-
-	if customer == null or not is_instance_valid(customer):
-		result["should_leave"] = true
-		return result
-
-	var adjusted_order: Dictionary = get_adjusted_order(customer.get_ingredients())
-	if adjusted_order.size() > 0:
-		result["has_alternative"] = true
-		result["adjusted_order"] = adjusted_order
-	else:
-		result["should_leave"] = true
-
-	return result
+	return order_system.handle_stock_shortage_for_customer(customer)
 
 func apply_adjusted_order_to_customer(customer: Node, adjusted_order: Dictionary) -> void:
-	if customer == null or not is_instance_valid(customer):
-		return
-
-	customer.set_ingredients(adjusted_order)
-	customer.order_revealed = true
-
-	if customer.has_method("mark_back_to_counter_waiting"):
-		customer.mark_back_to_counter_waiting()
-
-	var game_ui = get_tree().get_first_node_in_group("game_ui")
-	if game_ui:
-		game_ui.show_order(
-			customer.get_order_name(),
-			customer.get_main_food(),
-			customer.get_ingredients_text()
-		)
-
-	print("Customer accepts adjusted order: ", customer.get_ingredients_text())
+	order_system.apply_adjusted_order_to_customer(customer, adjusted_order)
 
 func reject_customer_before_checkout(customer: Node) -> void:
-	if customer == null or not is_instance_valid(customer):
-		return
-
-	RunSetupData.record_today_failed_customer()
-
-	var delta := get_reputation_delta_for_customer(customer, "failed")
-	change_shop_reputation(delta, "%s rejected before checkout" % get_customer_group(customer))
-	record_special_customer_result(customer, "bad")
-
-	var exit_point = get_tree().get_first_node_in_group("exit_point")
-
-	if exit_point:
-		customer.go_to_exit(exit_point.global_position)
-
-	release_counter_customer(customer)
-
-	print("Customer leaves before checkout.")
+	order_system.reject_customer_before_checkout(customer)
 
 func get_customer_group(customer: Node) -> String:
-	if customer == null or not is_instance_valid(customer):
-		return "invalid"
-
-	if customer.has_method("get_customer_group"):
-		return customer.get_customer_group()
-
-	if bool(customer.get("is_special_customer")):
-		return "special"
-
-	return "normal"
+	return reputation_system.get_customer_group(customer)
 
 func get_customer_type(customer: Node) -> String:
-	if customer == null or not is_instance_valid(customer):
-		return "invalid"
-
-	if customer.has_method("get_customer_type"):
-		return customer.get_customer_type()
-
-	if bool(customer.get("is_special_customer")):
-		return str(customer.get("special_customer_type"))
-
-	return "normal_default"
+	return reputation_system.get_customer_type(customer)
 
 func get_reputation_delta_for_customer(customer: Node, event_name: String) -> int:
-	var group := get_customer_group(customer)
-	var customer_type := get_customer_type(customer)
-
-	if event_name == "served":
-		if group == "special":
-			return 3
-
-		return 1
-
-	if event_name == "failed":
-		if group == "special":
-			return -5
-
-		return -2
-
-	print("Unknown reputation event: ", event_name, " | group: ", group, " | type: ", customer_type)
-	return 0
+	return reputation_system.get_delta(customer, event_name)
 
 func resolve_price_reaction(_customer: Node, _quoted_price: int, _true_price: int) -> String:
 	# å…ˆç•™æŽ¥å£ï¼šä»¥åŽåœ¨è¿™é‡ŒæŽ¥â€œå¤šæ”¶è´¹ / å°‘æ”¶è´¹ / é¡¾å®¢æ€§æ ¼ / å¡ç‰ŒBuffâ€
 	return "accept"
 
 func get_first_customer_needing_emergency_purchase() -> Node:
-	var total_shortage: Dictionary = get_total_pending_emergency_shortage()
-
-	if total_shortage.is_empty():
-		refresh_all_pending_emergency_purchase_states()
-		return null
-
-	print("Emergency total shortage: ", total_shortage)
-
-	for customer in pending_customers:
-		if customer == null or not is_instance_valid(customer):
-			continue
-
-		if customer.order_served:
-			continue
-
-		customer.needs_emergency_purchase = true
-		return customer
-
-	return null
+	return emergency_purchase_system.get_first_customer_needing_purchase()
 
 func get_first_uncooked_pending_customer() -> Node:
-	for customer in pending_customers:
-		if customer != null and is_instance_valid(customer):
-			if customer.needs_emergency_purchase:
-				continue
-			if customer.can_be_delivered():
-				continue
-			if is_customer_in_any_cooker(customer):
-				continue
-			return customer
-	return null
+	return pending_order_system.get_first_uncooked()
 
 func get_cart_ingredients_needed_from_pot(customer: Node) -> Dictionary:
-	if customer == null or not is_instance_valid(customer):
-		return {}
-
-	if customer.has_meta("ingredients_to_cook"):
-		var ingredients_to_cook = customer.get_meta("ingredients_to_cook")
-
-		if typeof(ingredients_to_cook) == TYPE_DICTIONARY:
-			return ingredients_to_cook
-
-	if customer.has_meta("ingredients_deducted_at_checkout"):
-		var already_deducted: bool = bool(customer.get_meta("ingredients_deducted_at_checkout"))
-
-		if already_deducted:
-			return {}
-
-	if customer.has_method("get_ingredients"):
-		return customer.get_ingredients()
-
-	return {}
+	return cooking_system.get_cart_ingredients_needed_from_pot(customer)
 
 func get_cart_ingredient_shortage_for_customer(customer: Node) -> Dictionary:
-	var shortage: Dictionary = {}
-
-	if customer == null or not is_instance_valid(customer):
-		return shortage
-
-	if bool(customer.get("order_served")):
-		return shortage
-
-	if not bool(customer.get("needs_ingredient_cooking")):
-		return shortage
-
-	if bool(customer.get("cart_ingredients_ready")):
-		return shortage
-
-	var needed_ingredients: Dictionary = get_cart_ingredients_needed_from_pot(customer)
-
-	if needed_ingredients.is_empty():
-		return shortage
-
-	for item_id in needed_ingredients.keys():
-		var item_key: String = str(item_id)
-		var needed_amount: int = int(needed_ingredients.get(item_key, 0))
-
-		if needed_amount <= 0:
-			continue
-
-		var cooked_amount: int = int(cooked_stock.get(item_key, 0))
-		var raw_amount: int = int(raw_stock.get(item_key, 0))
-		var available_amount: int = cooked_amount + raw_amount
-		var missing_amount: int = needed_amount - available_amount
-
-		if missing_amount > 0:
-			shortage[item_key] = missing_amount
-
-	return shortage
+	return cooking_system.get_cart_ingredient_shortage_for_customer(customer)
 
 
 func try_fulfill_cart_ingredients_for_customer(customer: Node) -> bool:
-	if customer == null or not is_instance_valid(customer):
-		return false
-
-	if customer.order_served:
-		return false
-
-	var remaining_ingredients: Dictionary = get_pending_order_remaining_ingredients(customer)
-
-	if remaining_ingredients.is_empty():
-		if bool(customer.get("needs_ingredient_cooking")):
-			customer.needs_ingredient_cooking = false
-			customer.cart_ingredients_ready = true
-		return false
-
-	var submitted_ingredients: Dictionary = {}
-	var new_remaining_ingredients: Dictionary = remaining_ingredients.duplicate(true)
-
-	for item_id in remaining_ingredients.keys():
-		var item_key: String = str(item_id)
-		var remaining_amount: int = int(remaining_ingredients.get(item_key, 0))
-		var cooked_amount: int = int(cooked_stock.get(item_key, 0))
-
-		if remaining_amount <= 0:
-			new_remaining_ingredients.erase(item_key)
-			continue
-
-		if cooked_amount <= 0:
-			continue
-
-		var submit_amount: int = int(min(remaining_amount, cooked_amount))
-
-		if submit_amount <= 0:
-			continue
-
-		cooked_stock[item_key] = cooked_amount - submit_amount
-		submitted_ingredients[item_key] = submit_amount
-
-		var new_amount: int = remaining_amount - submit_amount
-
-		if new_amount <= 0:
-			new_remaining_ingredients.erase(item_key)
-		else:
-			new_remaining_ingredients[item_key] = new_amount
-
-	if submitted_ingredients.is_empty():
-		return false
-
-	customer.set_meta("ingredients_to_cook", new_remaining_ingredients)
-
-	if new_remaining_ingredients.is_empty():
-		customer.needs_ingredient_cooking = false
-		customer.cart_ingredients_ready = true
-		print("Customer ingredients are ready.")
-	else:
-		customer.needs_ingredient_cooking = true
-		customer.cart_ingredients_ready = false
-
-	RunSetupData.current_cooked_stock = cooked_stock.duplicate(true)
-
-	print("ä»Žå¤§é”…ç†Ÿèœä¸­æäº¤ç»™ç­‰å¾…é¡¾å®¢é…èœï¼š", submitted_ingredients)
-	print("è¯¥é¡¾å®¢å‰©ä½™é…èœï¼š", new_remaining_ingredients)
-	print("Cooked stock after partial ingredient handoff: ", cooked_stock)
-
-	if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
-		refresh_cart_pot_panel()
-
-	return true
+	return cooking_system.try_fulfill_cart_ingredients_for_customer(customer)
 
 
 func refresh_cart_ingredients_for_pending_customers() -> void:
-	for customer in pending_customers:
-		if customer == null or not is_instance_valid(customer):
-			continue
-
-		if bool(customer.get("order_served")):
-			continue
-
-		if bool(customer.get("needs_emergency_purchase")):
-			continue
-
-		if bool(customer.get("needs_ingredient_cooking")):
-			try_fulfill_cart_ingredients_for_customer(customer)
+	cooking_system.refresh_cart_ingredients_for_pending_customers()
 
 func hand_over_held_staple_to_waiting_customer() -> Node:
-	if held_staple_food_id == "":
-		return null
-
-	var held_food_id: String = held_staple_food_id
-	var held_food_name: String = get_ingredient_display_name(held_food_id)
-
-	for customer in pending_customers:
-		if customer == null or not is_instance_valid(customer):
-			continue
-
-		if customer.order_served:
-			continue
-
-		if not customer_has_main_food(customer):
-			continue
-
-		if not bool(customer.get("needs_main_food_cooking")):
-			continue
-
-		if bool(customer.get("cart_main_food_ready")):
-			continue
-
-		var customer_main_food: String = str(customer.get_main_food())
-
-		# å…¼å®¹ä¸¤ç§æƒ…å†µï¼š
-		# 1. customer.get_main_food() è¿”å›ž "ç²‰ä¸" / "é¢"
-		# 2. ä»¥åŽå¦‚æžœæ”¹æˆè¿”å›ž "glass_noodle" / "noodle"ï¼Œä¹Ÿèƒ½åŒ¹é…
-		if customer_main_food != held_food_name and customer_main_food != held_food_id:
-			continue
-
-		customer.needs_main_food_cooking = false
-		customer.cart_main_food_ready = true
-		held_staple_food_id = ""
-
-		print("Customer main food is ready.")
-		print("äº¤å‡ºæ‰‹ä¸­ä¸»é£Ÿï¼š", held_food_name)
-
-		return customer
-
-	print("æ‰‹é‡Œæœ‰ä¸»é£Ÿï¼Œä½†æ²¡æœ‰ç­‰å¾…è¿™ç§ä¸»é£Ÿçš„é¡¾å®¢ï¼š", held_food_name)
-	return null
+	return cooking_system.hand_over_held_staple_to_waiting_customer()
 
 func get_first_deliverable_pending_customer() -> Node:
-	for customer in pending_customers:
-		if customer != null and is_instance_valid(customer):
-			if customer.order_served:
-				continue
-
-			if customer.needs_emergency_purchase:
-				continue
-
-			if customer.can_be_delivered():
-				return customer
-
-	return null
+	return order_system.get_first_deliverable_pending_customer()
 
 func remove_customer_from_queue(customer: Node) -> void:
 	customer_queue_system.remove_customer_from_queue(customer)
@@ -3091,18 +1177,14 @@ func print_stocks() -> void:
 func add_pending_customer(customer: Node) -> void:
 	remove_customer_from_queue(customer)
 
-	if not pending_customers.has(customer):
-		pending_customers.append(customer)
+	pending_order_system.add(customer)
 
 	if can_spawn_customers_now():
 		if queued_customers.size() < max_queue_size:
 			spawn_customer()
 
 func has_pending_customer() -> bool:
-	for customer in pending_customers:
-		if customer != null and is_instance_valid(customer):
-			return true
-	return false
+	return pending_order_system.has_pending()
 
 func is_customer_in_any_cooker(customer: Node) -> bool:
 	for i in range(min(unlocked_cooker_slots, cooker_slots.size())):
@@ -3163,117 +1245,31 @@ func start_shop_order_bound_cooking_pending_order() -> void:
 	print("Start cooking customer in slot ", free_slot_index, ": ", customer)
 
 func can_fulfill_from_cooked(ingredients: Dictionary) -> bool:
-	for ingredient_name in ingredients.keys():
-		var amount: int = ingredients[ingredient_name]
-
-		if not cooked_stock.has(ingredient_name):
-			return false
-
-		if cooked_stock[ingredient_name] < amount:
-			return false
-
-	return true
+	return inventory_system.can_fulfill_from_cooked(ingredients)
 
 func can_fulfill_from_combined_stock(ingredients: Dictionary) -> bool:
-	for ingredient_name in ingredients.keys():
-		var amount: int = ingredients[ingredient_name]
-
-		var cooked_amount: int = max(cooked_stock.get(ingredient_name, 0), 0)
-		var raw_amount: int = max(raw_stock.get(ingredient_name, 0), 0)
-
-		if cooked_amount + raw_amount < amount:
-			return false
-
-	return true
+	return inventory_system.can_fulfill_from_combined_stock(ingredients)
 
 func get_order_fulfillment_status(ingredients: Dictionary) -> String:
-	if can_fulfill_from_cooked(ingredients):
-		return "instant"
-
-	if can_fulfill_from_combined_stock(ingredients):
-		return "waitable"
-
-	return "unfulfillable"
+	return inventory_system.get_order_fulfillment_status(ingredients)
 
 func deduct_cooked_stock(ingredients: Dictionary) -> void:
-	print("Deducting cooked stock...")
-	print("Before cooked stock: ", cooked_stock)
-
-	for ingredient_name in ingredients.keys():
-		var amount: int = ingredients[ingredient_name]
-		if not cooked_stock.has(ingredient_name):
-			cooked_stock[ingredient_name] = 0
-		cooked_stock[ingredient_name] = max(cooked_stock[ingredient_name] - amount, 0)
-
-	print("After cooked stock: ", cooked_stock)
+	inventory_system.deduct_cooked_stock(ingredients)
 
 func consume_raw_stock_for_order(ingredients: Dictionary) -> void:
-	print("Consuming raw stock...")
-	print("Before raw stock: ", raw_stock)
-
-	for ingredient_name in ingredients.keys():
-		var amount: int = int(ingredients[ingredient_name])
-
-		if not raw_stock.has(ingredient_name):
-			raw_stock[ingredient_name] = 0
-
-		raw_stock[ingredient_name] = max(int(raw_stock[ingredient_name]) - amount, 0)
-
-	print("After raw stock: ", raw_stock)
+	inventory_system.consume_raw_stock_for_order(ingredients)
 
 func add_cooked_stock_for_order(ingredients: Dictionary) -> void:
-	print("Adding cooked stock...")
-	print("Before cooked stock: ", cooked_stock)
-
-	for ingredient_name in ingredients.keys():
-		var amount: int = int(ingredients[ingredient_name])
-
-		if not cooked_stock.has(ingredient_name):
-			cooked_stock[ingredient_name] = 0
-
-		cooked_stock[ingredient_name] = int(cooked_stock[ingredient_name]) + amount
-
-	print("After cooked stock: ", cooked_stock)
+	inventory_system.add_cooked_stock_for_order(ingredients)
 
 func get_cooked_stock_text() -> String:
-	var lines: Array[String] = []
-
-	for key in cooked_stock.keys():
-		var amount = int(cooked_stock.get(key, 0))
-		if amount > 0:
-			lines.append("%s x%d" % [TextDB.get_item_name(key), amount])
-
-	if lines.is_empty():
-		return TextDB.get_text("UI_ITEM_NONE")
-
-	return ", ".join(lines)
+	return inventory_system.get_cooked_stock_text()
 
 func get_raw_stock_text() -> String:
-	var lines: Array[String] = []
-
-	for key in raw_stock.keys():
-		var amount = int(raw_stock.get(key, 0))
-		if amount > 0:
-			lines.append("%s x%d" % [TextDB.get_item_name(key), amount])
-
-	if lines.is_empty():
-		return TextDB.get_text("UI_ITEM_NONE")
-
-	return ", ".join(lines)
+	return inventory_system.get_raw_stock_text()
 
 func get_staple_stock_text() -> String:
-	var parts: Array[String] = []
-
-	for item_id in RunSetupData.get_staple_item_ids():
-		parts.append("%s x%d" % [
-			get_ingredient_display_name(item_id),
-			int(staple_stock.get(item_id, 0))
-		])
-
-	if parts.is_empty():
-		return "æ— "
-
-	return ", ".join(parts)
+	return inventory_system.get_staple_stock_text()
 
 func get_customer_main_food_stock_id(customer: Node) -> String:
 	if customer == null or not is_instance_valid(customer):
@@ -3292,35 +1288,7 @@ func customer_has_main_food(customer: Node) -> bool:
 
 
 func reserve_main_food_stock_for_customer(customer: Node) -> bool:
-	if customer == null or not is_instance_valid(customer):
-		return false
-
-	if bool(customer.get_meta("main_food_deducted_at_checkout", false)):
-		return true
-
-	if not customer_has_main_food(customer):
-		customer.set_meta("main_food_deducted_at_checkout", true)
-		customer.set_meta("reserved_main_food_id", "none")
-		return true
-
-	var main_food_id := get_customer_main_food_stock_id(customer)
-
-	if int(staple_stock.get(main_food_id, 0)) <= 0:
-		print("Main food stock is not enough: ", main_food_id)
-		print("Staple stock: ", staple_stock)
-		return false
-
-	staple_stock[main_food_id] = int(staple_stock.get(main_food_id, 0)) - 1
-
-	customer.set_meta("main_food_deducted_at_checkout", true)
-	customer.set_meta("reserved_main_food_id", main_food_id)
-
-	RunSetupData.current_staple_stock = staple_stock.duplicate(true)
-
-	print("Reserved main food: ", main_food_id)
-	print("Staple stock after reserving main food: ", staple_stock)
-
-	return true
+	return order_system.reserve_main_food_stock_for_customer(customer)
 
 func get_zero_food_stock() -> Dictionary:
 	return {
@@ -3346,402 +1314,54 @@ func get_adjusted_order(ingredients: Dictionary) -> Dictionary:
 	return adjusted_order
 
 func get_total_pending_emergency_shortage() -> Dictionary:
-	var total_ingredient_need: Dictionary = {}
-	var total_main_food_need: Dictionary = {}
-	var shortage: Dictionary = {}
-
-	for customer in pending_customers:
-		if customer == null or not is_instance_valid(customer):
-			continue
-
-		if customer.order_served:
-			continue
-
-		var remaining_ingredients: Dictionary = get_pending_order_remaining_ingredients(customer)
-
-		for item_id in remaining_ingredients.keys():
-			var item_key: String = str(item_id)
-			var amount: int = int(remaining_ingredients.get(item_key, 0))
-
-			if amount <= 0:
-				continue
-
-			total_ingredient_need[item_key] = int(total_ingredient_need.get(item_key, 0)) + amount
-
-		if customer_has_main_food(customer):
-			var main_food_id: String = get_customer_main_food_stock_id(customer)
-
-			if main_food_id != "" and main_food_id != "none":
-				if bool(customer.get("needs_main_food_cooking")) and not bool(customer.get("cart_main_food_ready")):
-					total_main_food_need[main_food_id] = int(total_main_food_need.get(main_food_id, 0)) + 1
-
-	for item_id in total_ingredient_need.keys():
-		var item_key: String = str(item_id)
-		var total_need: int = int(total_ingredient_need.get(item_key, 0))
-		var cooked_amount: int = int(cooked_stock.get(item_key, 0))
-		var raw_amount: int = int(raw_stock.get(item_key, 0))
-		var available_amount: int = cooked_amount + raw_amount
-		var missing_amount: int = total_need - available_amount
-
-		if missing_amount > 0:
-			shortage[item_key] = missing_amount
-
-	for item_id in total_main_food_need.keys():
-		var item_key: String = str(item_id)
-		var total_need: int = int(total_main_food_need.get(item_key, 0))
-		var stock_amount: int = int(staple_stock.get(item_key, 0))
-		var assigned_amount: int = get_assigned_staple_food_count(item_key)
-		var available_amount: int = stock_amount + assigned_amount
-		var missing_amount: int = total_need - available_amount
-
-		if missing_amount > 0:
-			shortage[item_key] = int(shortage.get(item_key, 0)) + missing_amount
-
-	return shortage
+	return emergency_purchase_system.get_total_shortage()
 
 
 func refresh_all_pending_emergency_purchase_states() -> void:
-	for customer in pending_customers:
-		if customer == null or not is_instance_valid(customer):
-			continue
-
-		if customer.order_served:
-			continue
-
-		var customer_shortage: Dictionary = get_customer_order_shortage_for_emergency(customer)
-
-		if customer_shortage.is_empty():
-			customer.needs_emergency_purchase = false
-		else:
-			customer.needs_emergency_purchase = true
+	emergency_purchase_system.refresh_customer_states()
 
 func get_customer_order_shortage_for_emergency(customer: Node) -> Dictionary:
-	var shortage: Dictionary = {}
-
-	if customer == null or not is_instance_valid(customer):
-		return shortage
-
-	if customer.order_served:
-		return shortage
-
-	var remaining_ingredients: Dictionary = get_pending_order_remaining_ingredients(customer)
-
-	for item_id in remaining_ingredients.keys():
-		var item_key: String = str(item_id)
-		var needed_amount: int = int(remaining_ingredients.get(item_key, 0))
-
-		if needed_amount <= 0:
-			continue
-
-		var cooked_amount: int = int(cooked_stock.get(item_key, 0))
-		var raw_amount: int = int(raw_stock.get(item_key, 0))
-		var available_amount: int = cooked_amount + raw_amount
-		var missing_amount: int = needed_amount - available_amount
-
-		if missing_amount > 0:
-			shortage[item_key] = missing_amount
-
-	if customer_has_main_food(customer):
-		var main_food_id: String = get_customer_main_food_stock_id(customer)
-
-		if main_food_id != "" and main_food_id != "none":
-			if bool(customer.get("needs_main_food_cooking")) and not bool(customer.get("cart_main_food_ready")):
-				var stock_amount: int = int(staple_stock.get(main_food_id, 0))
-				var assigned_amount: int = get_assigned_staple_food_count(main_food_id)
-				var available_amount: int = stock_amount + assigned_amount
-
-				if available_amount <= 0:
-					shortage[main_food_id] = int(shortage.get(main_food_id, 0)) + 1
-
-	return shortage
+	return emergency_purchase_system.get_customer_shortage(customer)
 
 func get_order_shortage(ingredients: Dictionary) -> Dictionary:
-	var shortage: Dictionary = {}
-
-	for ingredient_name in ingredients.keys():
-		var amount: int = ingredients[ingredient_name]
-
-		var cooked_amount: int = max(cooked_stock.get(ingredient_name, 0), 0)
-		var raw_amount: int = max(raw_stock.get(ingredient_name, 0), 0)
-
-		var total_amount: int = cooked_amount + raw_amount
-		var missing_amount: int = max(amount - total_amount, 0)
-
-		if missing_amount > 0:
-			shortage[ingredient_name] = missing_amount
-
-	return shortage
+	return inventory_system.get_order_shortage(ingredients)
 
 func get_emergency_purchase_cost(shortage: Dictionary) -> int:
-	if shortage.is_empty():
-		return 0
-
-	return RunSetupData.get_neighbor_emergency_price_for_shortage(shortage)
+	return emergency_purchase_system.get_cost(shortage)
 
 func emergency_purchase_for_customer(_customer: Node) -> bool:
-	var total_shortage: Dictionary = get_total_pending_emergency_shortage()
-
-	if total_shortage.is_empty():
-		print("No shortage to purchase.")
-		refresh_all_pending_emergency_purchase_states()
-		return false
-
-	var cost: int = get_emergency_purchase_cost(total_shortage)
-
-	print("Emergency purchase total shortage: ", total_shortage)
-	print("Emergency purchase total cost: ", cost)
-
-	if not spend_money(cost):
-		print("Emergency purchase failed.")
-		return false
-
-	for item_id in total_shortage.keys():
-		var item_key: String = str(item_id)
-		var amount: int = int(total_shortage.get(item_key, 0))
-
-		if amount <= 0:
-			continue
-
-		if RunSetupData.is_staple_item(item_key):
-			if not staple_stock.has(item_key):
-				staple_stock[item_key] = 0
-
-			staple_stock[item_key] = int(staple_stock.get(item_key, 0)) + amount
-		else:
-			if not raw_stock.has(item_key):
-				raw_stock[item_key] = 0
-
-			raw_stock[item_key] = int(raw_stock.get(item_key, 0)) + amount
-
-	RunSetupData.current_raw_stock = raw_stock.duplicate(true)
-	RunSetupData.current_staple_stock = staple_stock.duplicate(true)
-
-	print("Emergency purchase completed.")
-	print("Raw stock after emergency purchase: ", raw_stock)
-	print("Staple stock after emergency purchase: ", staple_stock)
-
-	for pending_customer in pending_customers:
-		if pending_customer == null or not is_instance_valid(pending_customer):
-			continue
-
-		if pending_customer.order_served:
-			continue
-
-		reserve_stock_after_emergency_purchase(pending_customer)
-
-	refresh_all_pending_emergency_purchase_states()
-
-	print("Emergency purchase completed for all currently waiting shortages.")
-	return true
+	return emergency_purchase_system.purchase_for_waiting_shortages()
 
 
 func reserve_stock_after_emergency_purchase(customer: Node) -> bool:
-	if customer == null or not is_instance_valid(customer):
-		return false
-
-	if customer.order_served:
-		return false
-
-	var remaining_shortage: Dictionary = get_customer_order_shortage_for_emergency(customer)
-
-	if not remaining_shortage.is_empty():
-		print("Customer still has shortage after emergency purchase.")
-		print("Remaining shortage: ", remaining_shortage)
-		customer.needs_emergency_purchase = true
-		return false
-
-	if not bool(customer.get_meta("ingredients_deducted_at_checkout", false)):
-		if customer.has_method("get_ingredients"):
-			var original_ingredients: Dictionary = customer.get_ingredients()
-
-			if not original_ingredients.is_empty():
-				if not bool(customer.needs_ingredient_cooking):
-					var fulfillment_status: String = get_order_fulfillment_status(original_ingredients)
-
-					if fulfillment_status == "unfulfillable":
-						print("Still cannot fulfill ingredients after emergency purchase.")
-						print("Remaining ingredient shortage: ", get_order_shortage(original_ingredients))
-						customer.needs_emergency_purchase = true
-						return false
-
-					prepare_stock_for_waiting_order(customer, fulfillment_status)
-
-	if customer_has_main_food(customer):
-		if not bool(customer.get("cart_main_food_ready")):
-			customer.needs_main_food_cooking = true
-
-	customer.needs_ingredient_cooking = not get_customer_ingredients_to_cook(customer).is_empty()
-	customer.needs_emergency_purchase = false
-
-	print("Emergency purchase stock prepared for customer.")
-	print("Raw stock after emergency preparation: ", raw_stock)
-	print("Cooked stock after emergency preparation: ", cooked_stock)
-	print("Staple stock after emergency preparation: ", staple_stock)
-
-	return true
+	return emergency_purchase_system.reserve_stock_after_purchase(customer)
 
 func get_pending_order_display_text(customer: Node) -> String:
-	var base_text: String = str(customer.get_pending_order_summary())
-
-	if order_panel_upgrade_level <= 0:
-		return base_text
-
-	var status_id: String = get_pending_order_status_id(customer)
-	var status_text: String = TextDB.get_status_name(status_id)
-
-	if order_panel_upgrade_level == 1:
-		return TextDB.get_text("UI_PENDING_ORDER_STATUS") % [status_text, base_text]
-
-	if order_panel_upgrade_level == 2:
-		if status_id == "cooking":
-			var cooker_slot_index: int = get_customer_cooker_slot_index(customer)
-			if cooker_slot_index != -1:
-				return TextDB.get_text("UI_PENDING_ORDER_STATUS_WITH_POT") % [status_text, cooker_slot_index + 1, base_text]
-		return TextDB.get_text("UI_PENDING_ORDER_STATUS") % [status_text, base_text]
-
-	var extra_target_text: String = get_pending_order_delivery_target_text(customer)
-
-	if status_id == "cooking":
-		var cooker_slot_index_2: int = get_customer_cooker_slot_index(customer)
-		if cooker_slot_index_2 != -1:
-			if extra_target_text != "":
-				return TextDB.get_text("UI_PENDING_ORDER_STATUS_WITH_POT_TARGET") % [status_text, cooker_slot_index_2 + 1, extra_target_text, base_text]
-			return TextDB.get_text("UI_PENDING_ORDER_STATUS_WITH_POT") % [status_text, cooker_slot_index_2 + 1, base_text]
-
-	if extra_target_text != "":
-		return TextDB.get_text("UI_PENDING_ORDER_STATUS_WITH_TARGET") % [status_text, extra_target_text, base_text]
-
-	return TextDB.get_text("UI_PENDING_ORDER_STATUS") % [status_text, base_text]
+	return order_system.get_pending_order_display_text(customer)
 
 func get_pending_order_remaining_main_food_text(customer: Node) -> String:
-	if customer == null or not is_instance_valid(customer):
-		return ""
-
-	if not customer_has_main_food(customer):
-		return ""
-
-	if not bool(customer.get("needs_main_food_cooking")):
-		return ""
-
-	if bool(customer.get("cart_main_food_ready")):
-		return ""
-
-	return str(customer.get_main_food())
+	return order_system.get_pending_order_remaining_main_food_text(customer)
 
 
 func get_pending_order_remaining_ingredients(customer: Node) -> Dictionary:
-	if customer == null or not is_instance_valid(customer):
-		return {}
-
-	if bool(customer.get("cart_ingredients_ready")):
-		return {}
-
-	if customer.has_meta("ingredients_to_cook"):
-		var ingredients_to_cook = customer.get_meta("ingredients_to_cook")
-		if typeof(ingredients_to_cook) == TYPE_DICTIONARY:
-			var cleaned_remaining: Dictionary = {}
-
-			for item_id in ingredients_to_cook.keys():
-				var item_key := str(item_id)
-				var amount := int(ingredients_to_cook.get(item_key, 0))
-				if amount > 0:
-					cleaned_remaining[item_key] = amount
-
-			return cleaned_remaining
-
-	if not bool(customer.get("needs_ingredient_cooking")):
-		return {}
-
-	if customer.has_method("get_ingredients"):
-		var ingredients = customer.get_ingredients()
-		if typeof(ingredients) == TYPE_DICTIONARY:
-			var cleaned_ingredients: Dictionary = {}
-
-			for item_id in ingredients.keys():
-				var item_key := str(item_id)
-				var amount := int(ingredients.get(item_key, 0))
-				if amount > 0:
-					cleaned_ingredients[item_key] = amount
-
-			return cleaned_ingredients
-
-	return {}
+	return order_system.get_pending_order_remaining_ingredients(customer)
 
 
 func get_pending_order_remaining_ingredients_text(customer: Node) -> String:
-	var remaining_ingredients: Dictionary = get_pending_order_remaining_ingredients(customer)
-
-	if remaining_ingredients.is_empty():
-		return ""
-
-	return get_items_text(remaining_ingredients)
+	return order_system.get_pending_order_remaining_ingredients_text(customer)
 
 
 func get_pending_order_card_status_text(customer: Node) -> String:
-	if customer == null or not is_instance_valid(customer):
-		return ""
-
-	if customer.order_served:
-		return "å·²å®Œæˆ"
-
-	if customer.can_be_delivered() or is_pending_customer_fully_submitted(customer):
-		return "å¯å‡ºé¤"
-
-	if bool(customer.get("needs_emergency_purchase")):
-		return "ç¼ºè´§"
-
-	var remaining_main_food: String = get_pending_order_remaining_main_food_text(customer)
-	var remaining_ingredients: Dictionary = get_pending_order_remaining_ingredients(customer)
-
-	if remaining_main_food != "" and not remaining_ingredients.is_empty():
-		return "ç­‰ä¸»é£Ÿå’Œé…èœ"
-
-	if remaining_main_food != "":
-		return "ç­‰ä¸»é£Ÿ"
-
-	if not remaining_ingredients.is_empty():
-		return "ç­‰é…èœ"
-
-	return "ç­‰å¾…ç¡®è®¤"
+	return order_system.get_pending_order_card_status_text(customer)
 
 func get_pending_order_card_data(customer: Node) -> Dictionary:
-	var patience_text := "%d/%d" % [
-		int(ceil(customer.get_display_patience_current())),
-		int(customer.get_display_patience_max())
-	]
-
-	var status_text := get_pending_order_card_status_text(customer)
-	var extra_text := ""
-
-	if order_panel_upgrade_level >= 1:
-		var status_id: String = get_pending_order_status_id(customer)
-		var upgrade_status_text: String = TextDB.get_status_name(status_id)
-
-		if upgrade_status_text != "":
-			status_text = upgrade_status_text
-
-	return {
-		"status_text": status_text,
-		"main_food_text": get_pending_order_remaining_main_food_text(customer),
-		"ingredients_text": get_pending_order_remaining_ingredients_text(customer),
-		"patience_text": patience_text,
-		"extra_text": extra_text
-	}
+	return order_system.get_pending_order_card_data(customer)
 
 func get_pending_order_status_id(customer: Node) -> String:
-	if customer.needs_emergency_purchase:
-		return "waiting_restock"
-
-	if customer.can_be_delivered():
-		return "ready_delivery"
-
-	if is_customer_in_any_cooker(customer):
-		return "cooking"
-
-	return "waiting_cook"
+	return order_system.get_pending_order_status_id(customer)
 
 func get_pending_order_delivery_target_text(_customer: Node) -> String:
-	return ""
+	return order_system.get_pending_order_delivery_target_text(_customer)
 
 func add_money(amount: int) -> void:
 	if amount <= 0:
@@ -3799,38 +1419,14 @@ func has_effect(effect_id: String) -> bool:
 
 
 func get_effective_cart_pot_batch_duration() -> float:
-	var duration: float = cart_pot_batch_duration
-
-	if has_effect("claw_dance"):
-		duration *= 0.8
-
-	return max(duration, 0.2)
+	return cooking_system.get_effective_cart_pot_batch_duration()
 
 
 func get_effective_staple_ladle_duration() -> float:
-	var duration: float = staple_ladle_duration
-
-	if has_effect("claw_dance"):
-		duration *= 0.8
-
-	return max(duration, 0.2)
+	return cooking_system.get_effective_staple_ladle_duration()
 
 func change_reputation(delta: int, reason: String = "") -> void:
-	var before_reputation: int = RunSetupData.reputation
-
-	RunSetupData.reputation += delta
-	RunSetupData.today_reputation_delta += delta
-
-	print(
-		"Reputation changed: ",
-		before_reputation,
-		" -> ",
-		RunSetupData.reputation,
-		" | delta: ",
-		delta,
-		" | reason: ",
-		reason
-	)
+	reputation_system.change(delta, reason)
 
 func spend_money(amount: int) -> bool:
 	if amount <= 0:
@@ -3899,7 +1495,7 @@ func has_active_customers_or_orders() -> bool:
 		if _customer_blocks_cart_cleanup(customer):
 			return true
 
-	for customer in pending_customers:
+	for customer in pending_order_system.get_all():
 		if _customer_blocks_cart_cleanup(customer):
 			return true
 
@@ -3932,19 +1528,16 @@ func _customer_blocks_cart_cleanup(customer: Node) -> bool:
 	# å…œåº•é€»è¾‘ï¼š
 	# å¦‚æžœæŸä¸ªé¡¾å®¢è„šæœ¬è¿˜æ²¡æœ‰ blocks_cart_cleanup()ï¼Œ
 	# è‡³å°‘ä¸è¦è®©å·²ç»æœåŠ¡å®Œæˆæˆ–å·²ç»å› è€å¿ƒç¦»å¼€çš„é¡¾å®¢é˜»æ­¢æ”¶æ‘Šã€‚
-	if bool(customer.get("order_served")):
+	if CustomerOrderState.is_served(customer):
 		return false
 
-	if bool(customer.get("leaving_due_to_patience")):
+	if CustomerOrderState.is_leaving_due_to_patience(customer):
 		return false
 
 	return true
 
 func has_busy_cooker() -> bool:
-	if cart_pot_is_cooking:
-		return true
-
-	if has_busy_staple_ladle():
+	if cooking_system.has_busy_cooking():
 		return true
 
 	for i in range(min(unlocked_cooker_slots, cooker_slots.size())):
@@ -3978,39 +1571,7 @@ func can_finish_day_now() -> bool:
 	return true
 
 func clear_staple_ladle_and_held_food_at_day_end() -> Dictionary:
-	var discarded: Dictionary = {
-		"held_raw": "",
-		"held": "",
-		"ladles": []
-	}
-
-	if held_raw_staple_food_id != "":
-		discarded["held_raw"] = held_raw_staple_food_id
-		held_raw_staple_food_id = ""
-
-	if held_staple_food_id != "":
-		discarded["held"] = held_staple_food_id
-		held_staple_food_id = ""
-
-	for i in range(staple_ladle_slots.size()):
-		var slot: Dictionary = staple_ladle_slots[i] as Dictionary
-		var state: String = str(slot.get("state", "empty"))
-		var main_food_id: String = str(slot.get("main_food_id", ""))
-
-		if state != "empty" or main_food_id != "":
-			discarded["ladles"].append({
-				"slot": i,
-				"state": state,
-				"main_food_id": main_food_id
-			})
-
-		slot["state"] = "empty"
-		slot["main_food_id"] = ""
-		slot["time_left"] = 0.0
-		slot["is_ready"] = false
-		staple_ladle_slots[i] = slot
-
-	return discarded
+	return cooking_system.clear_day_end_state()
 
 func finish_day() -> void:
 	has_round_finished = true
@@ -4033,12 +1594,12 @@ func finish_day() -> void:
 
 	RunSetupData.generated_night_queue = build_night_queue_from_today_results()
 
-	var day_summary := settlement_builder.build_day_summary(
+	var day_summary := settlement_builder.build_day_summary(_build_settlement_summary_input(
 		remaining_cooked_stock,
 		remaining_raw_stock,
 		remaining_staple_stock,
 		discarded_staple_food
-	)
+	))
 
 	RunSetupData.last_day_summary = day_summary
 
@@ -4073,11 +1634,12 @@ func finish_run() -> void:
 	RunSetupData.current_raw_stock = remaining_raw_stock
 	RunSetupData.current_staple_stock = remaining_staple_stock
 
-	var run_summary := settlement_builder.build_run_summary(
+	var run_summary := settlement_builder.build_run_summary(_build_settlement_summary_input(
 		remaining_cooked_stock,
 		remaining_raw_stock,
-		remaining_staple_stock
-	)
+		remaining_staple_stock,
+		{}
+	))
 
 	RunSetupData.last_run_summary = run_summary
 	RunSetupData.settlement_view_mode = "run"
@@ -4099,3 +1661,29 @@ func finish_run() -> void:
 	print("Remaining staple stock: ", remaining_staple_stock)
 
 	get_tree().call_deferred("change_scene_to_file", "res://scenes/settlement/settlement_result.tscn")
+
+
+func _build_settlement_summary_input(
+	remaining_cooked_stock: Dictionary,
+	remaining_raw_stock: Dictionary,
+	remaining_staple_stock: Dictionary,
+	discarded_staple_food: Dictionary
+) -> Dictionary:
+	return {
+		"today_gross_income": today_gross_income,
+		"today_expense": today_expense,
+		"today_net_income": today_income,
+		"run_gross_income": round_gross_income,
+		"run_expense": round_expense,
+		"run_net_income": round_income,
+		"current_money": money,
+		"cooked_stock_text": get_cooked_stock_text(),
+		"raw_stock_text": "%s\n主食库存：%s" % [
+			get_raw_stock_text(),
+			get_staple_stock_text()
+		],
+		"cooked_stock_data": remaining_cooked_stock,
+		"raw_stock_data": remaining_raw_stock,
+		"staple_stock_data": remaining_staple_stock,
+		"discarded_staple_food": discarded_staple_food
+	}
