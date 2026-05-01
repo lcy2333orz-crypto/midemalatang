@@ -78,9 +78,6 @@ var staple_ladle_duration: float = 3.0
 var staple_ladle_slots: Array = []
 var held_raw_staple_food_id: String = ""
 var held_staple_food_id: String = ""
-var staple_ladle_status_label: Label = null
-
-var staple_ladle_buttons: Array[Button] = []
 
 
 var supplier_order_layer: CanvasLayer = null
@@ -618,156 +615,6 @@ func deliver_supplier_order(order_data: Dictionary) -> void:
 	if supplier_order_layer != null and is_instance_valid(supplier_order_layer):
 		refresh_supplier_order_panel()
 
-func create_staple_ladle_controls() -> void:
-	if cart_pot_panel == null:
-		return
-
-	var viewport_size := get_viewport().get_visible_rect().size
-
-	cart_pot_panel.size = Vector2(760, 650)
-	cart_pot_panel.position = Vector2(
-		viewport_size.x * 0.5 - 380,
-		viewport_size.y * 0.5 - 325
-	)
-
-	if cart_pot_start_button != null:
-		cart_pot_start_button.position = Vector2(150, 575)
-
-	var old_cooker_button: Button = cart_pot_panel.get_node_or_null("OldOrderCookerButton") as Button
-	if old_cooker_button != null:
-		old_cooker_button.position = Vector2(310, 575)
-
-	var close_button: Button = cart_pot_panel.get_node_or_null("CartPotCloseButton") as Button
-	if close_button != null:
-		close_button.position = Vector2(500, 575)
-
-	if staple_ladle_status_label != null and is_instance_valid(staple_ladle_status_label):
-		return
-
-	staple_ladle_status_label = Label.new()
-	staple_ladle_status_label.name = "StapleLadleStatusLabel"
-	staple_ladle_status_label.position = Vector2(40, 350)
-	staple_ladle_status_label.size = Vector2(680, 70)
-	staple_ladle_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	staple_ladle_status_label.add_theme_font_size_override("font_size", 14)
-	cart_pot_panel.add_child(staple_ladle_status_label)
-
-	staple_ladle_buttons.clear()
-
-	for slot_index in range(2):
-		var row_y := 430 + slot_index * 55
-
-		var glass_button := Button.new()
-		glass_button.name = "Ladle%dGlassButton" % [slot_index + 1]
-		glass_button.text = "漏勺%d煮粉丝" % [slot_index + 1]
-		glass_button.position = Vector2(60, row_y)
-		glass_button.size = Vector2(130, 38)
-		glass_button.set_meta("action", "start")
-		glass_button.set_meta("slot_index", slot_index)
-		glass_button.set_meta("main_food_id", "glass_noodle")
-		glass_button.pressed.connect(_on_staple_ladle_start_pressed.bind(slot_index, "glass_noodle"))
-		cart_pot_panel.add_child(glass_button)
-		staple_ladle_buttons.append(glass_button)
-
-		var noodle_button := Button.new()
-		noodle_button.name = "Ladle%dNoodleButton" % [slot_index + 1]
-		noodle_button.text = "漏勺%d煮面" % [slot_index + 1]
-		noodle_button.position = Vector2(205, row_y)
-		noodle_button.size = Vector2(130, 38)
-		noodle_button.set_meta("action", "start")
-		noodle_button.set_meta("slot_index", slot_index)
-		noodle_button.set_meta("main_food_id", "noodle")
-		noodle_button.pressed.connect(_on_staple_ladle_start_pressed.bind(slot_index, "noodle"))
-		cart_pot_panel.add_child(noodle_button)
-		staple_ladle_buttons.append(noodle_button)
-
-		var take_button := Button.new()
-		take_button.name = "Ladle%dTakeButton" % [slot_index + 1]
-		take_button.text = "取出漏勺%d" % [slot_index + 1]
-		take_button.position = Vector2(350, row_y)
-		take_button.size = Vector2(130, 38)
-		take_button.set_meta("action", "take")
-		take_button.set_meta("slot_index", slot_index)
-		take_button.pressed.connect(_on_staple_ladle_take_pressed.bind(slot_index))
-		cart_pot_panel.add_child(take_button)
-		staple_ladle_buttons.append(take_button)
-
-
-func refresh_staple_ladle_controls() -> void:
-	if staple_ladle_status_label == null:
-		return
-
-	var waiting_glass: int = get_waiting_main_food_count("glass_noodle")
-	var waiting_noodle: int = get_waiting_main_food_count("noodle")
-	var assigned_glass: int = get_assigned_staple_food_count("glass_noodle")
-	var assigned_noodle: int = get_assigned_staple_food_count("noodle")
-	var unassigned_glass: int = get_unassigned_waiting_main_food_count("glass_noodle")
-	var unassigned_noodle: int = get_unassigned_waiting_main_food_count("noodle")
-
-	var lines: Array[String] = []
-
-	lines.append("〖主食漏勺〗手里：%s" % get_held_staple_text())
-
-	lines.append("粉丝：库存%d / 等待%d / 已安排%d / 未安排%d" % [
-		int(staple_stock.get("glass_noodle", 0)),
-		waiting_glass,
-		assigned_glass,
-		unassigned_glass
-	])
-
-	lines.append("面：库存%d / 等待%d / 已安排%d / 未安排%d" % [
-		int(staple_stock.get("noodle", 0)),
-		waiting_noodle,
-		assigned_noodle,
-		unassigned_noodle
-	])
-
-	lines.append("%s | %s" % [
-		get_staple_ladle_text(0),
-		get_staple_ladle_text(1)
-	])
-
-	staple_ladle_status_label.text = "\n".join(lines)
-
-	for button in staple_ladle_buttons:
-		if button == null or not is_instance_valid(button):
-			continue
-
-		var action: String = str(button.get_meta("action", ""))
-		var slot_index: int = int(button.get_meta("slot_index", -1))
-
-		if slot_index < 0 or slot_index >= staple_ladle_slots.size():
-			button.disabled = true
-			continue
-
-		var slot: Dictionary = staple_ladle_slots[slot_index] as Dictionary
-		var state: String = str(slot.get("state", "empty"))
-
-		if action == "start":
-			var main_food_id: String = str(button.get_meta("main_food_id", ""))
-			button.disabled = not can_start_staple_ladle_cooking(slot_index, main_food_id)
-		elif action == "take":
-			button.disabled = state != "ready" or held_staple_food_id != ""
-		else:
-			button.disabled = true
-
-func _on_staple_ladle_start_pressed(slot_index: int, main_food_id: String) -> void:
-	print("Staple ladle start button down. slot=", slot_index, " main_food=", main_food_id)
-
-	start_staple_ladle_cooking(slot_index, main_food_id)
-
-	if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
-		call_deferred("refresh_cart_pot_panel")
-
-
-func _on_staple_ladle_take_pressed(slot_index: int) -> void:
-	print("Staple ladle take button down. slot=", slot_index)
-
-	take_ready_staple_from_ladle(slot_index)
-
-	if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
-		call_deferred("refresh_cart_pot_panel")
-
 func open_cart_pot_panel() -> void:
 	if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
 		refresh_cart_pot_panel()
@@ -901,21 +748,18 @@ func _build_ladle_row(ladle_index: int) -> HBoxContainer:
 	cook_glass_button.text = "煮粉丝"
 	cook_glass_button.custom_minimum_size = Vector2(74, 28)
 	cook_glass_button.disabled = not can_start_staple_ladle_cooking(slot_index, "glass_noodle")
-	cook_glass_button.button_down.connect(_on_staple_ladle_start_pressed.bind(slot_index, "glass_noodle"))
 	row.add_child(cook_glass_button)
 
 	var cook_noodle_button := Button.new()
 	cook_noodle_button.text = "煮面"
 	cook_noodle_button.custom_minimum_size = Vector2(74, 28)
 	cook_noodle_button.disabled = not can_start_staple_ladle_cooking(slot_index, "noodle")
-	cook_noodle_button.button_down.connect(_on_staple_ladle_start_pressed.bind(slot_index, "noodle"))
 	row.add_child(cook_noodle_button)
 
 	var take_out_button := Button.new()
 	take_out_button.text = "取出"
 	take_out_button.custom_minimum_size = Vector2(64, 28)
 	take_out_button.disabled = slot_state != "ready" or held_staple_food_id != ""
-	take_out_button.button_down.connect(_on_staple_ladle_take_pressed.bind(slot_index))
 	row.add_child(take_out_button)
 
 	return row
@@ -1016,18 +860,13 @@ func close_cart_pot_panel() -> void:
 
 	cart_pot_layer = null
 	cart_pot_panel = null
-	cart_pot_scroll = null
-	cart_pot_content = null
-
 	cart_pot_status_label = null
+	cart_pot_start_button = null
+
 	cart_pot_row_labels.clear()
 	cart_pot_minus_buttons.clear()
 	cart_pot_plus_buttons.clear()
 	cart_pot_max_buttons.clear()
-	cart_pot_start_button = null
-
-	staple_ladle_status_label = null
-	staple_ladle_buttons.clear()
 
 
 func _on_cart_pot_minus_pressed(item_id: String) -> void:
