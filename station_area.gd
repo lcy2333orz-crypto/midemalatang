@@ -88,6 +88,13 @@ func interact() -> void:
 			print("Emergency purchase completed for customer.")
 		return
 
+	if station_name == "GiftBox":
+		if game_manager.has_method("interact_with_gift_box"):
+			game_manager.interact_with_gift_box()
+		else:
+			print("GameManager missing interact_with_gift_box")
+		return
+
 	if station_name == "GlassNoodleBasket":
 		if game_manager.has_method("interact_with_staple_basket"):
 			game_manager.interact_with_staple_basket("glass_noodle")

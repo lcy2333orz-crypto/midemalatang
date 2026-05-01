@@ -27,16 +27,26 @@ var auto_close_triggered: bool = false
 var morning_info_layer: CanvasLayer = null
 var base_spawn_timer_wait_time: float = 1.0
 
+var day_gift_layer: CanvasLayer = null
+var day_gift_panel: Panel = null
+var day_gift_current_gift_id: String = ""
+var day_gift_current_options: Array = []
+
 var planned_raw_stock: Dictionary = {
-	"spinach": 4,
-	"potato_slice": 4,
-	"tofu_puff": 4
+	"spinach": 0,
+	"potato_slice": 0,
+	"tofu_puff": 0
 }
 
 var planned_cooked_stock: Dictionary = {
-	"spinach": 2,
-	"potato_slice": 2,
-	"tofu_puff": 2
+	"spinach": 0,
+	"potato_slice": 0,
+	"tofu_puff": 0
+}
+
+var planned_staple_stock: Dictionary = {
+	"glass_noodle": 0,
+	"noodle": 0
 }
 
 var raw_stock: Dictionary = {}
@@ -72,10 +82,6 @@ var staple_ladle_status_label: Label = null
 
 var staple_ladle_buttons: Array[Button] = []
 
-var planned_staple_stock: Dictionary = {
-	"glass_noodle": 10,
-	"noodle": 10
-}
 
 var supplier_order_layer: CanvasLayer = null
 var supplier_order_panel: Panel = null
@@ -1112,6 +1118,262 @@ func show_storage_stock_only() -> void:
 	print("Cooked stock text: ", cooked_text)
 	print("Raw / staple stock text: ", raw_and_staple_text)
 
+func interact_with_gift_box() -> void:
+	if day_gift_layer != null and is_instance_valid(day_gift_layer):
+		print("礼物选择面板已经打开。")
+		return
+
+	var unopened_gifts: Array = RunSetupData.get_unopened_pending_gifts()
+
+	if unopened_gifts.is_empty():
+		print("礼物盒是空的。当前没有未打开的特殊客人礼物。")
+		return
+
+	var gift_data: Dictionary = unopened_gifts[0]
+	open_day_gift_choice_panel(gift_data)
+
+func open_day_gift_choice_panel(gift_data: Dictionary) -> void:
+	if gift_data.is_empty():
+		print("不能打开空礼物。")
+		return
+
+	var gift_id: String = str(gift_data.get("gift_id", ""))
+	if gift_id == "":
+		print("礼物没有 gift_id，不能打开。")
+		return
+
+	day_gift_current_gift_id = gift_id
+
+	var saved_options: Array = RunSetupData.get_gift_current_options(gift_id)
+	if saved_options.is_empty():
+		day_gift_current_options = generate_day_gift_options(gift_data)
+		RunSetupData.set_gift_current_options(gift_id, day_gift_current_options)
+	else:
+		day_gift_current_options = saved_options
+
+	day_gift_layer = CanvasLayer.new()
+	day_gift_layer.name = "DayGiftLayer"
+	day_gift_layer.layer = 120
+	add_child(day_gift_layer)
+
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+
+	day_gift_panel = Panel.new()
+	day_gift_panel.name = "DayGiftPanel"
+	day_gift_panel.size = Vector2(720, 360)
+	day_gift_panel.position = Vector2(
+		viewport_size.x * 0.5 - 360,
+		viewport_size.y * 0.5 - 180
+	)
+	day_gift_layer.add_child(day_gift_panel)
+
+	var title_label := Label.new()
+	title_label.name = "DayGiftTitle"
+	title_label.text = str(gift_data.get("display_name", "特殊客人的礼物"))
+	title_label.position = Vector2(24, 18)
+	title_label.size = Vector2(672, 34)
+	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title_label.add_theme_font_size_override("font_size", 22)
+	day_gift_panel.add_child(title_label)
+
+	var desc_label := Label.new()
+	desc_label.name = "DayGiftDesc"
+	desc_label.text = "特殊客人留下了一个小小的回响。选择其中一种影响。"
+	desc_label.position = Vector2(48, 58)
+	desc_label.size = Vector2(624, 44)
+	desc_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	desc_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_label.add_theme_font_size_override("font_size", 14)
+	day_gift_panel.add_child(desc_label)
+
+	for i in range(day_gift_current_options.size()):
+		var option_data: Dictionary = day_gift_current_options[i]
+		var button := Button.new()
+		button.name = "DayGiftOption%d" % i
+		button.position = Vector2(42 + i * 226, 125)
+		button.size = Vector2(196, 150)
+		button.text = get_day_gift_option_button_text(option_data)
+		button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		button.pressed.connect(_on_day_gift_option_pressed.bind(i))
+		day_gift_panel.add_child(button)
+
+	var close_button := Button.new()
+	close_button.name = "DayGiftCloseButton"
+	close_button.text = "先不打开"
+	close_button.position = Vector2(290, 300)
+	close_button.size = Vector2(140, 38)
+	close_button.pressed.connect(close_day_gift_choice_panel)
+	day_gift_panel.add_child(close_button)
+
+	print("打开白天礼物：", gift_data)
+	print("白天礼物选项：", day_gift_current_options)
+
+
+func close_day_gift_choice_panel() -> void:
+	if day_gift_layer != null and is_instance_valid(day_gift_layer):
+		day_gift_layer.queue_free()
+
+	day_gift_layer = null
+	day_gift_panel = null
+	day_gift_current_gift_id = ""
+	day_gift_current_options.clear()
+
+func generate_day_gift_options(gift_data: Dictionary) -> Array:
+	var result: String = str(gift_data.get("result", "neutral"))
+	var source_type: String = str(gift_data.get("source_type", ""))
+
+	if result == "bad":
+		return [
+			{
+				"id": "mouse_bad_slow_start",
+				"name": "摊口有点乱",
+				"description": "今天顾客等待耐心略微下降。",
+				"effect_type": "active_effect"
+			},
+			{
+				"id": "mouse_bad_extra_cost",
+				"name": "临时添乱",
+				"description": "立刻损失 2 金。",
+				"effect_type": "instant_money",
+				"money_delta": -2
+			},
+			{
+				"id": "mouse_bad_reputation",
+				"name": "小小坏印象",
+				"description": "立刻失去 1 点口碑。",
+				"effect_type": "instant_reputation",
+				"reputation_delta": -1
+			}
+		]
+
+	if source_type == "mouse":
+		return [
+			{
+				"id": "busy_stall",
+				"name": "热闹摊口",
+				"description": "顾客来得更快，适合想多做几单的时候。",
+				"effect_type": "active_effect"
+			},
+			{
+				"id": "mouse_spare_coin",
+				"name": "老鼠的小零钱",
+				"description": "立刻获得 2 金。",
+				"effect_type": "instant_money",
+				"money_delta": 2
+			},
+			{
+				"id": "mouse_found_spinach",
+				"name": "老鼠找到的青菜",
+				"description": "立刻获得菠菜 x2。",
+				"effect_type": "instant_stock",
+				"stock_item_id": "spinach",
+				"stock_amount": 2
+			}
+		]
+
+	return [
+		{
+			"id": "small_tip",
+			"name": "一点小心意",
+			"description": "立刻获得 1 金。",
+			"effect_type": "instant_money",
+			"money_delta": 1
+		},
+		{
+			"id": "warm_memory",
+			"name": "温热回响",
+			"description": "立刻获得 1 点口碑。",
+			"effect_type": "instant_reputation",
+			"reputation_delta": 1
+		},
+		{
+			"id": "steady_paws",
+			"name": "稳稳爪爪",
+			"description": "记录为一个稳定经营效果。",
+			"effect_type": "active_effect"
+		}
+	]
+
+func _on_day_gift_option_pressed(option_index: int) -> void:
+	if day_gift_current_gift_id == "":
+		print("没有正在打开的礼物。")
+		return
+
+	if option_index < 0 or option_index >= day_gift_current_options.size():
+		print("礼物选项编号无效：", option_index)
+		return
+
+	var chosen_card: Dictionary = day_gift_current_options[option_index]
+	var gift_data: Dictionary = RunSetupData.get_unopened_gift_by_id(day_gift_current_gift_id)
+
+	if gift_data.is_empty():
+		print("这个礼物已经被打开，或者找不到。")
+		close_day_gift_choice_panel()
+		return
+
+	apply_day_gift_choice(gift_data, chosen_card)
+	RunSetupData.mark_gift_opened(day_gift_current_gift_id, chosen_card)
+
+	print("白天打开礼物，选择：", chosen_card)
+
+	close_day_gift_choice_panel()
+
+
+func apply_day_gift_choice(gift_data: Dictionary, chosen_card: Dictionary) -> void:
+	var effect_type: String = str(chosen_card.get("effect_type", "active_effect"))
+	var card_id: String = str(chosen_card.get("id", "unknown_card"))
+	var card_name: String = str(chosen_card.get("name", "未知卡牌"))
+	var gift_id: String = str(gift_data.get("gift_id", ""))
+	var display_name: String = str(gift_data.get("display_name", "特殊客人的礼物"))
+	var result: String = str(gift_data.get("result", "neutral"))
+
+	if effect_type == "instant_money":
+		var money_delta: int = int(chosen_card.get("money_delta", 0))
+
+		if money_delta >= 0:
+			add_money(money_delta)
+		else:
+			var cost: int = abs(money_delta)
+			if not spend_money(cost):
+				print("即时金钱惩罚无法完全支付。需要：", cost, " 当前：", money)
+
+	elif effect_type == "instant_reputation":
+		var reputation_delta: int = int(chosen_card.get("reputation_delta", 0))
+		if reputation_delta != 0:
+			change_reputation(reputation_delta, "day gift")
+
+	elif effect_type == "instant_stock":
+		var item_id: String = str(chosen_card.get("stock_item_id", ""))
+		var amount: int = int(chosen_card.get("stock_amount", 0))
+
+		if item_id != "" and amount > 0:
+			if RunSetupData.is_staple_item(item_id):
+				staple_stock[item_id] = int(staple_stock.get(item_id, 0)) + amount
+				RunSetupData.current_staple_stock = staple_stock.duplicate(true)
+			else:
+				raw_stock[item_id] = int(raw_stock.get(item_id, 0)) + amount
+				RunSetupData.current_raw_stock = raw_stock.duplicate(true)
+
+			print("礼物获得库存：", get_ingredient_display_name(item_id), " x", amount)
+
+	else:
+		RunSetupData.active_effects.append({
+			"source": display_name,
+			"type": "special_echo",
+			"result": result,
+			"effect_id": card_id,
+			"effect": card_name,
+			"from_gift_id": gift_id
+		})
+
+	print("当前已获得效果列表：", RunSetupData.active_effects)
+
+func get_day_gift_option_button_text(option_data: Dictionary) -> String:
+	var name: String = str(option_data.get("name", "未知卡牌"))
+	var desc: String = str(option_data.get("description", ""))
+	return "%s\n\n%s" % [name, desc]
 
 func get_ingredient_display_name(item_id: String) -> String:
 	return TextDB.get_item_name(item_id)
@@ -2444,9 +2706,6 @@ func is_pending_customer_fully_submitted(customer: Node) -> bool:
 	if customer.order_served:
 		return false
 
-	if customer.needs_emergency_purchase:
-		return false
-
 	var remaining_main_food_text: String = get_pending_order_remaining_main_food_text(customer)
 	var remaining_ingredients: Dictionary = get_pending_order_remaining_ingredients(customer)
 
@@ -2486,9 +2745,6 @@ func interact_with_delivery_point() -> void:
 		if customer.order_served:
 			continue
 
-		if customer.needs_emergency_purchase:
-			continue
-
 		if customer.can_be_delivered() or is_pending_customer_fully_submitted(customer):
 			completed_customer = customer
 			break
@@ -2526,6 +2782,7 @@ func complete_delivery_for_customer(customer: Node) -> bool:
 		print("Cannot deliver: customer order is not ready.")
 		return false
 
+	customer.needs_emergency_purchase = false
 	customer.needs_main_food_cooking = false
 	customer.needs_ingredient_cooking = false
 	customer.cart_main_food_ready = true
@@ -2692,6 +2949,14 @@ func resolve_price_reaction(_customer: Node, _quoted_price: int, _true_price: in
 	return "accept"
 
 func get_first_customer_needing_emergency_purchase() -> Node:
+	var total_shortage: Dictionary = get_total_pending_emergency_shortage()
+
+	if total_shortage.is_empty():
+		refresh_all_pending_emergency_purchase_states()
+		return null
+
+	print("Emergency total shortage: ", total_shortage)
+
 	for customer in pending_customers:
 		if customer == null or not is_instance_valid(customer):
 			continue
@@ -2699,12 +2964,8 @@ func get_first_customer_needing_emergency_purchase() -> Node:
 		if customer.order_served:
 			continue
 
-		var shortage := get_customer_order_shortage_for_emergency(customer)
-
-		if bool(customer.needs_emergency_purchase) or not shortage.is_empty():
-			customer.needs_emergency_purchase = true
-			print("Emergency shortage: ", shortage)
-			return customer
+		customer.needs_emergency_purchase = true
+		return customer
 
 	return null
 
@@ -2784,9 +3045,6 @@ func try_fulfill_cart_ingredients_for_customer(customer: Node) -> bool:
 		return false
 
 	if customer.order_served:
-		return false
-
-	if customer.needs_emergency_purchase:
 		return false
 
 	var remaining_ingredients: Dictionary = get_pending_order_remaining_ingredients(customer)
@@ -2870,25 +3128,44 @@ func hand_over_held_staple_to_waiting_customer() -> Node:
 	if held_staple_food_id == "":
 		return null
 
-	var staple_customer: Node = get_first_pending_customer_waiting_for_main_food(held_staple_food_id)
+	var held_food_id: String = held_staple_food_id
+	var held_food_name: String = get_ingredient_display_name(held_food_id)
 
-	if staple_customer == null:
-		print("手里有主食，但没有等待这种主食的顾客：", get_ingredient_display_name(held_staple_food_id))
-		return null
+	for customer in pending_customers:
+		if customer == null or not is_instance_valid(customer):
+			continue
 
-	var handed_food_id: String = held_staple_food_id
+		if customer.order_served:
+			continue
 
-	if staple_customer.has_method("mark_cart_main_food_ready"):
-		staple_customer.mark_cart_main_food_ready()
+		if not customer_has_main_food(customer):
+			continue
 
-	held_staple_food_id = ""
+		if not bool(customer.get("needs_main_food_cooking")):
+			continue
 
-	print("交出手中主食：", get_ingredient_display_name(handed_food_id))
+		if bool(customer.get("cart_main_food_ready")):
+			continue
 
-	if cart_pot_layer != null and is_instance_valid(cart_pot_layer):
-		refresh_cart_pot_panel()
+		var customer_main_food: String = str(customer.get_main_food())
 
-	return staple_customer
+		# 兼容两种情况：
+		# 1. customer.get_main_food() 返回 "粉丝" / "面"
+		# 2. 以后如果改成返回 "glass_noodle" / "noodle"，也能匹配
+		if customer_main_food != held_food_name and customer_main_food != held_food_id:
+			continue
+
+		customer.needs_main_food_cooking = false
+		customer.cart_main_food_ready = true
+		held_staple_food_id = ""
+
+		print("Customer main food is ready.")
+		print("交出手中主食：", held_food_name)
+
+		return customer
+
+	print("手里有主食，但没有等待这种主食的顾客：", held_food_name)
+	return null
 
 func get_first_deliverable_pending_customer() -> Node:
 	for customer in pending_customers:
@@ -3224,30 +3501,113 @@ func get_adjusted_order(ingredients: Dictionary) -> Dictionary:
 
 	return adjusted_order
 
+func get_total_pending_emergency_shortage() -> Dictionary:
+	var total_ingredient_need: Dictionary = {}
+	var total_main_food_need: Dictionary = {}
+	var shortage: Dictionary = {}
+
+	for customer in pending_customers:
+		if customer == null or not is_instance_valid(customer):
+			continue
+
+		if customer.order_served:
+			continue
+
+		var remaining_ingredients: Dictionary = get_pending_order_remaining_ingredients(customer)
+
+		for item_id in remaining_ingredients.keys():
+			var item_key: String = str(item_id)
+			var amount: int = int(remaining_ingredients.get(item_key, 0))
+
+			if amount <= 0:
+				continue
+
+			total_ingredient_need[item_key] = int(total_ingredient_need.get(item_key, 0)) + amount
+
+		if customer_has_main_food(customer):
+			var main_food_id: String = get_customer_main_food_stock_id(customer)
+
+			if main_food_id != "" and main_food_id != "none":
+				if bool(customer.get("needs_main_food_cooking")) and not bool(customer.get("cart_main_food_ready")):
+					total_main_food_need[main_food_id] = int(total_main_food_need.get(main_food_id, 0)) + 1
+
+	for item_id in total_ingredient_need.keys():
+		var item_key: String = str(item_id)
+		var total_need: int = int(total_ingredient_need.get(item_key, 0))
+		var cooked_amount: int = int(cooked_stock.get(item_key, 0))
+		var raw_amount: int = int(raw_stock.get(item_key, 0))
+		var available_amount: int = cooked_amount + raw_amount
+		var missing_amount: int = total_need - available_amount
+
+		if missing_amount > 0:
+			shortage[item_key] = missing_amount
+
+	for item_id in total_main_food_need.keys():
+		var item_key: String = str(item_id)
+		var total_need: int = int(total_main_food_need.get(item_key, 0))
+		var stock_amount: int = int(staple_stock.get(item_key, 0))
+		var assigned_amount: int = get_assigned_staple_food_count(item_key)
+		var available_amount: int = stock_amount + assigned_amount
+		var missing_amount: int = total_need - available_amount
+
+		if missing_amount > 0:
+			shortage[item_key] = int(shortage.get(item_key, 0)) + missing_amount
+
+	return shortage
+
+
+func refresh_all_pending_emergency_purchase_states() -> void:
+	for customer in pending_customers:
+		if customer == null or not is_instance_valid(customer):
+			continue
+
+		if customer.order_served:
+			continue
+
+		var customer_shortage: Dictionary = get_customer_order_shortage_for_emergency(customer)
+
+		if customer_shortage.is_empty():
+			customer.needs_emergency_purchase = false
+		else:
+			customer.needs_emergency_purchase = true
+
 func get_customer_order_shortage_for_emergency(customer: Node) -> Dictionary:
 	var shortage: Dictionary = {}
 
 	if customer == null or not is_instance_valid(customer):
 		return shortage
 
-	var ingredient_shortage := get_order_shortage(customer.get_ingredients())
+	if customer.order_served:
+		return shortage
 
-	for item_id in ingredient_shortage.keys():
-		var amount := int(ingredient_shortage.get(item_id, 0))
+	var remaining_ingredients: Dictionary = get_pending_order_remaining_ingredients(customer)
 
-		if amount <= 0:
+	for item_id in remaining_ingredients.keys():
+		var item_key: String = str(item_id)
+		var needed_amount: int = int(remaining_ingredients.get(item_key, 0))
+
+		if needed_amount <= 0:
 			continue
 
-		shortage[str(item_id)] = amount
+		var cooked_amount: int = int(cooked_stock.get(item_key, 0))
+		var raw_amount: int = int(raw_stock.get(item_key, 0))
+		var available_amount: int = cooked_amount + raw_amount
+		var missing_amount: int = needed_amount - available_amount
+
+		if missing_amount > 0:
+			shortage[item_key] = missing_amount
 
 	if customer_has_main_food(customer):
-		var main_food_id := get_customer_main_food_stock_id(customer)
+		var main_food_id: String = get_customer_main_food_stock_id(customer)
 
-		if main_food_id != "":
-			var current_staple_amount := int(staple_stock.get(main_food_id, 0))
+		if main_food_id != "" and main_food_id != "none":
+			if bool(customer.get("needs_main_food_cooking")) and not bool(customer.get("cart_main_food_ready")):
+				var stock_amount: int = int(staple_stock.get(main_food_id, 0))
+				var assigned_amount: int = get_assigned_staple_food_count(main_food_id)
+				var available_amount: int = stock_amount + assigned_amount
 
-			if current_staple_amount <= 0:
-				shortage[main_food_id] = int(shortage.get(main_food_id, 0)) + 1
+				if available_amount <= 0:
+					shortage[main_food_id] = int(shortage.get(main_food_id, 0)) + 1
 
 	return shortage
 
@@ -3274,29 +3634,26 @@ func get_emergency_purchase_cost(shortage: Dictionary) -> int:
 
 	return RunSetupData.get_neighbor_emergency_price_for_shortage(shortage)
 
-func emergency_purchase_for_customer(customer: Node) -> bool:
-	if customer == null or not is_instance_valid(customer):
-		print("No customer for emergency purchase.")
+func emergency_purchase_for_customer(_customer: Node) -> bool:
+	var total_shortage: Dictionary = get_total_pending_emergency_shortage()
+
+	if total_shortage.is_empty():
+		print("No shortage to purchase.")
+		refresh_all_pending_emergency_purchase_states()
 		return false
 
-	var shortage := get_customer_order_shortage_for_emergency(customer)
+	var cost: int = get_emergency_purchase_cost(total_shortage)
 
-	if shortage.is_empty():
-		print("No shortage to purchase. Try refreshing this waiting order.")
-		return reserve_stock_after_emergency_purchase(customer)
-
-	var cost := get_emergency_purchase_cost(shortage)
-
-	print("Emergency purchase shortage: ", shortage)
-	print("Emergency purchase cost: ", cost)
+	print("Emergency purchase total shortage: ", total_shortage)
+	print("Emergency purchase total cost: ", cost)
 
 	if not spend_money(cost):
 		print("Emergency purchase failed.")
 		return false
 
-	for item_id in shortage.keys():
-		var item_key := str(item_id)
-		var amount := int(shortage.get(item_id, 0))
+	for item_id in total_shortage.keys():
+		var item_key: String = str(item_id)
+		var amount: int = int(total_shortage.get(item_key, 0))
 
 		if amount <= 0:
 			continue
@@ -3319,11 +3676,18 @@ func emergency_purchase_for_customer(customer: Node) -> bool:
 	print("Raw stock after emergency purchase: ", raw_stock)
 	print("Staple stock after emergency purchase: ", staple_stock)
 
-	if not reserve_stock_after_emergency_purchase(customer):
-		print("Emergency purchase completed, but customer order still cannot be prepared.")
-		return false
+	for pending_customer in pending_customers:
+		if pending_customer == null or not is_instance_valid(pending_customer):
+			continue
 
-	print("Emergency purchase completed for customer.")
+		if pending_customer.order_served:
+			continue
+
+		reserve_stock_after_emergency_purchase(pending_customer)
+
+	refresh_all_pending_emergency_purchase_states()
+
+	print("Emergency purchase completed for all currently waiting shortages.")
 	return true
 
 
@@ -3331,27 +3695,36 @@ func reserve_stock_after_emergency_purchase(customer: Node) -> bool:
 	if customer == null or not is_instance_valid(customer):
 		return false
 
-	var remaining_shortage := get_customer_order_shortage_for_emergency(customer)
+	if customer.order_served:
+		return false
+
+	var remaining_shortage: Dictionary = get_customer_order_shortage_for_emergency(customer)
 
 	if not remaining_shortage.is_empty():
-		print("Still cannot fulfill order after emergency purchase.")
+		print("Customer still has shortage after emergency purchase.")
 		print("Remaining shortage: ", remaining_shortage)
+		customer.needs_emergency_purchase = true
 		return false
 
 	if not bool(customer.get_meta("ingredients_deducted_at_checkout", false)):
-		if not customer.get_ingredients().is_empty():
-			if not bool(customer.needs_ingredient_cooking):
-				var fulfillment_status := get_order_fulfillment_status(customer.get_ingredients())
+		if customer.has_method("get_ingredients"):
+			var original_ingredients: Dictionary = customer.get_ingredients()
 
-				if fulfillment_status == "unfulfillable":
-					print("Still cannot fulfill ingredients after emergency purchase.")
-					print("Remaining ingredient shortage: ", get_order_shortage(customer.get_ingredients()))
-					return false
+			if not original_ingredients.is_empty():
+				if not bool(customer.needs_ingredient_cooking):
+					var fulfillment_status: String = get_order_fulfillment_status(original_ingredients)
 
-				prepare_stock_for_waiting_order(customer, fulfillment_status)
+					if fulfillment_status == "unfulfillable":
+						print("Still cannot fulfill ingredients after emergency purchase.")
+						print("Remaining ingredient shortage: ", get_order_shortage(original_ingredients))
+						customer.needs_emergency_purchase = true
+						return false
+
+					prepare_stock_for_waiting_order(customer, fulfillment_status)
 
 	if customer_has_main_food(customer):
-		customer.needs_main_food_cooking = true
+		if not bool(customer.get("cart_main_food_ready")):
+			customer.needs_main_food_cooking = true
 
 	customer.needs_ingredient_cooking = not get_customer_ingredients_to_cook(customer).is_empty()
 	customer.needs_emergency_purchase = false
@@ -3545,6 +3918,23 @@ func add_money(amount: int) -> void:
 
 	print("Money earned: ", amount)
 	print("Current money: ", money)
+
+func change_reputation(delta: int, reason: String = "") -> void:
+	var before_reputation: int = RunSetupData.reputation
+
+	RunSetupData.reputation += delta
+	RunSetupData.today_reputation_delta += delta
+
+	print(
+		"Reputation changed: ",
+		before_reputation,
+		" -> ",
+		RunSetupData.reputation,
+		" | delta: ",
+		delta,
+		" | reason: ",
+		reason
+	)
 
 func spend_money(amount: int) -> bool:
 	if amount <= 0:

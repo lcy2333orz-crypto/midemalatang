@@ -29,7 +29,7 @@ var run_total_expense: int = 0
 var current_raw_stock: Dictionary = {}
 var current_cooked_stock: Dictionary = {}
 
-var starting_money: int = 40
+var starting_money: int = 70
 var supplier_delivery_seconds: float = 6.0
 
 var basic_ingredient_ids: Array[String] = [

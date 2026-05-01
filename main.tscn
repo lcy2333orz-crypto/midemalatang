@@ -216,6 +216,25 @@ shape = SubResource("RectangleShape2D_1bvp3")
 
 [node name="LabelPoint" type="Marker2D" parent="Stations/StapleLadle2" unique_id=459484310]
 
+[node name="GiftBox" type="Node2D" parent="Stations" unique_id=1071373065]
+position = Vector2(320, 250)
+scale = Vector2(0.35, 0.35)
+
+[node name="Visual" type="Node2D" parent="Stations/GiftBox" unique_id=1525595814]
+
+[node name="Polygon2D" type="Polygon2D" parent="Stations/GiftBox/Visual" unique_id=709043481]
+color = Color(0.078431375, 1, 1, 1)
+polygon = PackedVector2Array(-60, -40, 60, -40, 60, 40, -60, 40)
+
+[node name="InteractionArea" type="Area2D" parent="Stations/GiftBox" unique_id=238210520]
+script = ExtResource("1_0xm2m")
+station_name = "GiftBox"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/GiftBox/InteractionArea" unique_id=2013235050]
+shape = SubResource("RectangleShape2D_1bvp3")
+
+[node name="LabelPoint" type="Marker2D" parent="Stations/GiftBox" unique_id=8585083]
+
 [node name="Characters" type="Node2D" parent="." unique_id=1772073976]
 
 [node name="Player" parent="Characters" unique_id=1448892241 instance=ExtResource("1_ig7tw")]
