@@ -18,6 +18,7 @@ var staple_ladle_duration: float = 3.0
 var staple_ladle_slots: Array = []
 var held_raw_staple_food_id: String = ""
 var held_staple_food_id: String = ""
+var cooker_slots: Array = []
 
 
 func bind(game_manager: Node) -> void:
@@ -42,6 +43,9 @@ func debug_validate() -> Array[String]:
 	if typeof(cart_pot_cooking_batch) != TYPE_DICTIONARY:
 		warnings.append("CookingSystem: cart_pot_cooking_batch is not a Dictionary.")
 
+	if typeof(cooker_slots) != TYPE_ARRAY:
+		warnings.append("CookingSystem: cooker_slots is not an Array.")
+
 	if cart_pot_time_left < 0.0:
 		warnings.append("CookingSystem: cart_pot_time_left is negative.")
 
@@ -49,13 +53,118 @@ func debug_validate() -> Array[String]:
 
 
 func update(delta: float) -> void:
-	manager.update_cooker_slots(delta)
+	update_cooker_slots(delta)
 	update_cart_pot(delta)
 	update_staple_ladle_slots(delta)
 
 
 func open_cart_pot_panel() -> void:
 	panel_controller.open()
+
+
+func initialize_cooker_slots() -> void:
+	cooker_slots.clear()
+	for i in range(manager.total_cooker_slots):
+		cooker_slots.append({
+			"is_busy": false,
+			"customer": null,
+			"time_left": 0.0
+		})
+
+
+func update_cooker_slots(delta: float) -> void:
+	for i in range(cooker_slots.size()):
+		var slot = cooker_slots[i]
+
+		if not slot["is_busy"]:
+			continue
+
+		slot["time_left"] -= delta
+
+		if slot["time_left"] > 0.0:
+			cooker_slots[i] = slot
+			continue
+
+		var customer = slot["customer"]
+		if customer != null and is_instance_valid(customer):
+			customer.mark_food_ready()
+			print("Cooking finished in slot ", i, ". Order is ready for delivery.")
+			print("This cooked food belongs to this customer and is not added to public cooked_stock.")
+			manager.print_stocks()
+
+		slot["is_busy"] = false
+		slot["customer"] = null
+		slot["time_left"] = 0.0
+		cooker_slots[i] = slot
+
+
+func is_customer_in_any_cooker(customer: Node) -> bool:
+	for i in range(min(manager.unlocked_cooker_slots, cooker_slots.size())):
+		var slot = cooker_slots[i]
+		if slot["is_busy"] and slot["customer"] == customer:
+			return true
+	return false
+
+
+func find_free_cooker_slot_index() -> int:
+	for i in range(min(manager.unlocked_cooker_slots, cooker_slots.size())):
+		var slot = cooker_slots[i]
+		if not slot["is_busy"]:
+			return i
+	return -1
+
+
+func get_customer_cooker_slot_index(customer: Node) -> int:
+	for i in range(min(manager.unlocked_cooker_slots, cooker_slots.size())):
+		var slot = cooker_slots[i]
+		if slot["is_busy"] and slot["customer"] == customer:
+			return i
+	return -1
+
+
+func remove_customer_from_cooker_slots(customer: Node) -> void:
+	for i in range(cooker_slots.size()):
+		var slot = cooker_slots[i]
+		if slot["customer"] == customer:
+			slot["is_busy"] = false
+			slot["customer"] = null
+			slot["time_left"] = 0.0
+			cooker_slots[i] = slot
+
+
+func start_shop_order_bound_cooking_pending_order() -> void:
+	var customer: Node = manager.get_first_uncooked_pending_customer() as Node
+
+	if customer == null:
+		if manager.get_first_customer_needing_emergency_purchase() != null:
+			print("Need emergency purchase first.")
+		else:
+			print("No pending order to cook")
+		return
+
+	var free_slot_index: int = find_free_cooker_slot_index()
+
+	if free_slot_index == -1:
+		print("All unlocked cookers are busy")
+		return
+
+	var slot: Dictionary = cooker_slots[free_slot_index] as Dictionary
+	slot["is_busy"] = true
+	slot["customer"] = customer
+	slot["time_left"] = manager.cooker_duration
+	cooker_slots[free_slot_index] = slot
+
+	print("Start cooking customer in slot ", free_slot_index, ": ", customer)
+
+
+func has_busy_order_bound_cooker() -> bool:
+	for i in range(min(manager.unlocked_cooker_slots, cooker_slots.size())):
+		var slot: Dictionary = cooker_slots[i] as Dictionary
+
+		if bool(slot.get("is_busy", false)):
+			return true
+
+	return false
 
 
 func _build_ladle_row(ladle_index: int) -> HBoxContainer:
@@ -915,7 +1024,7 @@ func hand_over_held_staple_to_waiting_customer() -> Node:
 
 
 func has_busy_cooking() -> bool:
-	return has_busy_staple_ladle() or cart_pot_is_cooking
+	return has_busy_staple_ladle() or cart_pot_is_cooking or has_busy_order_bound_cooker()
 
 
 func clear_day_end_state() -> Dictionary:

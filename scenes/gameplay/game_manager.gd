@@ -10,10 +10,10 @@ const SupplierSystemScript := preload("res://gameplay/systems/supplier_system.gd
 const EmergencyPurchaseSystemScript := preload("res://gameplay/systems/emergency_purchase_system.gd")
 const ReputationSystemScript := preload("res://gameplay/systems/reputation_system.gd")
 const SettlementBuilderScript := preload("res://gameplay/systems/settlement_builder.gd")
+const DayEventSystemScript := preload("res://gameplay/systems/day_event_system.gd")
+const StationLayoutSystemScript := preload("res://gameplay/systems/station_layout_system.gd")
 const StockUtils := preload("res://gameplay/models/stock_utils.gd")
 const CustomerOrderState := preload("res://gameplay/models/customer_order_state.gd")
-const DayGiftPanelControllerScript := preload("res://scenes/ui/day_gift_panel_controller.gd")
-const MorningInfoPanelControllerScript := preload("res://scenes/ui/morning_info_panel_controller.gd")
 
 @export var customer_scene: PackedScene
 
@@ -27,8 +27,8 @@ var supplier_system: SupplierSystem
 var emergency_purchase_system: EmergencyPurchaseSystem
 var reputation_system: ReputationSystem
 var settlement_builder: SettlementBuilder
-var day_gift_panel_controller: DayGiftPanelController
-var morning_info_panel_controller: MorningInfoPanelController
+var day_event_system: DayEventSystem
+var station_layout_system: StationLayoutSystem
 
 var queued_customers: Array = []
 var pending_customers: Array = []
@@ -52,12 +52,7 @@ var day_duration_seconds: float = 15.0
 var day_time_left: float = 90.0
 var auto_close_triggered: bool = false
 
-var morning_info_layer: CanvasLayer = null
 var base_spawn_timer_wait_time: float = 1.0
-
-var day_gift_layer: CanvasLayer = null
-var day_gift_current_gift_id: String = ""
-var day_gift_current_options: Array = []
 
 var planned_raw_stock: Dictionary = {
 	"spinach": 0,
@@ -88,7 +83,6 @@ var max_queue_size: int = 3
 var total_cooker_slots: int = 2
 var unlocked_cooker_slots: int = 1
 var cooker_duration: float = 3.0
-var cooker_slots: Array = []
 
 # è®¢å•æŒ‚ä»¶å‡çº§å±‚çº§
 # 0 = åŸºç¡€æŒ‚ä»¶ï¼ˆä¸»é£Ÿ/é£Ÿæ/è€å¿ƒï¼‰
@@ -154,8 +148,8 @@ func initialize_systems() -> void:
 	emergency_purchase_system = EmergencyPurchaseSystemScript.new()
 	reputation_system = ReputationSystemScript.new()
 	settlement_builder = SettlementBuilderScript.new()
-	day_gift_panel_controller = DayGiftPanelControllerScript.new()
-	morning_info_panel_controller = MorningInfoPanelControllerScript.new()
+	day_event_system = DayEventSystemScript.new()
+	station_layout_system = StationLayoutSystemScript.new()
 
 	for system in [
 		business_day_system,
@@ -167,13 +161,13 @@ func initialize_systems() -> void:
 		supplier_system,
 		emergency_purchase_system,
 		reputation_system,
-		settlement_builder
+		settlement_builder,
+		day_event_system,
+		station_layout_system
 	]:
 		system.bind(self)
 
 	pending_customers = pending_order_system.pending_customers
-	day_gift_panel_controller.bind(self)
-	morning_info_panel_controller.bind(self)
 
 
 func set_spawn_policy(policy: Dictionary) -> void:
@@ -197,7 +191,9 @@ func get_system_debug_report() -> Array[String]:
 		supplier_system,
 		emergency_purchase_system,
 		reputation_system,
-		settlement_builder
+		settlement_builder,
+		day_event_system,
+		station_layout_system
 	]:
 		if system == null:
 			report.append("A gameplay system failed to initialize.")
@@ -274,9 +270,6 @@ func debug_validate_runtime() -> bool:
 
 	if typeof(staple_stock) != TYPE_DICTIONARY:
 		blocking_errors.append("GameManager: staple_stock is not a Dictionary.")
-
-	if typeof(cooker_slots) != TYPE_ARRAY:
-		blocking_errors.append("GameManager: cooker_slots is not an Array.")
 
 	for warning in get_system_debug_report():
 		warnings.append(warning)
@@ -417,23 +410,11 @@ func start_round() -> void:
 
 # External compatibility wrappers: station/UI/customer scripts still enter gameplay
 # through GameManager while systems own the real state and behavior.
-func can_use_supplier_ordering() -> bool:
-	return supplier_system.can_use_ordering()
-
-
 func open_supplier_order_panel() -> void:
 	supplier_system.open_panel()
 
-func refresh_supplier_order_panel() -> void:
-	supplier_system.refresh_panel()
-
 func close_supplier_order_panel() -> void:
 	supplier_system.close_panel()
-
-
-func get_pending_supplier_order_amount(item_id: String) -> int:
-	return supplier_system.get_pending_amount(item_id)
-
 
 func _on_supplier_order_button_pressed(item_id: String, amount: int = 1) -> void:
 	supplier_system.place_order(item_id, amount)
@@ -441,41 +422,6 @@ func _on_supplier_order_button_pressed(item_id: String, amount: int = 1) -> void
 
 func open_cart_pot_panel() -> void:
 	cooking_system.open_cart_pot_panel()
-
-func _build_ladle_row(ladle_index: int) -> HBoxContainer:
-	return cooking_system._build_ladle_row(ladle_index)
-
-func _get_ladle_state_text(ladle_index: int) -> String:
-	return cooking_system._get_ladle_state_text(ladle_index)
-
-func request_cart_pot_panel_refresh() -> void:
-	cooking_system.request_cart_pot_panel_refresh()
-
-func refresh_cart_pot_panel() -> void:
-	cooking_system.refresh_cart_pot_panel()
-
-func close_cart_pot_panel_and_auto_start() -> void:
-	cooking_system.close_cart_pot_panel_and_auto_start()
-
-func close_cart_pot_panel() -> void:
-	cooking_system.close_cart_pot_panel()
-
-
-func _on_cart_pot_minus_pressed(item_id: String) -> void:
-	cooking_system._on_cart_pot_minus_pressed(item_id)
-
-
-func _on_cart_pot_plus_pressed(item_id: String) -> void:
-	cooking_system._on_cart_pot_plus_pressed(item_id)
-
-
-func _on_cart_pot_max_pressed(item_id: String) -> void:
-	cooking_system._on_cart_pot_max_pressed(item_id)
-
-
-func _on_cart_pot_start_pressed() -> void:
-	cooking_system._on_cart_pot_start_pressed()
-
 
 func show_storage_stock_only() -> void:
 	var game_ui = get_tree().get_first_node_in_group("game_ui")
@@ -500,202 +446,27 @@ func show_storage_stock_only() -> void:
 	print("Raw / staple stock text: ", raw_and_staple_text)
 
 func interact_with_gift_box() -> void:
-	if day_gift_panel_controller != null and day_gift_panel_controller.is_open():
-		print("ç¤¼ç‰©é€‰æ‹©é¢æ¿å·²ç»æ‰“å¼€ã€‚")
-		return
-
-	var unopened_gifts: Array = RunSetupData.get_unopened_pending_gifts()
-
-	if unopened_gifts.is_empty():
-		print("ç¤¼ç‰©ç›’æ˜¯ç©ºçš„ã€‚å½“å‰æ²¡æœ‰æœªæ‰“å¼€çš„ç‰¹æ®Šå®¢äººç¤¼ç‰©ã€‚")
-		return
-
-	var gift_data: Dictionary = unopened_gifts[0]
-	open_day_gift_choice_panel(gift_data)
+	day_event_system.interact_with_gift_box()
 
 func open_day_gift_choice_panel(gift_data: Dictionary) -> void:
-	if gift_data.is_empty():
-		print("ä¸èƒ½æ‰“å¼€ç©ºç¤¼ç‰©ã€‚")
-		return
-
-	var gift_id: String = str(gift_data.get("gift_id", ""))
-	if gift_id == "":
-		print("ç¤¼ç‰©æ²¡æœ‰ gift_idï¼Œä¸èƒ½æ‰“å¼€ã€‚")
-		return
-
-	day_gift_current_gift_id = gift_id
-
-	var saved_options: Array = RunSetupData.get_gift_current_options(gift_id)
-	if saved_options.is_empty():
-		day_gift_current_options = generate_day_gift_options(gift_data)
-		RunSetupData.set_gift_current_options(gift_id, day_gift_current_options)
-	else:
-		day_gift_current_options = saved_options
-
-	day_gift_panel_controller.open(gift_data, day_gift_current_options)
-	day_gift_layer = day_gift_panel_controller.layer
-
-	print("æ‰“å¼€ç™½å¤©ç¤¼ç‰©ï¼š", gift_data)
-	print("ç™½å¤©ç¤¼ç‰©é€‰é¡¹ï¼š", day_gift_current_options)
+	day_event_system.open_day_gift_choice_panel(gift_data)
 
 
 func close_day_gift_choice_panel() -> void:
-	if day_gift_panel_controller != null:
-		day_gift_panel_controller.close()
-
-	day_gift_layer = null
-	day_gift_current_gift_id = ""
-	day_gift_current_options.clear()
+	day_event_system.close_day_gift_choice_panel()
 
 func generate_day_gift_options(gift_data: Dictionary) -> Array:
-	var result: String = str(gift_data.get("result", "neutral"))
-	var source_type: String = str(gift_data.get("source_type", ""))
-
-	if result == "bad":
-		return [
-			{
-				"id": "mouse_bad_slow_start",
-				"name": "æ‘Šå£æœ‰ç‚¹ä¹±",
-				"description": "ä»Šå¤©é¡¾å®¢ç­‰å¾…è€å¿ƒç•¥å¾®ä¸‹é™ã€‚",
-				"effect_type": "active_effect"
-			},
-			{
-				"id": "mouse_bad_extra_cost",
-				"name": "ä¸´æ—¶æ·»ä¹±",
-				"description": "ç«‹åˆ»æŸå¤± 2 é‡‘ã€‚",
-				"effect_type": "instant_money",
-				"money_delta": -2
-			},
-			{
-				"id": "mouse_bad_reputation",
-				"name": "å°å°åå°è±¡",
-				"description": "ç«‹åˆ»å¤±åŽ» 1 ç‚¹å£ç¢‘ã€‚",
-				"effect_type": "instant_reputation",
-				"reputation_delta": -1
-			}
-		]
-
-	if source_type == "mouse":
-		return [
-			{
-				"id": "busy_stall",
-				"name": "çƒ­é—¹æ‘Šå£",
-				"description": "é¡¾å®¢æ¥å¾—æ›´å¿«ï¼Œé€‚åˆæƒ³å¤šåšå‡ å•çš„æ—¶å€™ã€‚",
-				"effect_type": "active_effect"
-			},
-			{
-				"id": "mouse_spare_coin",
-				"name": "è€é¼ çš„å°é›¶é’±",
-				"description": "ç«‹åˆ»èŽ·å¾— 2 é‡‘ã€‚",
-				"effect_type": "instant_money",
-				"money_delta": 2
-			},
-			{
-				"id": "mouse_found_spinach",
-				"name": "è€é¼ æ‰¾åˆ°çš„é’èœ",
-				"description": "ç«‹åˆ»èŽ·å¾—è èœ x2ã€‚",
-				"effect_type": "instant_stock",
-				"stock_item_id": "spinach",
-				"stock_amount": 2
-			}
-		]
-
-	return [
-		{
-			"id": "small_tip",
-			"name": "ä¸€ç‚¹å°å¿ƒæ„",
-			"description": "ç«‹åˆ»èŽ·å¾— 1 é‡‘ã€‚",
-			"effect_type": "instant_money",
-			"money_delta": 1
-		},
-		{
-			"id": "warm_memory",
-			"name": "æ¸©çƒ­å›žå“",
-			"description": "ç«‹åˆ»èŽ·å¾— 1 ç‚¹å£ç¢‘ã€‚",
-			"effect_type": "instant_reputation",
-			"reputation_delta": 1
-		},
-		{
-			"id": "steady_paws",
-			"name": "ç¨³ç¨³çˆªçˆª",
-			"description": "è®°å½•ä¸ºä¸€ä¸ªç¨³å®šç»è¥æ•ˆæžœã€‚",
-			"effect_type": "active_effect"
-		}
-	]
+	return day_event_system.generate_day_gift_options(gift_data)
 
 func _on_day_gift_option_pressed(option_index: int) -> void:
-	if day_gift_current_gift_id == "":
-		print("æ²¡æœ‰æ­£åœ¨æ‰“å¼€çš„ç¤¼ç‰©ã€‚")
-		return
-
-	if option_index < 0 or option_index >= day_gift_current_options.size():
-		print("ç¤¼ç‰©é€‰é¡¹ç¼–å·æ— æ•ˆï¼š", option_index)
-		return
-
-	var chosen_card: Dictionary = day_gift_current_options[option_index]
-	var gift_data: Dictionary = RunSetupData.get_unopened_gift_by_id(day_gift_current_gift_id)
-
-	if gift_data.is_empty():
-		print("è¿™ä¸ªç¤¼ç‰©å·²ç»è¢«æ‰“å¼€ï¼Œæˆ–è€…æ‰¾ä¸åˆ°ã€‚")
-		close_day_gift_choice_panel()
-		return
-
-	apply_day_gift_choice(gift_data, chosen_card)
-	RunSetupData.mark_gift_opened(day_gift_current_gift_id, chosen_card)
-
-	print("ç™½å¤©æ‰“å¼€ç¤¼ç‰©ï¼Œé€‰æ‹©ï¼š", chosen_card)
-
-	close_day_gift_choice_panel()
+	day_event_system._on_day_gift_option_pressed(option_index)
 
 
 func apply_day_gift_choice(gift_data: Dictionary, chosen_card: Dictionary) -> void:
-	var effect_type: String = str(chosen_card.get("effect_type", "active_effect"))
-	var card_id: String = str(chosen_card.get("id", "unknown_card"))
-	var card_name: String = str(chosen_card.get("name", "æœªçŸ¥å¡ç‰Œ"))
-	var gift_id: String = str(gift_data.get("gift_id", ""))
-	var display_name: String = str(gift_data.get("display_name", "ç‰¹æ®Šå®¢äººçš„ç¤¼ç‰©"))
-	var result: String = str(gift_data.get("result", "neutral"))
-
-	if effect_type == "instant_money":
-		var money_delta: int = int(chosen_card.get("money_delta", 0))
-
-		if money_delta >= 0:
-			add_money(money_delta)
-		else:
-			var cost: int = abs(money_delta)
-			if not spend_money(cost):
-				print("å³æ—¶é‡‘é’±æƒ©ç½šæ— æ³•å®Œå…¨æ”¯ä»˜ã€‚éœ€è¦ï¼š", cost, " å½“å‰ï¼š", money)
-
-	elif effect_type == "instant_reputation":
-		var reputation_delta: int = int(chosen_card.get("reputation_delta", 0))
-		if reputation_delta != 0:
-			change_reputation(reputation_delta, "day gift")
-
-	elif effect_type == "instant_stock":
-		var item_id: String = str(chosen_card.get("stock_item_id", ""))
-		var amount: int = int(chosen_card.get("stock_amount", 0))
-
-		if item_id != "" and amount > 0:
-			inventory_system.add_stock(item_id, amount)
-
-			print("ç¤¼ç‰©èŽ·å¾—åº“å­˜ï¼š", get_ingredient_display_name(item_id), " x", amount)
-
-	else:
-		RunSetupData.active_effects.append({
-			"source": display_name,
-			"type": "special_echo",
-			"result": result,
-			"effect_id": card_id,
-			"effect": card_name,
-			"from_gift_id": gift_id
-		})
-
-	print("å½“å‰å·²èŽ·å¾—æ•ˆæžœåˆ—è¡¨ï¼š", RunSetupData.active_effects)
+	day_event_system.apply_day_gift_choice(gift_data, chosen_card)
 
 func get_day_gift_option_button_text(option_data: Dictionary) -> String:
-	var name: String = str(option_data.get("name", "æœªçŸ¥å¡ç‰Œ"))
-	var desc: String = str(option_data.get("description", ""))
-	return "%s\n\n%s" % [name, desc]
+	return day_event_system.get_day_gift_option_button_text(option_data)
 
 func get_ingredient_display_name(item_id: String) -> String:
 	return TextDB.get_item_name(item_id)
@@ -721,37 +492,10 @@ func get_items_text(items: Dictionary) -> String:
 	return "ï¼Œ".join(parts)
 
 func activate_and_apply_current_day_business_event() -> void:
-	var event := RunSetupData.activate_pending_tomorrow_event()
-
-	if event.is_empty():
-		return
-
-	print("Activated tomorrow business event: ", event)
-
-	var raw_bonus := int(RunSetupData.get_current_day_additive("random_raw_stock_bonus", 0.0))
-
-	if raw_bonus > 0:
-		apply_random_raw_stock_bonus(raw_bonus)
+	day_event_system.activate_and_apply_current_day_business_event()
 
 func apply_random_raw_stock_bonus(amount: int) -> void:
-	if amount <= 0:
-		return
-
-	var item_pool: Array[String] = RunSetupData.get_basic_ingredient_ids()
-
-	if item_pool.is_empty():
-		return
-
-	var gained: Dictionary = {}
-
-	for i in range(amount):
-		var item_id := item_pool[randi() % item_pool.size()]
-
-		inventory_system.add_stock(item_id, 1)
-		gained[item_id] = int(gained.get(item_id, 0)) + 1
-
-	print("Morning raw stock bonus applied: ", gained)
-	print("Raw stock after morning bonus: ", raw_stock)
+	day_event_system.apply_random_raw_stock_bonus(amount)
 
 func get_modified_spawn_timer_wait_time() -> float:
 	var multiplier := RunSetupData.get_current_day_multiplier(
@@ -783,24 +527,10 @@ func start_spawn_timer_if_needed() -> void:
 	print("Spawn timer started. wait_time=", spawn_timer.wait_time)
 
 func show_pending_morning_info_if_any() -> void:
-	var lines := RunSetupData.consume_pending_morning_info_lines()
-
-	if lines.is_empty():
-		return
-
-	print("=== æ˜¨æ™šå°çŒ«èŽ·å¾—çš„ä¿¡æ¯ ===")
-
-	for line in lines:
-		print(line)
-
-	_create_morning_info_layer(lines)
+	day_event_system.show_pending_morning_info_if_any()
 
 func _create_morning_info_layer(lines: Array[String]) -> void:
-	if morning_info_panel_controller == null:
-		return
-
-	morning_info_panel_controller.show(lines)
-	morning_info_layer = morning_info_panel_controller.layer
+	day_event_system._create_morning_info_layer(lines)
 
 func _apply_special_customer_plan_to_customer(customer: Node) -> void:
 	customer_queue_system.apply_special_customer_plan_to_customer(customer)
@@ -914,83 +644,19 @@ func get_staple_ladle_text(slot_index: int) -> String:
 	return cooking_system.get_staple_ladle_text(slot_index)
 
 func initialize_cooker_slots() -> void:
-	cooker_slots.clear()
-	for i in range(total_cooker_slots):
-		cooker_slots.append({
-			"is_busy": false,
-			"customer": null,
-			"time_left": 0.0
-		})
+	cooking_system.initialize_cooker_slots()
 
 func apply_station_layout_from_run_setup() -> void:
-	var layout: Dictionary = RunSetupData.station_layout
-
-	place_station_by_slot(counter_node, str(layout.get("counter", "")))
-	place_station_by_slot(delivery_node, str(layout.get("delivery", "")))
-	place_station_by_slot(storage_node, str(layout.get("storage", "")))
-	place_station_by_slot(cooker_1_node, str(layout.get("cooker_1", "")))
-	place_station_by_slot(emergency_shop_node, str(layout.get("emergency_shop", "")))
-
-	if cooker_2_node != null:
-		if has_second_cooker:
-			cooker_2_node.visible = true
-			place_station_by_slot(cooker_2_node, str(layout.get("cooker_2", "")))
-		else:
-			cooker_2_node.visible = false
+	station_layout_system.apply_station_layout_from_run_setup()
 
 func place_station_by_slot(station_node: Node2D, slot_id: String) -> void:
-	if station_node == null:
-		return
-
-	var slot_marker := get_slot_marker_by_id(slot_id)
-	if slot_marker == null:
-		print("No valid slot found for station: ", station_node.name, " slot_id: ", slot_id)
-		return
-
-	station_node.global_position = slot_marker.global_position
-	print("Placed station ", station_node.name, " at ", slot_id, " -> ", slot_marker.global_position)
+	station_layout_system.place_station_by_slot(station_node, slot_id)
 
 func get_slot_marker_by_id(slot_id: String) -> Marker2D:
-	match slot_id:
-		"slot_a":
-			return slot_a
-		"slot_b":
-			return slot_b
-		"slot_c":
-			return slot_c
-		"slot_d":
-			return slot_d
-		"slot_e":
-			return slot_e
-		"slot_f":
-			return slot_f
-		_:
-			return null
+	return station_layout_system.get_slot_marker_by_id(slot_id)
 
 func update_cooker_slots(delta: float) -> void:
-	for i in range(cooker_slots.size()):
-		var slot = cooker_slots[i]
-
-		if not slot["is_busy"]:
-			continue
-
-		slot["time_left"] -= delta
-
-		if slot["time_left"] > 0.0:
-			cooker_slots[i] = slot
-			continue
-
-		var customer = slot["customer"]
-		if customer != null and is_instance_valid(customer):
-			customer.mark_food_ready()
-			print("Cooking finished in slot ", i, ". Order is ready for delivery.")
-			print("This cooked food belongs to this customer and is not added to public cooked_stock.")
-			print_stocks()
-
-		slot["is_busy"] = false
-		slot["customer"] = null
-		slot["time_left"] = 0.0
-		cooker_slots[i] = slot
+	cooking_system.update_cooker_slots(delta)
 
 func get_queue_positions() -> Array:
 	return customer_queue_system.get_queue_positions()
@@ -1187,62 +853,23 @@ func has_pending_customer() -> bool:
 	return pending_order_system.has_pending()
 
 func is_customer_in_any_cooker(customer: Node) -> bool:
-	for i in range(min(unlocked_cooker_slots, cooker_slots.size())):
-		var slot = cooker_slots[i]
-		if slot["is_busy"] and slot["customer"] == customer:
-			return true
-	return false
+	return cooking_system.is_customer_in_any_cooker(customer)
 
 func find_free_cooker_slot_index() -> int:
-	for i in range(min(unlocked_cooker_slots, cooker_slots.size())):
-		var slot = cooker_slots[i]
-		if not slot["is_busy"]:
-			return i
-	return -1
+	return cooking_system.find_free_cooker_slot_index()
 
 func get_customer_cooker_slot_index(customer: Node) -> int:
-	for i in range(min(unlocked_cooker_slots, cooker_slots.size())):
-		var slot = cooker_slots[i]
-		if slot["is_busy"] and slot["customer"] == customer:
-			return i
-	return -1
+	return cooking_system.get_customer_cooker_slot_index(customer)
 
 func remove_customer_from_cooker_slots(customer: Node) -> void:
-	for i in range(cooker_slots.size()):
-		var slot = cooker_slots[i]
-		if slot["customer"] == customer:
-			slot["is_busy"] = false
-			slot["customer"] = null
-			slot["time_left"] = 0.0
-			cooker_slots[i] = slot
+	cooking_system.remove_customer_from_cooker_slots(customer)
 
 func start_cooking_pending_order() -> void:
 	open_cart_pot_panel()
 
 
 func start_shop_order_bound_cooking_pending_order() -> void:
-	var customer: Node = get_first_uncooked_pending_customer() as Node
-
-	if customer == null:
-		if get_first_customer_needing_emergency_purchase() != null:
-			print("Need emergency purchase first.")
-		else:
-			print("No pending order to cook")
-		return
-
-	var free_slot_index: int = find_free_cooker_slot_index()
-
-	if free_slot_index == -1:
-		print("All unlocked cookers are busy")
-		return
-
-	var slot: Dictionary = cooker_slots[free_slot_index] as Dictionary
-	slot["is_busy"] = true
-	slot["customer"] = customer
-	slot["time_left"] = cooker_duration
-	cooker_slots[free_slot_index] = slot
-
-	print("Start cooking customer in slot ", free_slot_index, ": ", customer)
+	cooking_system.start_shop_order_bound_cooking_pending_order()
 
 func can_fulfill_from_cooked(ingredients: Dictionary) -> bool:
 	return inventory_system.can_fulfill_from_cooked(ingredients)
@@ -1537,16 +1164,7 @@ func _customer_blocks_cart_cleanup(customer: Node) -> bool:
 	return true
 
 func has_busy_cooker() -> bool:
-	if cooking_system.has_busy_cooking():
-		return true
-
-	for i in range(min(unlocked_cooker_slots, cooker_slots.size())):
-		var slot: Dictionary = cooker_slots[i] as Dictionary
-
-		if bool(slot.get("is_busy", false)):
-			return true
-
-	return false
+	return cooking_system.has_busy_cooking()
 
 
 func enter_cleanup_phase() -> void:
@@ -1559,9 +1177,8 @@ func finish_day_from_cleanup() -> void:
 	business_day_system.finish_day_from_cleanup()
 
 func can_finish_day_now() -> bool:
-	for slot in cooker_slots:
-		if bool(slot.get("is_busy", false)):
-			return false
+	if has_busy_cooker():
+		return false
 
 	var customers = get_tree().get_nodes_in_group("customers")
 	for customer in customers:
@@ -1601,13 +1218,11 @@ func finish_day() -> void:
 		discarded_staple_food
 	))
 
-	RunSetupData.last_day_summary = day_summary
+	RunSetupData.set_day_summary(day_summary)
 
 	if RunSetupData.current_day_in_run >= RunSetupData.total_days_in_run:
 		finish_run()
 		return
-
-	RunSetupData.settlement_view_mode = "day"
 
 	print("=== ç¬¬ %d å¤©ç»“æŸ ===" % RunSetupData.current_day_in_run)
 	print("Today gross income: ", today_gross_income)
@@ -1641,8 +1256,7 @@ func finish_run() -> void:
 		{}
 	))
 
-	RunSetupData.last_run_summary = run_summary
-	RunSetupData.settlement_view_mode = "run"
+	RunSetupData.set_run_summary(run_summary)
 	RunSetupData.current_cooked_stock = get_zero_food_stock()
 
 	print("=== æœ¬è½®ç»“ç®— ===")

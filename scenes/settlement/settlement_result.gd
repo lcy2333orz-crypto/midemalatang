@@ -79,7 +79,7 @@ func _ready() -> void:
 	_create_accounting_extra_labels()
 	_setup_layout_positions()
 
-	if RunSetupData.settlement_view_mode == "run":
+	if RunSetupData.get_settlement_view_mode() == "run":
 		_setup_run_settlement()
 		_show_final_confirm_state()
 		return
@@ -372,7 +372,7 @@ func _arrange_summary_box_labels() -> void:
 		cooked_stock_label.visible = false
 
 func _setup_day_settlement() -> void:
-	var summary: Dictionary = RunSetupData.last_day_summary
+	var summary: Dictionary = RunSetupData.get_day_summary()
 
 	title_label.text = TextDB.get_text("UI_DAY_SETTLEMENT_TITLE") % int(summary.get("day_index", 1))
 
@@ -411,7 +411,7 @@ func _setup_day_settlement() -> void:
 
 
 func _setup_run_settlement() -> void:
-	var summary: Dictionary = RunSetupData.last_run_summary
+	var summary: Dictionary = RunSetupData.get_run_summary()
 
 	title_label.text = TextDB.get_text("UI_RUN_SETTLEMENT_TITLE")
 
@@ -818,11 +818,11 @@ func update_night_queue_preview() -> void:
 
 
 func _on_retry_button_pressed() -> void:
-	print("Confirm button pressed. mode=", RunSetupData.settlement_view_mode, " night_finished=", night_finished)
+	print("Confirm button pressed. mode=", RunSetupData.get_settlement_view_mode(), " night_finished=", night_finished)
 
 	get_tree().paused = false
 
-	if RunSetupData.settlement_view_mode == "day":
+	if RunSetupData.get_settlement_view_mode() == "day":
 		if not night_finished:
 			print("Cannot continue: night is not finished yet.")
 			return

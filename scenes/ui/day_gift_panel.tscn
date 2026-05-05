@@ -1,0 +1,64 @@
+[gd_scene format=3 uid="uid://ceq747g3tbrt7"]
+
+[node name="DayGiftLayer" type="CanvasLayer"]
+layer = 120
+
+[node name="DayGiftPanel" type="Panel" parent="."]
+offset_right = 720.0
+offset_bottom = 360.0
+
+[node name="DayGiftTitle" type="Label" parent="DayGiftPanel"]
+offset_left = 24.0
+offset_top = 18.0
+offset_right = 696.0
+offset_bottom = 52.0
+theme_override_font_sizes/font_size = 22
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DayGiftDesc" type="Label" parent="DayGiftPanel"]
+offset_left = 48.0
+offset_top = 58.0
+offset_right = 672.0
+offset_bottom = 102.0
+theme_override_font_sizes/font_size = 14
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="DayGiftOptions" type="Control" parent="DayGiftPanel"]
+offset_right = 720.0
+offset_bottom = 360.0
+
+[node name="DayGiftOption0" type="Button" parent="DayGiftPanel/DayGiftOptions"]
+offset_left = 42.0
+offset_top = 125.0
+offset_right = 238.0
+offset_bottom = 275.0
+text = ""
+autowrap_mode = 3
+
+[node name="DayGiftOption1" type="Button" parent="DayGiftPanel/DayGiftOptions"]
+offset_left = 268.0
+offset_top = 125.0
+offset_right = 464.0
+offset_bottom = 275.0
+text = ""
+autowrap_mode = 3
+
+[node name="DayGiftOption2" type="Button" parent="DayGiftPanel/DayGiftOptions"]
+offset_left = 494.0
+offset_top = 125.0
+offset_right = 690.0
+offset_bottom = 275.0
+text = ""
+autowrap_mode = 3
+
+[node name="DayGiftCloseButton" type="Button" parent="DayGiftPanel"]
+offset_left = 290.0
+offset_top = 300.0
+offset_right = 430.0
+offset_bottom = 338.0
+text = ""

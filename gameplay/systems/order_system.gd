@@ -652,4 +652,4 @@ func _clean_positive_amounts(source: Dictionary) -> Dictionary:
 
 func _refresh_cart_pot_panel_if_open() -> void:
 	if manager.cooking_system.panel_controller.is_open():
-		manager.refresh_cart_pot_panel()
+		manager.cooking_system.refresh_cart_pot_panel()

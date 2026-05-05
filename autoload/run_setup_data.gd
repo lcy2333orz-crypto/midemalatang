@@ -2,6 +2,7 @@ extends Node
 
 const ItemIds := preload("res://gameplay/models/item_ids.gd")
 const RunEchoStateScript := preload("res://gameplay/models/run_echo_state.gd")
+const RunSettlementStateScript := preload("res://gameplay/models/run_settlement_state.gd")
 
 var selected_stage_id: String = ""
 var selected_difficulty_days: int = 7
@@ -107,15 +108,22 @@ var current_day_business_event: Dictionary = {}
 var current_day_modifiers: Dictionary = {}
 
 var echo_state: RunEchoState
+var settlement_state: RunSettlementState
 
 
 func _ready() -> void:
 	_ensure_echo_state()
+	_ensure_settlement_state()
 
 
 func _ensure_echo_state() -> void:
 	if echo_state == null:
 		echo_state = RunEchoStateScript.new()
+
+
+func _ensure_settlement_state() -> void:
+	if settlement_state == null:
+		settlement_state = RunSettlementStateScript.new()
 
 
 func _sync_echo_fields_from_state() -> void:
@@ -140,11 +148,57 @@ func _sync_echo_state_from_fields() -> void:
 
 func debug_validate() -> Array[String]:
 	_sync_echo_state_from_fields()
-	return echo_state.debug_validate()
+	_sync_settlement_state_from_fields()
+	var warnings := echo_state.debug_validate()
+	for warning in settlement_state.debug_validate():
+		warnings.append(str(warning))
+	return warnings
+
+
+func _sync_settlement_fields_from_state() -> void:
+	_ensure_settlement_state()
+	settlement_view_mode = settlement_state.settlement_view_mode
+	last_day_summary = settlement_state.last_day_summary
+	last_run_summary = settlement_state.last_run_summary
+
+
+func _sync_settlement_state_from_fields() -> void:
+	_ensure_settlement_state()
+	settlement_state.settlement_view_mode = settlement_view_mode
+	settlement_state.last_day_summary = last_day_summary
+	settlement_state.last_run_summary = last_run_summary
+
+
+func set_day_summary(summary: Dictionary) -> void:
+	_sync_settlement_state_from_fields()
+	settlement_state.set_day_summary(summary)
+	_sync_settlement_fields_from_state()
+
+
+func set_run_summary(summary: Dictionary) -> void:
+	_sync_settlement_state_from_fields()
+	settlement_state.set_run_summary(summary)
+	_sync_settlement_fields_from_state()
+
+
+func get_day_summary() -> Dictionary:
+	_sync_settlement_state_from_fields()
+	return settlement_state.last_day_summary.duplicate(true)
+
+
+func get_run_summary() -> Dictionary:
+	_sync_settlement_state_from_fields()
+	return settlement_state.last_run_summary.duplicate(true)
+
+
+func get_settlement_view_mode() -> String:
+	_sync_settlement_state_from_fields()
+	return settlement_state.settlement_view_mode
 
 
 func reset_run_setup() -> void:
 	_ensure_echo_state()
+	_ensure_settlement_state()
 	selected_stage_id = ""
 	selected_difficulty_days = 7
 
@@ -189,6 +243,8 @@ func reset_run_setup() -> void:
 	settlement_view_mode = "day"
 	last_day_summary = {}
 	last_run_summary = {}
+	settlement_state.reset()
+	_sync_settlement_fields_from_state()
 
 	current_night_activity = {}
 	pending_morning_info = {}

@@ -11,17 +11,20 @@
 - `InventorySystem`：库存初始化、库存文本、履约判断、缺货计算、库存扣减/增加和统一 `add_stock()`。
 - `SupplierSystem`：普通补货面板、下单、倒计时、送达和待送达数量查询。
 - `EmergencyPurchaseSystem`：等待订单缺货聚合、应急采购成本、扣钱补货和采购后顾客状态刷新。
-- `CookingSystem`：大锅状态、配菜批量烹饪、主食漏勺、手持主食、等待订单配菜提交和日终烹饪清理。
+- `CookingSystem`：大锅状态、配菜批量烹饪、主食漏勺、订单绑定炉位、手持主食、等待订单配菜提交和日终烹饪清理。
 - `OrderSystem`：点单展示、订单评估、收银确认、付款后路由、配送点交互、完成配送、订单卡数据和状态文本。
 - `PendingOrderSystem`：等待订单列表、增删、查询、首个可配送/待烹饪顾客和等待订单 debug 校验。
 - `ReputationSystem`：顾客成功/失败统计、特殊顾客结果记录、声望 delta 和声望字段写入。
 - `BusinessDaySystem`、`CustomerQueueSystem`、`SettlementBuilder`：营业日流程、队列/生成、结算摘要构建。
+- `DayEventSystem`：白天礼物、每日营业事件、晨间提示和早晨生食奖励。
+- `StationLayoutSystem`：经营场景站点按 `RunSetupData.station_layout` 放置。
 - `CustomerOrderState`：集中封装顾客订单、库存预留、付款、离开、队列快照和特殊顾客状态访问；现在优先调用 `customer.gd` 明确方法，动态字段只作兼容 fallback。
 - `RunEchoState`：承接特殊顾客礼物、打开记录和每日小摊回响统计；`RunSetupData` 保留原字段和方法作为 facade。
-- `CartPotPanelController`、`SupplierOrderPanelController`、`DayGiftPanelController`、`MorningInfoPanelController`：脚本化 UI controller，负责大锅、补货、礼物和晨间提示面板节点构建和刷新；晨间提示已有 `.tscn` 场景化样板。
+- `RunSettlementState`：承接最近一次日结/轮结 summary 和结算页模式；`RunSetupData` 保留原字段与 getter/setter 作为 facade。
+- `CartPotPanelController`、`SupplierOrderPanelController`、`DayGiftPanelController`、`MorningInfoPanelController`：脚本化 UI controller，负责大锅、补货、礼物和晨间提示面板节点构建和刷新；晨间提示和礼物面板已有 `.tscn` 场景化样板。
 - `SettlementWidgetsController`：结算页猫粮/剩菜 widget 的脚本化构建入口，结算主页面继续负责流程和布局。
 
-下一步重点不是继续把新玩法塞进 `GameManager`，而是把更多脚本化 UI controller 沉淀成独立 Control 场景、继续拆 `RunSetupData` 的配置/运行时/结算职责，并补 Godot CLI smoke test。
+下一步重点不是继续把新玩法塞进 `GameManager`，而是把更多脚本化 UI controller 沉淀成独立 Control 场景、继续拆 `RunSetupData` 的配置/运行时职责，并补 Godot CLI smoke test。
 
 ## 已实现功能
 
@@ -44,7 +47,7 @@
 - `project.godot`: Godot 项目配置。主场景是 `res://scenes/menus/title_menu.tscn`，autoload 也在这里注册。
 - `autoload/`: 全局单例脚本。
   - `progress_data.gd`: 长期进度，例如二号锅、订单面板等级。
-  - `run_setup_data.gd`: 当前 run 状态，例如关卡、天数、资金、库存、特殊顾客、回响、日结数据。
+  - `run_setup_data.gd`: 当前 run 状态 facade，例如关卡、天数、资金、库存、特殊顾客、回响、结算缓存。
   - `text_db.gd`: 读取 `data/text_db.json`，提供 UI 文案和物品名。
   - `effect_manager.gd`: 读取 `data/card_db.json`，提供卡牌效果和 modifier 计算。
   - `global_run_menu.gd`: 经营场景中的 Tab 全局菜单。
@@ -54,10 +57,10 @@
 - `scenes/menus/`: 标题页、主页、选关页。
 - `scenes/gameplay/`: 主经营场景、玩家、顾客、`GameManager`。
 - `scenes/stations/`: 站点交互分发脚本。
-- `scenes/ui/`: HUD、待处理订单卡，当前脚本化的大锅、补货、礼物和晨间提示 controller，以及晨间提示 `.tscn` 样板。
+- `scenes/ui/`: HUD、待处理订单卡，当前脚本化的大锅、补货、礼物和晨间提示 controller，以及晨间提示、礼物面板 `.tscn` 样板。
 - `scenes/settlement/`: 日结/轮结页面、喂猫区域、可拖拽剩菜按钮和局部 widget controller。
-- `gameplay/systems/`: 正在拆分出的玩法系统。`InventorySystem`、`SupplierSystem`、`EmergencyPurchaseSystem`、`CookingSystem`、`OrderSystem`、`PendingOrderSystem`、`ReputationSystem` 已经承接主要真实逻辑；`GameManager` 保留旧方法名作为兼容入口。
-- `gameplay/models/`: 玩法常量和工具，例如物品 id、订单结果常量、库存工具、顾客订单状态访问 helper、run 回响状态 helper。
+- `gameplay/systems/`: 正在拆分出的玩法系统。`InventorySystem`、`SupplierSystem`、`EmergencyPurchaseSystem`、`CookingSystem`、`OrderSystem`、`PendingOrderSystem`、`ReputationSystem`、`DayEventSystem`、`StationLayoutSystem` 已经承接主要真实逻辑；`GameManager` 保留旧方法名作为兼容入口。
+- `gameplay/models/`: 玩法常量和工具，例如物品 id、订单结果常量、库存工具、顾客订单状态访问 helper、run 回响状态 helper、run 结算状态 helper。
 
 ## Debug 基础说明
 
@@ -140,7 +143,7 @@ rg "res://(game_manager|main|customer|player|title_menu|home_menu|stage_select|s
 
 ### 烹饪
 
-- 大锅状态、配菜烹饪、容量、主食漏勺、手持主食、主食/配菜提交和日终烹饪清理已迁入 `gameplay/systems/cooking_system.gd`。
+- 大锅状态、配菜烹饪、容量、主食漏勺、订单绑定炉位、手持主食、主食/配菜提交和日终烹饪清理已迁入 `gameplay/systems/cooking_system.gd`。
 - 大锅面板构建和刷新由 `scenes/ui/cart_pot_panel_controller.gd` 承接；后续可继续拆成独立 `.tscn`。
 - 与大锅相关的函数通常带有 `cart_pot`，与主食漏勺相关的函数通常带有 `staple_ladle`。
 
@@ -153,14 +156,18 @@ rg "res://(game_manager|main|customer|player|title_menu|home_menu|stage_select|s
 ### 声望、回响和卡牌
 
 - 声望变化、顾客成功/失败统计和特殊顾客结果记录主要在 `gameplay/systems/reputation_system.gd`。
+- 白天礼物、每日营业事件、晨间提示和早晨生食奖励主要在 `gameplay/systems/day_event_system.gd`；`GameManager` 保留礼物/晨间提示兼容入口。
 - 特殊顾客回响保存和每日统计：优先改 `gameplay/models/run_echo_state.gd`；`autoload/run_setup_data.gd` 保留 facade 方法。
+- 最近一次日结/轮结 summary 和结算页模式：优先改 `gameplay/models/run_settlement_state.gd`；`autoload/run_setup_data.gd` 保留 `set_day_summary()`、`set_run_summary()`、`get_day_summary()`、`get_run_summary()`、`get_settlement_view_mode()` 作为 facade。
 - 卡牌数据：改 `data/card_db.json`。
 - 卡牌读取和 modifier 计算：改 `autoload/effect_manager.gd`。
 
 ### UI 和结算
 
 - HUD 金钱、库存、耐心、营业状态、待处理订单：改 `scenes/ui/ui_layer.gd`。
+- 经营场景站点布局：改 `gameplay/systems/station_layout_system.gd` 和 `RunSetupData.station_layout`，不要把新布局规则塞回 `GameManager`。
 - 晨间提示 UI：改 `scenes/ui/morning_info_panel.tscn` 和 `scenes/ui/morning_info_panel_controller.gd`。
+- 礼物选择 UI：改 `scenes/ui/day_gift_panel.tscn` 和 `scenes/ui/day_gift_panel_controller.gd`。
 - 待处理订单卡片：改 `scenes/ui/pending_order_card.gd` 和 `pending_order_card.tscn`。
 - 日结/轮结页面、夜间抽卡、喂猫流程：改 `scenes/settlement/settlement_result.gd`；猫粮/剩菜 widget 构建优先改 `scenes/settlement/settlement_widgets_controller.gd`。
 - 日结/轮结 summary 构建：改 `gameplay/systems/settlement_builder.gd`；它接收明确输入字典，不直接读取 `GameManager` 的收入/库存字段。

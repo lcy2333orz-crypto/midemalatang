@@ -132,7 +132,7 @@ func open() -> void:
 func request_refresh() -> void:
 	if panel == null or not is_instance_valid(panel):
 		return
-	manager.call_deferred("refresh_cart_pot_panel")
+	cooking_system.call_deferred("refresh_cart_pot_panel")
 
 
 func refresh() -> void:
