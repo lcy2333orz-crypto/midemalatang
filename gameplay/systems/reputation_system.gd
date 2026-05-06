@@ -1,7 +1,7 @@
 class_name ReputationSystem
 extends RefCounted
 
-const CustomerOrderState := preload("res://gameplay/models/customer_order_state.gd")
+const CustomerOrderState = preload("res://gameplay/models/customer_order_state.gd")
 
 var manager = null
 
@@ -29,7 +29,7 @@ func record_served(customer: Node) -> void:
 
 	RunSetupData.record_today_served_customer()
 
-	var delta := get_delta(customer, "served")
+	var delta: int = get_delta(customer, "served")
 	change_shop_reputation(delta, "%s served" % get_customer_group(customer))
 	record_special_result(customer, "good")
 
@@ -40,7 +40,7 @@ func record_failed(customer: Node, reason: String = "failed") -> void:
 
 	RunSetupData.record_today_failed_customer()
 
-	var delta := get_delta(customer, "failed")
+	var delta: int = get_delta(customer, "failed")
 	change_shop_reputation(delta, "%s %s" % [get_customer_group(customer), reason])
 	record_special_result(customer, "bad")
 
@@ -58,13 +58,13 @@ func record_special_result(customer: Node, result: String) -> void:
 	var special_type: String = CustomerOrderState.get_special_customer_type(customer)
 	var special_name: String = CustomerOrderState.get_special_customer_name(customer)
 
-	var gift_data := RunSetupData.add_pending_gift(
+	var gift_data: Dictionary = RunSetupData.add_pending_gift(
 		special_type,
 		special_name,
 		result
 	)
 
-	var result_data := {
+	var result_data: Dictionary = {
 		"type": special_type,
 		"name": special_name,
 		"result": result,
@@ -106,8 +106,8 @@ func get_customer_type(customer: Node) -> String:
 
 
 func get_delta(customer: Node, event_name: String) -> int:
-	var group := get_customer_group(customer)
-	var customer_type := get_customer_type(customer)
+	var group: String = get_customer_group(customer)
+	var customer_type: String = get_customer_type(customer)
 
 	if event_name == "served":
 		if group == "special":

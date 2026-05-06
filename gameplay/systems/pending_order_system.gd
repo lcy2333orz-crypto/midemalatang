@@ -1,7 +1,7 @@
 class_name PendingOrderSystem
 extends RefCounted
 
-const CustomerOrderState := preload("res://gameplay/models/customer_order_state.gd")
+const CustomerOrderState = preload("res://gameplay/models/customer_order_state.gd")
 
 var manager = null
 var pending_customers: Array = []
@@ -20,7 +20,7 @@ func debug_validate() -> Array[String]:
 			warnings.append("PendingOrderSystem: pending_customers contains an invalid customer.")
 			continue
 
-		var id := customer.get_instance_id()
+		var id: int = customer.get_instance_id()
 		if seen.has(id):
 			warnings.append("PendingOrderSystem: pending_customers contains a duplicate customer.")
 		seen[id] = true
@@ -44,7 +44,7 @@ func add(customer: Node) -> void:
 
 
 func remove(customer: Node) -> void:
-	var idx := pending_customers.find(customer)
+	var idx: int = pending_customers.find(customer)
 	if idx != -1:
 		pending_customers.remove_at(idx)
 

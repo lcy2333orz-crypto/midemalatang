@@ -1,8 +1,9 @@
 extends Node
 
-const ItemIds := preload("res://gameplay/models/item_ids.gd")
-const RunEchoStateScript := preload("res://gameplay/models/run_echo_state.gd")
-const RunSettlementStateScript := preload("res://gameplay/models/run_settlement_state.gd")
+const ItemIds = preload("res://gameplay/models/item_ids.gd")
+const RunEchoStateScript = preload("res://gameplay/models/run_echo_state.gd")
+const RunSettlementStateScript = preload("res://gameplay/models/run_settlement_state.gd")
+const RunRuntimeStateScript = preload("res://gameplay/models/run_runtime_state.gd")
 
 var selected_stage_id: String = ""
 var selected_difficulty_days: int = 7
@@ -109,11 +110,13 @@ var current_day_modifiers: Dictionary = {}
 
 var echo_state: RunEchoState
 var settlement_state: RunSettlementState
+var runtime_state: RunRuntimeState
 
 
 func _ready() -> void:
 	_ensure_echo_state()
 	_ensure_settlement_state()
+	_ensure_runtime_state()
 
 
 func _ensure_echo_state() -> void:
@@ -124,6 +127,11 @@ func _ensure_echo_state() -> void:
 func _ensure_settlement_state() -> void:
 	if settlement_state == null:
 		settlement_state = RunSettlementStateScript.new()
+
+
+func _ensure_runtime_state() -> void:
+	if runtime_state == null:
+		runtime_state = RunRuntimeStateScript.new()
 
 
 func _sync_echo_fields_from_state() -> void:
@@ -149,8 +157,11 @@ func _sync_echo_state_from_fields() -> void:
 func debug_validate() -> Array[String]:
 	_sync_echo_state_from_fields()
 	_sync_settlement_state_from_fields()
-	var warnings := echo_state.debug_validate()
+	_sync_runtime_state_from_fields()
+	var warnings: Array[String] = echo_state.debug_validate()
 	for warning in settlement_state.debug_validate():
+		warnings.append(str(warning))
+	for warning in runtime_state.debug_validate():
 		warnings.append(str(warning))
 	return warnings
 
@@ -196,9 +207,60 @@ func get_settlement_view_mode() -> String:
 	return settlement_state.settlement_view_mode
 
 
+func _sync_runtime_fields_from_state() -> void:
+	_ensure_runtime_state()
+	run_money = runtime_state.run_money
+	run_total_income = runtime_state.run_total_income
+	run_gross_income = runtime_state.run_gross_income
+	run_total_expense = runtime_state.run_total_expense
+	current_raw_stock = runtime_state.current_raw_stock
+	current_cooked_stock = runtime_state.current_cooked_stock
+	current_staple_stock = runtime_state.current_staple_stock
+
+
+func _sync_runtime_state_from_fields() -> void:
+	_ensure_runtime_state()
+	runtime_state.run_money = run_money
+	runtime_state.run_total_income = run_total_income
+	runtime_state.run_gross_income = run_gross_income
+	runtime_state.run_total_expense = run_total_expense
+	runtime_state.current_raw_stock = current_raw_stock
+	runtime_state.current_cooked_stock = current_cooked_stock
+	runtime_state.current_staple_stock = current_staple_stock
+
+
+func set_money_state(money: int, total_income: int, gross_income: int, total_expense: int) -> void:
+	_sync_runtime_state_from_fields()
+	runtime_state.set_money_state(money, total_income, gross_income, total_expense)
+	_sync_runtime_fields_from_state()
+
+
+func get_money_state() -> Dictionary:
+	_sync_runtime_state_from_fields()
+	return runtime_state.get_money_state()
+
+
+func set_stock_state(raw_stock: Dictionary, cooked_stock: Dictionary, staple_stock: Dictionary) -> void:
+	_sync_runtime_state_from_fields()
+	runtime_state.set_stock_state(raw_stock, cooked_stock, staple_stock)
+	_sync_runtime_fields_from_state()
+
+
+func get_stock_state() -> Dictionary:
+	_sync_runtime_state_from_fields()
+	return runtime_state.get_stock_state()
+
+
+func reset_runtime_state() -> void:
+	_ensure_runtime_state()
+	runtime_state.reset()
+	_sync_runtime_fields_from_state()
+
+
 func reset_run_setup() -> void:
 	_ensure_echo_state()
 	_ensure_settlement_state()
+	_ensure_runtime_state()
 	selected_stage_id = ""
 	selected_difficulty_days = 7
 
@@ -219,14 +281,7 @@ func reset_run_setup() -> void:
 	current_day_in_run = 1
 	total_days_in_run = 7
 
-	run_money = 0
-	run_total_income = 0
-	run_gross_income = 0
-	run_total_expense = 0
-
-	current_raw_stock = {}
-	current_cooked_stock = {}
-	current_staple_stock = {}
+	reset_runtime_state()
 
 	current_day_special_spawn_plan = []
 	today_special_customer_results = []
@@ -266,16 +321,16 @@ func setup_stage_run(stage_id: String, difficulty_days: int = 7) -> void:
 
 func _apply_default_station_layout() -> void:
 	station_layout["counter"] = "slot_a"
-	station_layout["delivery"] = "slot_b"
-	station_layout["storage"] = "slot_c"
-	station_layout["cooker_1"] = "slot_d"
+	station_layout["cooker_1"] = "slot_b"
+	station_layout["delivery"] = "slot_c"
+	station_layout["storage"] = "slot_e"
 
 	if ProgressData.has_second_cooker:
-		station_layout["cooker_2"] = "slot_e"
+		station_layout["cooker_2"] = "slot_d"
 		station_layout["emergency_shop"] = "slot_f"
 	else:
 		station_layout["cooker_2"] = ""
-		station_layout["emergency_shop"] = "slot_e"
+		station_layout["emergency_shop"] = "slot_f"
 
 
 func setup_daily_special_customer_plan() -> void:
@@ -289,7 +344,7 @@ func setup_daily_special_customer_plan() -> void:
 
 func add_pending_gift(source_type: String, source_name: String, result: String) -> Dictionary:
 	_sync_echo_state_from_fields()
-	var gift_data := echo_state.add_pending_gift(source_type, source_name, result, current_day_in_run)
+	var gift_data: Dictionary = echo_state.add_pending_gift(source_type, source_name, result, current_day_in_run)
 	_sync_echo_fields_from_state()
 
 	print("Special customer echo added: ", gift_data)
@@ -324,7 +379,7 @@ func set_gift_current_options(gift_id: String, options: Array) -> void:
 
 func mark_gift_opened(gift_id: String, chosen_card: Dictionary) -> Dictionary:
 	_sync_echo_state_from_fields()
-	var gift_data := echo_state.mark_gift_opened(gift_id, chosen_card, current_day_in_run)
+	var gift_data: Dictionary = echo_state.mark_gift_opened(gift_id, chosen_card, current_day_in_run)
 	_sync_echo_fields_from_state()
 
 	print("Special customer echo opened: ", gift_data)
@@ -483,7 +538,7 @@ func generate_tomorrow_business_event_for_activity(activity_id: String) -> Dicti
 			)
 
 		"reading_notes":
-			var options := [
+			var options: Array = [
 				make_tomorrow_business_event(
 					"market_friend",
 					"菜摊熟脸",
@@ -552,12 +607,12 @@ func activate_pending_tomorrow_event() -> Dictionary:
 	return current_day_business_event.duplicate(true)
 
 func get_current_day_multiplier(modifier_id: String, default_value: float = 1.0) -> float:
-	var value := default_value
+	var value: float = default_value
 
 	if not current_day_modifiers.is_empty() and current_day_modifiers.has(modifier_id):
 		value *= float(current_day_modifiers.get(modifier_id, 1.0))
 
-	var effect_manager := get_node_or_null("/root/EffectManager")
+	var effect_manager: Node = get_node_or_null("/root/EffectManager")
 	if effect_manager != null and effect_manager.has_method("get_multiplier"):
 		value = effect_manager.get_multiplier(modifier_id, value)
 
@@ -565,12 +620,12 @@ func get_current_day_multiplier(modifier_id: String, default_value: float = 1.0)
 
 
 func get_current_day_additive(modifier_id: String, default_value: float = 0.0) -> float:
-	var value := default_value
+	var value: float = default_value
 
 	if not current_day_modifiers.is_empty() and current_day_modifiers.has(modifier_id):
 		value += float(current_day_modifiers.get(modifier_id, 0.0))
 
-	var effect_manager := get_node_or_null("/root/EffectManager")
+	var effect_manager: Node = get_node_or_null("/root/EffectManager")
 	if effect_manager != null and effect_manager.has_method("get_additive"):
 		value = effect_manager.get_additive(modifier_id, value)
 
@@ -594,8 +649,8 @@ func consume_pending_morning_info_lines() -> Array[String]:
 	if not has_pending_morning_info():
 		return lines
 
-	var title := str(pending_morning_info.get("title", "昨晚小猫获得的信息"))
-	var text := str(pending_morning_info.get("text", ""))
+	var title: String = str(pending_morning_info.get("title", "昨晚小猫获得的信息"))
+	var text: String = str(pending_morning_info.get("text", ""))
 	var event = pending_morning_info.get("event", {})
 
 	lines.append(title)
@@ -604,8 +659,8 @@ func consume_pending_morning_info_lines() -> Array[String]:
 		lines.append(text)
 
 	if typeof(event) == TYPE_DICTIONARY and not event.is_empty():
-		var event_title := str(event.get("title", "明日营业变化"))
-		var event_text := str(event.get("text", ""))
+		var event_title: String = str(event.get("title", "明日营业变化"))
+		var event_text: String = str(event.get("text", ""))
 
 		if event_text != "":
 			lines.append("")
@@ -674,23 +729,23 @@ func get_supplier_order_price(item_id: String, amount: int = 1) -> int:
 	if amount <= 0:
 		return 0
 
-	var base_price := get_supplier_base_price(item_id)
+	var base_price: float = get_supplier_base_price(item_id)
 
-	var multiplier := get_current_day_multiplier(
+	var multiplier: float = get_current_day_multiplier(
 		"supplier_order_price_multiplier",
 		1.0
 	)
 
-	var total := int(ceil(float(amount) * base_price * multiplier))
+	var total: int = int(ceil(float(amount) * base_price * multiplier))
 
 	return max(total, 1)
 
 
 func get_supplier_order_price_for_items(items: Dictionary) -> int:
-	var total := 0
+	var total: int = 0
 
 	for item_id in items.keys():
-		var amount := int(items.get(item_id, 0))
+		var amount: int = int(items.get(item_id, 0))
 
 		if amount <= 0:
 			continue
@@ -704,25 +759,25 @@ func get_neighbor_emergency_price(item_id: String, amount: int = 1) -> int:
 	if amount <= 0:
 		return 0
 
-	var base_price := get_supplier_base_price(item_id)
-	var emergency_multiplier := neighbor_emergency_price_multiplier
+	var base_price: float = get_supplier_base_price(item_id)
+	var emergency_multiplier: float = neighbor_emergency_price_multiplier
 
-	var day_multiplier := get_current_day_multiplier(
+	var day_multiplier: float = get_current_day_multiplier(
 		"emergency_shop_price_multiplier",
 		1.0
 	)
 
-	var raw_total := float(amount) * base_price * emergency_multiplier * day_multiplier
-	var total := int(ceil(raw_total))
+	var raw_total: float = float(amount) * base_price * emergency_multiplier * day_multiplier
+	var total: int = int(ceil(raw_total))
 
 	return max(total, 1)
 
 
 func get_neighbor_emergency_price_for_shortage(shortage: Dictionary) -> int:
-	var total := 0
+	var total: int = 0
 
 	for item_id in shortage.keys():
-		var amount := int(shortage.get(item_id, 0))
+		var amount: int = int(shortage.get(item_id, 0))
 
 		if amount <= 0:
 			continue
@@ -734,6 +789,8 @@ func get_neighbor_emergency_price_for_shortage(shortage: Dictionary) -> int:
 
 
 func ensure_starting_money_for_new_run() -> void:
+	_sync_runtime_state_from_fields()
+
 	if current_day_in_run != 1:
 		return
 
@@ -744,5 +801,6 @@ func ensure_starting_money_for_new_run() -> void:
 		return
 
 	run_money = starting_money
+	_sync_runtime_state_from_fields()
 
 	print("Starting money granted: ", starting_money)

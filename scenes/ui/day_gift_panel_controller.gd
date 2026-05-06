@@ -1,7 +1,7 @@
 class_name DayGiftPanelController
 extends RefCounted
 
-const DayGiftPanelScene := preload("res://scenes/ui/day_gift_panel.tscn")
+const DayGiftPanelScene = preload("res://scenes/ui/day_gift_panel.tscn")
 
 var manager: Node = null
 var callback_target = null
@@ -37,20 +37,20 @@ func open(gift_data: Dictionary, options: Array) -> void:
 		viewport_size.y * 0.5 - 180
 	)
 
-	var title_label := panel.get_node("DayGiftTitle") as Label
+	var title_label: Label = panel.get_node("DayGiftTitle") as Label
 	title_label.text = str(gift_data.get("display_name", TextDB.get_text("UI_DAY_GIFT_DEFAULT_TITLE")))
 
-	var desc_label := panel.get_node("DayGiftDesc") as Label
+	var desc_label: Label = panel.get_node("DayGiftDesc") as Label
 	desc_label.text = TextDB.get_text("UI_DAY_GIFT_DESC")
 
-	var option_nodes := [
+	var option_nodes: Array = [
 		panel.get_node("DayGiftOptions/DayGiftOption0") as Button,
 		panel.get_node("DayGiftOptions/DayGiftOption1") as Button,
 		panel.get_node("DayGiftOptions/DayGiftOption2") as Button
 	]
 
 	for i in range(option_nodes.size()):
-		var button := option_nodes[i]
+		var button: Button = option_nodes[i]
 		if i >= options.size():
 			button.visible = false
 			continue
@@ -60,7 +60,7 @@ func open(gift_data: Dictionary, options: Array) -> void:
 		button.text = callback_target.get_day_gift_option_button_text(option_data)
 		button.pressed.connect(Callable(callback_target, "_on_day_gift_option_pressed").bind(i))
 
-	var close_button := panel.get_node("DayGiftCloseButton") as Button
+	var close_button: Button = panel.get_node("DayGiftCloseButton") as Button
 	close_button.text = TextDB.get_text("UI_DAY_GIFT_CLOSE")
 	close_button.pressed.connect(Callable(callback_target, "close_day_gift_choice_panel"))
 

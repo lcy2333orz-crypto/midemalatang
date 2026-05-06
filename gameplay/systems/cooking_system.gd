@@ -1,8 +1,8 @@
 class_name CookingSystem
 extends RefCounted
 
-const CustomerOrderState := preload("res://gameplay/models/customer_order_state.gd")
-const CartPotPanelControllerScript := preload("res://scenes/ui/cart_pot_panel_controller.gd")
+const CustomerOrderState = preload("res://gameplay/models/customer_order_state.gd")
+const CartPotPanelControllerScript = preload("res://scenes/ui/cart_pot_panel_controller.gd")
 
 var manager = null
 var panel_controller: CartPotPanelController = null
@@ -170,10 +170,10 @@ func has_busy_order_bound_cooker() -> bool:
 func _build_ladle_row(ladle_index: int) -> HBoxContainer:
 	var slot_index: int = ladle_index - 1
 
-	var row := HBoxContainer.new()
+	var row: HBoxContainer = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 
-	var state_label := Label.new()
+	var state_label: Label = Label.new()
 	state_label.custom_minimum_size = Vector2(190, 28)
 	state_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	state_label.text = _get_ladle_state_text(ladle_index)
@@ -185,19 +185,19 @@ func _build_ladle_row(ladle_index: int) -> HBoxContainer:
 		var slot: Dictionary = staple_ladle_slots[slot_index] as Dictionary
 		slot_state = str(slot.get("state", "empty"))
 
-	var cook_glass_button := Button.new()
+	var cook_glass_button: Button = Button.new()
 	cook_glass_button.text = "ç…®ç²‰ä¸"
 	cook_glass_button.custom_minimum_size = Vector2(74, 28)
 	cook_glass_button.disabled = not can_start_staple_ladle_cooking(slot_index, "glass_noodle")
 	row.add_child(cook_glass_button)
 
-	var cook_noodle_button := Button.new()
+	var cook_noodle_button: Button = Button.new()
 	cook_noodle_button.text = "ç…®é¢"
 	cook_noodle_button.custom_minimum_size = Vector2(74, 28)
 	cook_noodle_button.disabled = not can_start_staple_ladle_cooking(slot_index, "noodle")
 	row.add_child(cook_noodle_button)
 
-	var take_out_button := Button.new()
+	var take_out_button: Button = Button.new()
 	take_out_button.text = "å–å‡º"
 	take_out_button.custom_minimum_size = Vector2(64, 28)
 	take_out_button.disabled = slot_state != "ready" or held_staple_food_id != ""
@@ -207,7 +207,7 @@ func _build_ladle_row(ladle_index: int) -> HBoxContainer:
 
 
 func _get_ladle_state_text(ladle_index: int) -> String:
-	var slot_index := ladle_index - 1
+	var slot_index: int = ladle_index - 1
 
 	if slot_index < 0 or slot_index >= staple_ladle_slots.size():
 		return "æ¼å‹º%dï¼šç©º" % ladle_index
@@ -249,7 +249,7 @@ func _on_cart_pot_minus_pressed(item_id: String) -> void:
 		request_cart_pot_panel_refresh()
 		return
 
-	var current_amount := int(cart_pot_selection.get(item_id, 0))
+	var current_amount: int = int(cart_pot_selection.get(item_id, 0))
 
 	if current_amount <= 0:
 		cart_pot_selection.erase(item_id)
@@ -353,8 +353,8 @@ func can_add_to_cart_pot_selection(item_id: String, amount: int = 1) -> bool:
 	if cart_pot_is_cooking:
 		return false
 
-	var current_selected := int(cart_pot_selection.get(item_id, 0))
-	var current_raw := int(manager.raw_stock.get(item_id, 0))
+	var current_selected: int = int(cart_pot_selection.get(item_id, 0))
+	var current_raw: int = int(manager.raw_stock.get(item_id, 0))
 
 	if current_selected + amount > current_raw:
 		return false
@@ -369,7 +369,7 @@ func add_to_cart_pot_selection(item_id: String, amount: int = 1) -> void:
 	if amount <= 0:
 		return
 
-	var actually_added := 0
+	var actually_added: int = 0
 
 	for i in range(amount):
 		if not can_add_to_cart_pot_selection(item_id, 1):
@@ -386,7 +386,7 @@ func remove_from_cart_pot_selection(item_id: String, amount: int = 1) -> void:
 	if amount <= 0:
 		return
 
-	var current_selected := int(cart_pot_selection.get(item_id, 0))
+	var current_selected: int = int(cart_pot_selection.get(item_id, 0))
 	current_selected = max(current_selected - amount, 0)
 
 	if current_selected <= 0:
@@ -471,7 +471,7 @@ func start_cart_pot_batch_cooking() -> void:
 	cart_pot_time_left = get_effective_cart_pot_batch_duration()
 	cart_pot_selection.clear()
 
-	RunSetupData.current_raw_stock = manager.raw_stock.duplicate(true)
+	RunSetupData.set_stock_state(manager.raw_stock, manager.cooked_stock, manager.staple_stock)
 
 	print("=== å¤§é”…å¼€å§‹æ‰¹é‡çƒ¹é¥ª ===")
 	print("Batch: ", cart_pot_cooking_batch)
@@ -504,8 +504,8 @@ func finish_cart_pot_batch_cooking() -> void:
 		return
 
 	for item_id in cart_pot_cooking_batch.keys():
-		var item_key := str(item_id)
-		var amount := int(cart_pot_cooking_batch.get(item_key, 0))
+		var item_key: String = str(item_id)
+		var amount: int = int(cart_pot_cooking_batch.get(item_key, 0))
 
 		if amount <= 0:
 			continue
@@ -522,7 +522,7 @@ func finish_cart_pot_batch_cooking() -> void:
 	cart_pot_time_left = 0.0
 	cart_pot_cooking_batch.clear()
 
-	RunSetupData.current_cooked_stock = manager.cooked_stock.duplicate(true)
+	RunSetupData.set_stock_state(manager.raw_stock, manager.cooked_stock, manager.staple_stock)
 
 	print("Cooked stock after cart pot: ", manager.cooked_stock)
 	print("Cart pot capacity used: ", get_cart_pot_used_capacity(), "/", cart_pot_capacity)
@@ -560,7 +560,7 @@ func update_staple_ladle_slots(delta: float) -> void:
 	if staple_ladle_slots.is_empty():
 		return
 
-	var changed := false
+	var changed: bool = false
 
 	for i in range(staple_ladle_slots.size()):
 		var slot: Dictionary = staple_ladle_slots[i] as Dictionary
@@ -616,7 +616,7 @@ func has_waiting_main_food_order(main_food_id: String) -> bool:
 
 
 func get_waiting_main_food_count(main_food_id: String) -> int:
-	var count := 0
+	var count: int = 0
 
 	for customer in manager.pending_order_system.get_all():
 		if customer == null or not is_instance_valid(customer):
@@ -711,7 +711,7 @@ func start_staple_ladle_cooking(slot_index: int, main_food_id: String) -> void:
 	staple_ladle_slots[slot_index] = slot
 
 	manager.staple_stock[main_food_id] = int(manager.staple_stock.get(main_food_id, 0)) - 1
-	RunSetupData.current_staple_stock = manager.staple_stock.duplicate(true)
+	RunSetupData.set_stock_state(manager.raw_stock, manager.cooked_stock, manager.staple_stock)
 
 	print("æ¼å‹º ", slot_index + 1, " å¼€å§‹ç…®ï¼š", manager.get_ingredient_display_name(main_food_id))
 	print("æ¼å‹ºæœ¬æ¬¡çƒ¹é¥ªæ—¶é—´ï¼š", slot["time_left"])
@@ -852,7 +852,7 @@ func get_staple_ladle_text(slot_index: int) -> String:
 	var slot: Dictionary = staple_ladle_slots[slot_index] as Dictionary
 	var state: String = str(slot.get("state", "empty"))
 	var main_food_id: String = str(slot.get("main_food_id", ""))
-	var main_food_text := "æ— "
+	var main_food_text: String = "æ— "
 
 	if main_food_id != "":
 		main_food_text = manager.get_ingredient_display_name(main_food_id)
@@ -880,7 +880,7 @@ func get_cart_ingredients_needed_from_pot(customer: Node) -> Dictionary:
 	if customer == null or not is_instance_valid(customer):
 		return {}
 
-	var ingredients_to_cook := CustomerOrderState.get_ingredients_to_cook(customer)
+	var ingredients_to_cook: Dictionary = CustomerOrderState.get_ingredients_to_cook(customer)
 	if not ingredients_to_cook.is_empty():
 		return ingredients_to_cook
 
@@ -1044,8 +1044,8 @@ func clear_day_end_state() -> Dictionary:
 
 	for i in range(staple_ladle_slots.size()):
 		var slot: Dictionary = staple_ladle_slots[i] as Dictionary
-		var state := str(slot.get("state", "empty"))
-		var main_food_id := str(slot.get("main_food_id", ""))
+		var state: String = str(slot.get("state", "empty"))
+		var main_food_id: String = str(slot.get("main_food_id", ""))
 
 		if state != "empty" or main_food_id != "":
 			discarded["ladles"].append({

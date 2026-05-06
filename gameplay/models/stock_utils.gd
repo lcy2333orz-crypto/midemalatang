@@ -11,7 +11,7 @@ static func duplicate_int_stock(stock: Dictionary) -> Dictionary:
 
 
 static func get_total(stock: Dictionary) -> int:
-	var total := 0
+	var total: int = 0
 
 	for item_id in stock.keys():
 		total += int(stock.get(item_id, 0))

@@ -1,7 +1,7 @@
 class_name RunSettlementState
 extends RefCounted
 
-const VALID_VIEW_MODES := ["day", "run"]
+const VALID_VIEW_MODES = ["day", "run"]
 
 var settlement_view_mode: String = "day"
 var last_day_summary: Dictionary = {}

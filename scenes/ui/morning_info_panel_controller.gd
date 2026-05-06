@@ -1,7 +1,7 @@
 class_name MorningInfoPanelController
 extends RefCounted
 
-const MorningInfoPanelScene := preload("res://scenes/ui/morning_info_panel.tscn")
+const MorningInfoPanelScene = preload("res://scenes/ui/morning_info_panel.tscn")
 
 var manager: Node = null
 var layer: CanvasLayer = null
@@ -20,17 +20,17 @@ func show(lines: Array[String]) -> void:
 	layer = MorningInfoPanelScene.instantiate() as CanvasLayer
 	manager.add_child(layer)
 
-	var viewport_size := manager.get_viewport().get_visible_rect().size
-	var panel := layer.get_node("MorningInfoPanel") as Panel
+	var viewport_size: Vector2 = manager.get_viewport().get_visible_rect().size
+	var panel: Panel = layer.get_node("MorningInfoPanel") as Panel
 	panel.position = Vector2(
 		viewport_size.x * 0.5 - 260,
 		62
 	)
 
-	var label := panel.get_node("MorningInfoLabel") as Label
+	var label: Label = panel.get_node("MorningInfoLabel") as Label
 	label.text = "\n".join(lines)
 
-	var tween := manager.create_tween()
+	var tween: Tween = manager.create_tween()
 	tween.tween_interval(4.2)
 	tween.tween_property(panel, "modulate:a", 0.0, 0.8)
 

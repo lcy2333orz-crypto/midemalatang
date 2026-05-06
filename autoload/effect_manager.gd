@@ -9,7 +9,7 @@ func _ready() -> void:
 
 
 func load_card_db() -> void:
-	var file := FileAccess.open("res://data/card_db.json", FileAccess.READ)
+	var file: FileAccess = FileAccess.open("res://data/card_db.json", FileAccess.READ)
 
 	if file == null:
 		push_error("card_db.json not found")
@@ -17,9 +17,9 @@ func load_card_db() -> void:
 		card_index = {}
 		return
 
-	var content := file.get_as_text()
-	var json := JSON.new()
-	var result := json.parse(content)
+	var content: String = file.get_as_text()
+	var json: JSON = JSON.new()
+	var result: int = json.parse(content)
 
 	if result != OK:
 		push_error("card_db.json parse failed: " + json.get_error_message())
@@ -52,7 +52,7 @@ func _rebuild_card_index() -> void:
 			if typeof(card_data) != TYPE_DICTIONARY:
 				continue
 
-			var card_id := str(card_data.get("id", ""))
+			var card_id: String = str(card_data.get("id", ""))
 
 			if card_id == "":
 				continue
@@ -68,7 +68,7 @@ func get_card_definition(card_id: String) -> Dictionary:
 
 
 func get_card_name(card_id: String) -> String:
-	var card_data := get_card_definition(card_id)
+	var card_data: Dictionary = get_card_definition(card_id)
 
 	if card_data.has("name"):
 		return str(card_data["name"])
@@ -77,7 +77,7 @@ func get_card_name(card_id: String) -> String:
 
 
 func get_card_description(card_id: String) -> String:
-	var card_data := get_card_definition(card_id)
+	var card_data: Dictionary = get_card_definition(card_id)
 
 	if card_data.has("description"):
 		return str(card_data["description"])
@@ -98,14 +98,14 @@ func get_active_effect_lines() -> Array[String]:
 		if typeof(effect_data) != TYPE_DICTIONARY:
 			continue
 
-		var source := str(effect_data.get("source", "未知来源"))
-		var effect_id := str(effect_data.get("effect_id", ""))
-		var effect_name := str(effect_data.get("effect", ""))
+		var source: String = str(effect_data.get("source", "未知来源"))
+		var effect_id: String = str(effect_data.get("effect_id", ""))
+		var effect_name: String = str(effect_data.get("effect", ""))
 
 		if effect_name == "":
 			effect_name = get_card_name(effect_id)
 
-		var description := get_card_description(effect_id)
+		var description: String = get_card_description(effect_id)
 
 		if description == "":
 			lines.append(" - [%s] %s" % [source, effect_name])
@@ -116,14 +116,14 @@ func get_active_effect_lines() -> Array[String]:
 
 
 func get_multiplier(modifier_id: String, default_value: float = 1.0) -> float:
-	var value := default_value
+	var value: float = default_value
 
 	for effect_data in RunSetupData.active_effects:
 		if typeof(effect_data) != TYPE_DICTIONARY:
 			continue
 
-		var effect_id := str(effect_data.get("effect_id", ""))
-		var card_data := get_card_definition(effect_id)
+		var effect_id: String = str(effect_data.get("effect_id", ""))
+		var card_data: Dictionary = get_card_definition(effect_id)
 		var modifiers = card_data.get("modifiers", {})
 
 		if typeof(modifiers) != TYPE_DICTIONARY:
@@ -136,14 +136,14 @@ func get_multiplier(modifier_id: String, default_value: float = 1.0) -> float:
 
 
 func get_additive(modifier_id: String, default_value: float = 0.0) -> float:
-	var value := default_value
+	var value: float = default_value
 
 	for effect_data in RunSetupData.active_effects:
 		if typeof(effect_data) != TYPE_DICTIONARY:
 			continue
 
-		var effect_id := str(effect_data.get("effect_id", ""))
-		var card_data := get_card_definition(effect_id)
+		var effect_id: String = str(effect_data.get("effect_id", ""))
+		var card_data: Dictionary = get_card_definition(effect_id)
 		var modifiers = card_data.get("modifiers", {})
 
 		if typeof(modifiers) != TYPE_DICTIONARY:
@@ -177,15 +177,15 @@ func get_cards_for_pool(pool_name: String) -> Array:
 
 
 func get_card_options_for_special_echo(gift_data: Dictionary) -> Array:
-	var result := str(gift_data.get("result", "neutral"))
-	var pool_name := "fallback"
+	var result: String = str(gift_data.get("result", "neutral"))
+	var pool_name: String = "fallback"
 
 	if result == "good":
 		pool_name = "good"
 	elif result == "bad":
 		pool_name = "bad"
 
-	var options := get_cards_for_pool(pool_name)
+	var options: Array = get_cards_for_pool(pool_name)
 
 	if options.size() < 3:
 		options = get_cards_for_pool("fallback")

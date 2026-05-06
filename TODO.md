@@ -4,14 +4,14 @@
 
 ## 高优先级代码隐患
 
-- `scenes/gameplay/game_manager.gd` 仍然偏大，但已经从约 3361 行继续降到更小的兼容 facade。营业日、顾客队列、等待订单、库存核心逻辑、供应商补货、应急采购、烹饪状态机、订单绑定炉位、订单/配送、声望、日事件/礼物、站点布局、结算摘要输入、结算缓存、订单库存准备、主食预留和主要脚本化 UI controller 已经开始迁出；剩余高风险耦合主要是旧 public wrapper、`RunSetupData` 配置/运行时职责深拆和更细的 UI 场景化。
+- `scenes/gameplay/game_manager.gd` 仍然偏大，但已经从约 3361 行继续降到更小的兼容 facade。营业日、顾客队列、等待订单、库存核心逻辑、供应商补货、应急采购、烹饪状态机、订单绑定炉位、订单/配送、声望、日事件/礼物、站点布局、结算摘要输入、结算缓存、运行时资金/库存缓存、订单库存准备、主食预留和主要脚本化 UI controller 已经开始迁出；剩余高风险耦合主要是旧 public wrapper、`RunSetupData` 配置/每日事件生成深拆和更细的 UI 场景化。
 - `gameplay/systems/` 中主要玩法 system 已承接真实逻辑。`InventorySystem`、`SupplierSystem`、`EmergencyPurchaseSystem`、`CookingSystem`、`OrderSystem`、`ReputationSystem`、`DayEventSystem`、`StationLayoutSystem` 都是当前优先维护入口；`GameManager` 负责兼容分发和跨 system 协调。
 - 顾客订单状态已新增 `CustomerOrderState` helper 集中访问，并扩展到库存预留、付款、离开、队列快照和特殊顾客字段；`customer.gd` 已补明确 getter/setter，helper 优先调用方法，动态字段仅作兼容 fallback。
-- UI 构建逻辑已先迁出大锅面板、补货面板、礼物面板、晨间提示和结算页猫粮/剩菜 widget；晨间提示和礼物面板已有 `.tscn` 样板，日结页面剩余流程 UI 和其他脚本化 controller 后续可以继续拆成独立 Control 场景。
+- UI 构建逻辑已先迁出大锅面板、补货面板、礼物面板、晨间提示和结算页猫粮/剩菜 widget；晨间提示、礼物面板和补货面板已有 `.tscn` 样板，日结页面剩余流程 UI 和其他脚本化 controller 后续可以继续拆成独立 Control 场景。
 - 文案来源混杂。部分文本走 `data/text_db.json`，部分文本硬编码在脚本里。新增正式 UI 时优先写入 `text_db.json`。
 - 当前缺少 Godot CLI 自动验证流程。本地命令行里如果没有 `godot`，只能做静态检查和手测。
 - 迁移过程中要注意文件编码。脚本里已有中文文案，编辑工具需要保持 UTF-8。
-- `RunSetupData` 仍同时承担配置、运行时状态和事件生成职责；特殊顾客礼物/每日回响已先迁到 `RunEchoState`，结算缓存已先迁到 `RunSettlementState`，后续继续拆配置、运行时资金/库存和每日事件生成。
+- `RunSetupData` 仍同时承担配置和事件生成职责；特殊顾客礼物/每日回响已先迁到 `RunEchoState`，结算缓存已先迁到 `RunSettlementState`，run 资金/库存缓存已先迁到 `RunRuntimeState`，后续继续拆配置和每日事件生成。
 
 ## 待继续拆分
 
@@ -19,7 +19,7 @@
 
 1. UI controller / panel scenes
    - 把日结页面剩余即时构建 UI 继续拆出去。
-   - 可考虑把现有 `cart_pot_panel_controller.gd`、`supplier_order_panel_controller.gd` 继续固化为 `.tscn` 场景。
+   - 可考虑把现有 `cart_pot_panel_controller.gd` 继续固化为 `.tscn` 场景。
 
 2. 顾客动态字段正式化
    - 继续减少 `CustomerOrderState` fallback 中的动态 `get/set`，最终把顾客脚本字段改成强约束方法访问。
@@ -31,7 +31,7 @@
    - 本轮安全瘦身没有删除外部 public wrapper；后续收口仍需逐个确认调用方。
 
 4. `RunSetupData` 职责拆分
-   - 后续把关卡配置、运行时资金/库存和夜间事件生成拆成更明确的 model/service。
+   - 后续把关卡配置和夜间事件生成拆成更明确的 model/service。
    - 拆分前保持现有 autoload 输出结构，避免破坏菜单、经营场景和结算页的数据入口。
 
 ## 已完成拆分
@@ -44,7 +44,7 @@
 - `SupplierSystem`
   - 已持有供应商订单队列和订单序号。
   - 已迁移普通补货下单、倒计时、送达、待送达数量查询。
-  - 补货面板构建和刷新已迁到 `scenes/ui/supplier_order_panel_controller.gd`。
+  - 补货面板布局已迁到 `scenes/ui/supplier_order_panel.tscn`，刷新和按钮绑定由 `scenes/ui/supplier_order_panel_controller.gd` 承接。
 - `EmergencyPurchaseSystem`
   - 已迁移等待订单缺货聚合、单个顾客缺货判断、应急采购成本、扣钱后补货和采购后顾客状态刷新。
   - 实际库存写入继续统一调用 `InventorySystem.add_stock()`。
@@ -69,6 +69,9 @@
 - `RunSettlementState`
   - 已承接最近一次日结/轮结 summary 和结算页模式。
   - `RunSetupData` 保留原字段和 public getter/setter 作为 facade，避免破坏结算页、菜单和经营场景调用面。
+- `RunRuntimeState`
+  - 已承接 run 资金、累计收入/支出和当前库存缓存。
+  - `RunSetupData` 保留原字段和 `set_money_state()`、`get_money_state()`、`set_stock_state()`、`get_stock_state()` 作为 facade，避免破坏旧 autoload 调用面。
 - `DayEventSystem`
   - 已承接白天礼物、礼物选项生成/选择/应用、每日营业事件、晨间提示和早晨生食奖励。
   - `GameManager` 仍保留礼物、晨间提示和每日事件相关兼容 wrapper，外部站点/UI 调用面不变。
@@ -79,7 +82,7 @@
   - 已改为接收明确 summary input dictionary，不再读取 `GameManager` 的收入、资金和库存文本字段。
 - UI controller
   - `CartPotPanelController`、`SupplierOrderPanelController`、`DayGiftPanelController`、`MorningInfoPanelController` 已承接对应脚本化面板构建。
-  - `MorningInfoPanelController` 和 `DayGiftPanelController` 已开始使用 `.tscn` 作为 UI 场景化样板。
+  - `MorningInfoPanelController`、`DayGiftPanelController` 和 `SupplierOrderPanelController` 已开始使用 `.tscn` 作为 UI 场景化样板。
   - `SettlementWidgetsController` 已承接结算页猫粮/剩菜 widget 构建。
 
 ## 后续玩法功能

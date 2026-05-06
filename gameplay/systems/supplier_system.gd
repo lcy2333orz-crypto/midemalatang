@@ -1,7 +1,7 @@
 class_name SupplierSystem
 extends RefCounted
 
-const SupplierOrderPanelControllerScript := preload("res://scenes/ui/supplier_order_panel_controller.gd")
+const SupplierOrderPanelControllerScript = preload("res://scenes/ui/supplier_order_panel_controller.gd")
 
 var manager = null
 var panel_controller: SupplierOrderPanelController = null
@@ -83,7 +83,7 @@ func close_panel() -> void:
 
 
 func get_pending_amount(item_id: String) -> int:
-	var total := 0
+	var total: int = 0
 
 	for order_data in supplier_orders:
 		if typeof(order_data) != TYPE_DICTIONARY:
@@ -105,7 +105,7 @@ func place_order(item_id: String, amount: int = 1) -> void:
 		refresh_panel()
 		return
 
-	var price := RunSetupData.get_supplier_order_price(item_id, amount)
+	var price: int = RunSetupData.get_supplier_order_price(item_id, amount)
 
 	if not manager.spend_money(price):
 		print("è®¢è´§å¤±è´¥ï¼Œèµ„é‡‘ä¸è¶³ã€‚")
@@ -114,7 +114,7 @@ func place_order(item_id: String, amount: int = 1) -> void:
 
 	supplier_order_sequence_id += 1
 
-	var order_data := {
+	var order_data: Dictionary = {
 		"order_id": "supplier_order_%d" % supplier_order_sequence_id,
 		"items": {
 			item_id: amount
@@ -139,7 +139,7 @@ func update(delta: float) -> void:
 	for i in range(supplier_orders.size()):
 		var order_data: Dictionary = supplier_orders[i]
 
-		var time_left := float(order_data.get("time_left", 0.0))
+		var time_left: float = float(order_data.get("time_left", 0.0))
 		time_left -= delta
 		order_data["time_left"] = time_left
 		supplier_orders[i] = order_data
@@ -162,8 +162,8 @@ func deliver_order(order_data: Dictionary) -> void:
 		return
 
 	for item_id in items.keys():
-		var amount := int(items.get(item_id, 0))
-		var item_key := str(item_id)
+		var amount: int = int(items.get(item_id, 0))
+		var item_key: String = str(item_id)
 
 		if amount <= 0:
 			continue

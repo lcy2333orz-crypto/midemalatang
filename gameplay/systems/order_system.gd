@@ -1,7 +1,7 @@
 class_name OrderSystem
 extends RefCounted
 
-const CustomerOrderState := preload("res://gameplay/models/customer_order_state.gd")
+const CustomerOrderState = preload("res://gameplay/models/customer_order_state.gd")
 
 var manager = null
 
@@ -62,7 +62,7 @@ func begin_checkout(customer: Node) -> bool:
 
 
 func evaluate_order_before_checkout(customer: Node) -> Dictionary:
-	var result := {
+	var result: Dictionary = {
 		"status": "invalid",
 		"needs_waiting": false,
 		"needs_main_food_cooking": false,
@@ -114,7 +114,7 @@ func get_counter_customer_stock_preview(customer: Node) -> Dictionary:
 
 
 func confirm_checkout(customer: Node, quoted_price: int = -1) -> Dictionary:
-	var result := {
+	var result: Dictionary = {
 		"success": false,
 		"price_reaction": "accept",
 		"final_price": 0,
@@ -130,7 +130,7 @@ func confirm_checkout(customer: Node, quoted_price: int = -1) -> Dictionary:
 		result["message"] = "Customer already checked out."
 		return result
 
-	var evaluation := evaluate_order_before_checkout(customer)
+	var evaluation: Dictionary = evaluate_order_before_checkout(customer)
 	if evaluation["status"] != "ok":
 		result["message"] = "Order evaluation failed."
 		return result
@@ -154,7 +154,7 @@ func confirm_checkout(customer: Node, quoted_price: int = -1) -> Dictionary:
 	if game_ui:
 		game_ui.hide_order()
 
-	var route_result := route_after_payment(customer, evaluation)
+	var route_result: String = route_after_payment(customer, evaluation)
 	result["success"] = true
 	result["route"] = route_result
 	result["message"] = "Checkout completed."
@@ -251,7 +251,7 @@ func prepare_stock_for_waiting_order(customer: Node, fulfillment_status: String)
 		CustomerOrderState.set_ingredients_to_cook(customer, {})
 		CustomerOrderState.set_ingredients_deducted_at_checkout(customer, true)
 
-		RunSetupData.current_cooked_stock = manager.cooked_stock.duplicate(true)
+		RunSetupData.set_stock_state(manager.raw_stock, manager.cooked_stock, manager.staple_stock)
 		return
 
 	if fulfillment_status == "waitable":
@@ -284,7 +284,7 @@ func prepare_stock_for_waiting_order(customer: Node, fulfillment_status: String)
 		CustomerOrderState.set_ingredients_to_cook(customer, remaining_to_cook)
 		CustomerOrderState.set_ingredients_deducted_at_checkout(customer, true)
 
-		RunSetupData.current_cooked_stock = manager.cooked_stock.duplicate(true)
+		RunSetupData.set_stock_state(manager.raw_stock, manager.cooked_stock, manager.staple_stock)
 
 		print("Reserved cooked ingredients: ", reserved_cooked)
 		print("Remaining ingredients to cook in cart pot: ", remaining_to_cook)
@@ -322,7 +322,7 @@ func reserve_main_food_stock_for_customer(customer: Node) -> bool:
 	manager.staple_stock[main_food_id] = int(manager.staple_stock.get(main_food_id, 0)) - 1
 	CustomerOrderState.set_main_food_reservation(customer, main_food_id, true)
 
-	RunSetupData.current_staple_stock = manager.staple_stock.duplicate(true)
+	RunSetupData.set_stock_state(manager.raw_stock, manager.cooked_stock, manager.staple_stock)
 
 	print("Reserved main food: ", main_food_id)
 	print("Staple stock after reserving main food: ", manager.staple_stock)
@@ -331,7 +331,7 @@ func reserve_main_food_stock_for_customer(customer: Node) -> bool:
 
 
 func handle_stock_shortage_for_customer(customer: Node) -> Dictionary:
-	var result := {
+	var result: Dictionary = {
 		"has_alternative": false,
 		"adjusted_order": {},
 		"should_leave": false
@@ -544,7 +544,7 @@ func get_pending_order_remaining_ingredients(customer: Node) -> Dictionary:
 	if CustomerOrderState.is_ingredients_ready(customer):
 		return {}
 
-	var ingredients_to_cook := CustomerOrderState.get_ingredients_to_cook(customer)
+	var ingredients_to_cook: Dictionary = CustomerOrderState.get_ingredients_to_cook(customer)
 	if not ingredients_to_cook.is_empty():
 		return _clean_positive_amounts(ingredients_to_cook)
 
@@ -597,13 +597,13 @@ func get_pending_order_card_status_text(customer: Node) -> String:
 
 
 func get_pending_order_card_data(customer: Node) -> Dictionary:
-	var patience_text := "%d/%d" % [
+	var patience_text: String = "%d/%d" % [
 		int(ceil(customer.get_display_patience_current())),
 		int(customer.get_display_patience_max())
 	]
 
-	var status_text := get_pending_order_card_status_text(customer)
-	var extra_text := ""
+	var status_text: String = get_pending_order_card_status_text(customer)
+	var extra_text: String = ""
 
 	if manager.order_panel_upgrade_level >= 1:
 		var status_id: String = get_pending_order_status_id(customer)
@@ -642,8 +642,8 @@ func _clean_positive_amounts(source: Dictionary) -> Dictionary:
 	var cleaned: Dictionary = {}
 
 	for item_id in source.keys():
-		var item_key := str(item_id)
-		var amount := int(source.get(item_key, 0))
+		var item_key: String = str(item_id)
+		var amount: int = int(source.get(item_key, 0))
 		if amount > 0:
 			cleaned[item_key] = amount
 

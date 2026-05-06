@@ -30,31 +30,40 @@ func debug_validate() -> Array[String]:
 	else:
 		_append_stock_warnings(warnings, "staple_stock", manager.staple_stock)
 
-	if _is_stock_out_of_sync(RunSetupData.current_raw_stock, manager.raw_stock):
+	var saved_stock: Dictionary = RunSetupData.get_stock_state()
+
+	if _is_stock_out_of_sync(saved_stock.get("current_raw_stock", {}), manager.raw_stock):
 		warnings.append("InventorySystem: raw_stock and RunSetupData.current_raw_stock are out of sync.")
 
-	if _is_stock_out_of_sync(RunSetupData.current_cooked_stock, manager.cooked_stock):
+	if _is_stock_out_of_sync(saved_stock.get("current_cooked_stock", {}), manager.cooked_stock):
 		warnings.append("InventorySystem: cooked_stock and RunSetupData.current_cooked_stock are out of sync.")
 
-	if _is_stock_out_of_sync(RunSetupData.current_staple_stock, manager.staple_stock):
+	if _is_stock_out_of_sync(saved_stock.get("current_staple_stock", {}), manager.staple_stock):
 		warnings.append("InventorySystem: staple_stock and RunSetupData.current_staple_stock are out of sync.")
 
 	return warnings
 
 
 func initialize_round_stocks(planned_raw_stock: Dictionary, planned_cooked_stock: Dictionary, planned_staple_stock: Dictionary) -> void:
-	if RunSetupData.current_raw_stock.is_empty():
-		RunSetupData.current_raw_stock = planned_raw_stock.duplicate(true)
+	var saved_stock: Dictionary = RunSetupData.get_stock_state()
+	var saved_raw_stock: Dictionary = saved_stock.get("current_raw_stock", {})
+	var saved_cooked_stock: Dictionary = saved_stock.get("current_cooked_stock", {})
+	var saved_staple_stock: Dictionary = saved_stock.get("current_staple_stock", {})
 
-	if RunSetupData.current_cooked_stock.is_empty():
-		RunSetupData.current_cooked_stock = planned_cooked_stock.duplicate(true)
+	if saved_raw_stock.is_empty():
+		saved_raw_stock = planned_raw_stock.duplicate(true)
 
-	if RunSetupData.current_staple_stock.is_empty():
-		RunSetupData.current_staple_stock = planned_staple_stock.duplicate(true)
+	if saved_cooked_stock.is_empty():
+		saved_cooked_stock = planned_cooked_stock.duplicate(true)
 
-	manager.raw_stock = RunSetupData.current_raw_stock.duplicate(true)
-	manager.cooked_stock = RunSetupData.current_cooked_stock.duplicate(true)
-	manager.staple_stock = RunSetupData.current_staple_stock.duplicate(true)
+	if saved_staple_stock.is_empty():
+		saved_staple_stock = planned_staple_stock.duplicate(true)
+
+	RunSetupData.set_stock_state(saved_raw_stock, saved_cooked_stock, saved_staple_stock)
+
+	manager.raw_stock = saved_raw_stock.duplicate(true)
+	manager.cooked_stock = saved_cooked_stock.duplicate(true)
+	manager.staple_stock = saved_staple_stock.duplicate(true)
 
 
 func get_stock_total(stock: Dictionary) -> int:
@@ -242,12 +251,12 @@ func _is_stock_out_of_sync(saved_stock, runtime_stock) -> bool:
 
 
 func _sync_raw_stock() -> void:
-	RunSetupData.current_raw_stock = manager.raw_stock.duplicate(true)
+	RunSetupData.set_stock_state(manager.raw_stock, manager.cooked_stock, manager.staple_stock)
 
 
 func _sync_cooked_stock() -> void:
-	RunSetupData.current_cooked_stock = manager.cooked_stock.duplicate(true)
+	RunSetupData.set_stock_state(manager.raw_stock, manager.cooked_stock, manager.staple_stock)
 
 
 func _sync_staple_stock() -> void:
-	RunSetupData.current_staple_stock = manager.staple_stock.duplicate(true)
+	RunSetupData.set_stock_state(manager.raw_stock, manager.cooked_stock, manager.staple_stock)

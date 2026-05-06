@@ -16,7 +16,7 @@ func _get_drag_data(_at_position: Vector2):
 	if item_id == "" or item_amount <= 0:
 		return null
 
-	var preview := Label.new()
+	var preview: Label = Label.new()
 	preview.text = text
 	preview.size = Vector2(110, 36)
 	preview.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

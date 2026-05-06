@@ -1,6 +1,6 @@
 extends CharacterBody2D
 
-const ItemIds := preload("res://gameplay/models/item_ids.gd")
+const ItemIds = preload("res://gameplay/models/item_ids.gd")
 
 enum CustomerState {
 	MOVING_TO_QUEUE,
@@ -12,12 +12,12 @@ enum CustomerState {
 	MOVING_TO_EXIT
 }
 
-const ITEM_NONE := ItemIds.NONE
-const ITEM_GLASS_NOODLE := ItemIds.GLASS_NOODLE
-const ITEM_NOODLE := ItemIds.NOODLE
-const ITEM_SPINACH := ItemIds.SPINACH
-const ITEM_POTATO_SLICE := ItemIds.POTATO_SLICE
-const ITEM_TOFU_PUFF := ItemIds.TOFU_PUFF
+const ITEM_NONE = ItemIds.NONE
+const ITEM_GLASS_NOODLE = ItemIds.GLASS_NOODLE
+const ITEM_NOODLE = ItemIds.NOODLE
+const ITEM_SPINACH = ItemIds.SPINACH
+const ITEM_POTATO_SLICE = ItemIds.POTATO_SLICE
+const ITEM_TOFU_PUFF = ItemIds.TOFU_PUFF
 
 @export var move_speed: float = 120.0
 @export var target_position: Vector2 = Vector2.ZERO
@@ -87,10 +87,10 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		return
 
-	var to_target := target_position - global_position
+	var to_target: Vector2 = target_position - global_position
 
 	if to_target.length() > 5.0:
-		var direction := to_target.normalized()
+		var direction: Vector2 = to_target.normalized()
 		velocity = direction * move_speed
 		move_and_slide()
 	else:
@@ -116,13 +116,13 @@ func _update_patience_bar() -> void:
 	if patience_bar_bg == null or patience_bar_fill == null:
 		return
 
-	var show_bar := is_in_queue and not is_checked_out
+	var show_bar: bool = is_in_queue and not is_checked_out
 	patience_bar_bg.visible = show_bar
 
 	if not show_bar:
 		return
 
-	var ratio := 0.0
+	var ratio: float = 0.0
 	if counter_patience_max > 0.0:
 		ratio = clamp(counter_patience_current / counter_patience_max, 0.0, 1.0)
 
@@ -237,7 +237,7 @@ func randomize_order() -> void:
 	needs_waiting = has_main_food()
 
 func randomize_main_food() -> void:
-	var roll := randi() % 3
+	var roll: int = randi() % 3
 
 	match roll:
 		0:
@@ -264,8 +264,8 @@ func randomize_ingredients() -> void:
 	ingredients.clear()
 
 	for i in range(ingredient_count):
-		var ingredient_id := str(ingredient_pool[i])
-		var quantity := randi_range(1, 2)
+		var ingredient_id: String = str(ingredient_pool[i])
+		var quantity: int = randi_range(1, 2)
 		ingredients[ingredient_id] = quantity
 
 func mark_checkout_started() -> void:
@@ -446,7 +446,7 @@ func blocks_cart_cleanup() -> bool:
 	return true
 
 func show_served_reaction() -> void:
-	var reaction_text := get_served_reaction_text()
+	var reaction_text: String = get_served_reaction_text()
 	_create_customer_reaction_label(reaction_text)
 
 func get_served_reaction_text() -> String:
@@ -467,7 +467,7 @@ func _create_customer_reaction_label(text: String) -> void:
 	if old_label:
 		old_label.queue_free()
 
-	var reaction_label := Label.new()
+	var reaction_label: Label = Label.new()
 	reaction_label.name = "CustomerReactionLabel"
 	reaction_label.text = text
 	reaction_label.position = Vector2(-18, -72)
@@ -479,7 +479,7 @@ func _create_customer_reaction_label(text: String) -> void:
 
 	add_child(reaction_label)
 
-	var tween := create_tween()
+	var tween: Tween = create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(reaction_label, "position:y", reaction_label.position.y - 22.0, 1.15)
 	tween.tween_property(reaction_label, "modulate:a", 0.0, 1.15)
@@ -500,7 +500,7 @@ func has_any_ingredients() -> bool:
 	return ingredients.size() > 0
 
 func get_total_item_count() -> int:
-	var total := 0
+	var total: int = 0
 
 	for ingredient_id in ingredients.keys():
 		total += int(ingredients[ingredient_id])
@@ -508,7 +508,7 @@ func get_total_item_count() -> int:
 	return total
 
 func get_order_price() -> int:
-	var price := get_total_item_count()
+	var price: int = get_total_item_count()
 
 	if has_main_food():
 		price += 1
@@ -522,7 +522,7 @@ func get_true_price_at_checkout() -> int:
 	return true_price_at_checkout
 
 func reset_patience() -> void:
-	var multiplier := RunSetupData.get_current_day_multiplier(
+	var multiplier: float = RunSetupData.get_current_day_multiplier(
 		"customer_patience_multiplier",
 		1.0
 	)
@@ -544,7 +544,7 @@ func get_display_patience_max() -> float:
 	return counter_patience_max
 
 func get_pending_order_summary() -> String:
-	var patience_text := "%d/%d" % [int(ceil(delivery_patience_current)), int(delivery_patience_max)]
+	var patience_text: String = "%d/%d" % [int(ceil(delivery_patience_current)), int(delivery_patience_max)]
 	return TextDB.get_text("UI_PENDING_ORDER_SUMMARY") % [
 		get_order_name(),
 		get_main_food(),

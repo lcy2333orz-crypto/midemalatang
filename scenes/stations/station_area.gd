@@ -1,10 +1,156 @@
 extends Area2D
 
 @export var station_name: String = ""
+@export var interaction_label: String = ""
+@export var interaction_priority: int = 0
+
 
 func _ready() -> void:
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
+
+
+func get_interaction_priority() -> int:
+	if interaction_priority != 0:
+		return interaction_priority
+
+	match station_name:
+		"Counter":
+			return 100
+		"DeliveryPoint":
+			return 95
+		"StapleLadle1", "StapleLadle2":
+			return 90
+		"GlassNoodleBasket", "NoodleBasket":
+			return 85
+		"Cooker":
+			return 80
+		"EmergencyShop":
+			return 70
+		"StorageArea":
+			return 65
+		"GiftBox":
+			return 50
+		_:
+			return 10
+
+
+func get_interaction_prompt() -> String:
+	if interaction_label.strip_edges() != "":
+		return interaction_label
+
+	var game_manager = get_tree().get_first_node_in_group("game_manager")
+
+	match station_name:
+		"Counter":
+			return _get_counter_prompt(game_manager)
+		"Cooker":
+			return "E 大锅 / 备菜"
+		"DeliveryPoint":
+			return _get_delivery_prompt(game_manager)
+		"StorageArea":
+			return "E 查看仓库 / 开业前补货"
+		"EmergencyShop":
+			return "E 应急采购"
+		"GiftBox":
+			return "E 打开礼物"
+		"GlassNoodleBasket":
+			return _get_staple_basket_prompt(game_manager, "glass_noodle", "粉丝")
+		"NoodleBasket":
+			return _get_staple_basket_prompt(game_manager, "noodle", "面")
+		"StapleLadle1":
+			return _get_ladle_prompt(game_manager, 0, "漏勺1")
+		"StapleLadle2":
+			return _get_ladle_prompt(game_manager, 1, "漏勺2")
+		_:
+			return "E 交互"
+
+
+func _get_counter_prompt(game_manager: Node) -> String:
+	if game_manager == null:
+		return "E 柜台"
+
+	if game_manager.has_method("can_finalize_day_now"):
+		if game_manager.can_finalize_day_now():
+			return "E 进入结算"
+
+	if not game_manager.is_open_for_business:
+		return "T 开业 / E 柜台"
+
+	var customer = null
+	if game_manager.has_method("get_counter_customer"):
+		customer = game_manager.get_counter_customer()
+
+	if customer == null:
+		return "柜台：等待顾客"
+
+	if not bool(customer.order_revealed):
+		return "E 查看订单"
+
+	if not bool(customer.is_checked_out):
+		return "E 收钱"
+
+	return "柜台：顾客已付款"
+
+
+func _get_delivery_prompt(game_manager: Node) -> String:
+	if game_manager == null:
+		return "E 出餐"
+
+	if game_manager.cooking_system != null:
+		if str(game_manager.cooking_system.held_staple_food_id) != "":
+			return "E 提交主食 / 出餐"
+
+	return "E 出餐"
+
+
+func _get_staple_basket_prompt(game_manager: Node, main_food_id: String, display_name: String) -> String:
+	if game_manager == null or game_manager.cooking_system == null:
+		return "E 拿%s" % display_name
+
+	var held_raw: String = str(game_manager.cooking_system.held_raw_staple_food_id)
+	var held_cooked: String = str(game_manager.cooking_system.held_staple_food_id)
+
+	if held_cooked != "":
+		return "手持熟主食：先去出餐点"
+
+	if held_raw == "":
+		return "E 拿%s" % display_name
+
+	if held_raw == main_food_id:
+		return "E 放回%s" % display_name
+
+	return "手持其他主食：回对应筐放回"
+
+
+func _get_ladle_prompt(game_manager: Node, slot_index: int, display_name: String) -> String:
+	if game_manager == null or game_manager.cooking_system == null:
+		return "E %s" % display_name
+
+	if slot_index < 0 or slot_index >= game_manager.cooking_system.staple_ladle_slots.size():
+		return "E %s" % display_name
+
+	var slot: Dictionary = game_manager.cooking_system.staple_ladle_slots[slot_index] as Dictionary
+	var state: String = str(slot.get("state", "empty"))
+	var held_raw: String = str(game_manager.cooking_system.held_raw_staple_food_id)
+	var held_cooked: String = str(game_manager.cooking_system.held_staple_food_id)
+
+	if state == "empty":
+		if held_raw != "":
+			return "E 放入%s" % display_name
+		return "%s：空" % display_name
+
+	if state == "cooking":
+		var time_left: float = float(slot.get("time_left", 0.0))
+		return "%s：烹饪中 %.1fs" % [display_name, time_left]
+
+	if state == "ready":
+		if held_cooked == "":
+			return "E 取出%s" % display_name
+		return "手里已有熟主食"
+
+	return "E %s" % display_name
+
 
 func interact() -> void:
 	print("Interact with ", station_name)
@@ -125,6 +271,7 @@ func interact() -> void:
 
 	print("Unknown station interaction.")
 
+
 func toggle_business() -> void:
 	if station_name != "Counter":
 		print("This station cannot toggle business.")
@@ -146,6 +293,7 @@ func toggle_business() -> void:
 		game_manager.open_business()
 		print("Counter toggled business: open")
 
+
 func _on_body_entered(body: Node) -> void:
 	if not body.is_in_group("player"):
 		return
@@ -158,6 +306,7 @@ func _on_body_entered(body: Node) -> void:
 
 		if game_manager != null and game_manager.has_method("show_storage_stock_only"):
 			game_manager.show_storage_stock_only()
+
 
 func _on_body_exited(body: Node) -> void:
 	if not body.is_in_group("player"):

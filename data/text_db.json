@@ -79,6 +79,9 @@
 	"UI_DAY_GIFT_DEFAULT_TITLE": "特殊客人的礼物",
 	"UI_DAY_GIFT_DESC": "特殊客人留下了一个小小的回响。选择其中一种影响。",
 	"UI_DAY_GIFT_CLOSE": "先不打开",
+	"UI_SUPPLIER_ORDER_TITLE": "早市供货商",
+	"UI_SUPPLIER_ORDER_DESC": "开业前可以批量订货。食材和主食都按篮/箱送达；开业后供货商就不接单了。",
+	"UI_SUPPLIER_ORDER_CLOSE": "关闭",
 	"UI_SETTLEMENT_CAT_LABEL": "小猫",
 	"UI_SETTLEMENT_CAT_HINT": "拖熟食来喂\n或点击摸头",
 	"UI_SETTLEMENT_CAT_NO_LEFTOVER": "今天没有剩余熟食，可以摸摸小猫。"
@@ -163,6 +166,9 @@
 	"UI_DAY_GIFT_DEFAULT_TITLE": "Special Customer Gift",
 	"UI_DAY_GIFT_DESC": "A special customer left a small echo. Choose one effect.",
 	"UI_DAY_GIFT_CLOSE": "Not Now",
+	"UI_SUPPLIER_ORDER_TITLE": "Morning Supplier",
+	"UI_SUPPLIER_ORDER_DESC": "Order in bulk before opening. Ingredients and staples arrive by basket or box; the supplier stops taking orders after opening.",
+	"UI_SUPPLIER_ORDER_CLOSE": "Close",
 	"UI_SETTLEMENT_CAT_LABEL": "Cat",
 	"UI_SETTLEMENT_CAT_HINT": "Drag cooked food here\nor pet the cat",
 	"UI_SETTLEMENT_CAT_NO_LEFTOVER": "No cooked leftovers today. You can pet the cat."

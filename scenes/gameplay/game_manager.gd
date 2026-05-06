@@ -1,19 +1,19 @@
-﻿extends Node
+extends Node
 
-const BusinessDaySystemScript := preload("res://gameplay/systems/business_day_system.gd")
-const CustomerQueueSystemScript := preload("res://gameplay/systems/customer_queue_system.gd")
-const PendingOrderSystemScript := preload("res://gameplay/systems/pending_order_system.gd")
-const OrderSystemScript := preload("res://gameplay/systems/order_system.gd")
-const InventorySystemScript := preload("res://gameplay/systems/inventory_system.gd")
-const CookingSystemScript := preload("res://gameplay/systems/cooking_system.gd")
-const SupplierSystemScript := preload("res://gameplay/systems/supplier_system.gd")
-const EmergencyPurchaseSystemScript := preload("res://gameplay/systems/emergency_purchase_system.gd")
-const ReputationSystemScript := preload("res://gameplay/systems/reputation_system.gd")
-const SettlementBuilderScript := preload("res://gameplay/systems/settlement_builder.gd")
-const DayEventSystemScript := preload("res://gameplay/systems/day_event_system.gd")
-const StationLayoutSystemScript := preload("res://gameplay/systems/station_layout_system.gd")
-const StockUtils := preload("res://gameplay/models/stock_utils.gd")
-const CustomerOrderState := preload("res://gameplay/models/customer_order_state.gd")
+const BusinessDaySystemScript = preload("res://gameplay/systems/business_day_system.gd")
+const CustomerQueueSystemScript = preload("res://gameplay/systems/customer_queue_system.gd")
+const PendingOrderSystemScript = preload("res://gameplay/systems/pending_order_system.gd")
+const OrderSystemScript = preload("res://gameplay/systems/order_system.gd")
+const InventorySystemScript = preload("res://gameplay/systems/inventory_system.gd")
+const CookingSystemScript = preload("res://gameplay/systems/cooking_system.gd")
+const SupplierSystemScript = preload("res://gameplay/systems/supplier_system.gd")
+const EmergencyPurchaseSystemScript = preload("res://gameplay/systems/emergency_purchase_system.gd")
+const ReputationSystemScript = preload("res://gameplay/systems/reputation_system.gd")
+const SettlementBuilderScript = preload("res://gameplay/systems/settlement_builder.gd")
+const DayEventSystemScript = preload("res://gameplay/systems/day_event_system.gd")
+const StationLayoutSystemScript = preload("res://gameplay/systems/station_layout_system.gd")
+const StockUtils = preload("res://gameplay/models/stock_utils.gd")
+const CustomerOrderState = preload("res://gameplay/models/customer_order_state.gd")
 
 @export var customer_scene: PackedScene
 
@@ -116,6 +116,11 @@ var order_panel_blocked_for_this_run: bool = false
 @onready var cooker_1_node: Node2D = $"../Stations/Cooker"
 @onready var cooker_2_node: Node2D = null
 @onready var emergency_shop_node: Node2D = $"../Stations/EmergencyShop"
+@onready var glass_noodle_basket_node: Node2D = $"../Stations/GlassNoodleBasket"
+@onready var noodle_basket_node: Node2D = $"../Stations/NoodleBasket"
+@onready var staple_ladle_1_node: Node2D = $"../Stations/StapleLadle1"
+@onready var staple_ladle_2_node: Node2D = $"../Stations/StapleLadle2"
+@onready var gift_box_node: Node2D = $"../Stations/GiftBox"
 
 func _ready() -> void:
 	print("GameManager ready")
@@ -338,17 +343,18 @@ func start_round() -> void:
 	RunSetupData.ensure_starting_money_for_new_run()
 
 	initialize_round_stocks()
-	activate_and_apply_current_day_business_event()
+	day_event_system.activate_and_apply_current_day_business_event()
 
 	_apply_upgrade_flags()
 	initialize_cooker_slots()
 	initialize_staple_ladle_slots()
 	apply_station_layout_from_run_setup()
 
-	money = RunSetupData.run_money
-	round_income = RunSetupData.run_total_income
-	round_gross_income = RunSetupData.run_gross_income
-	round_expense = RunSetupData.run_total_expense
+	var money_state: Dictionary = RunSetupData.get_money_state()
+	money = int(money_state.get("run_money", 0))
+	round_income = int(money_state.get("run_total_income", 0))
+	round_gross_income = int(money_state.get("run_gross_income", 0))
+	round_expense = int(money_state.get("run_total_expense", 0))
 
 	today_income = 0
 	today_gross_income = 0
@@ -430,8 +436,8 @@ func show_storage_stock_only() -> void:
 		print("Cannot show storage stock. No game_ui found.")
 		return
 
-	var cooked_text := get_cooked_stock_text()
-	var raw_and_staple_text := "%s\nä¸»é£Ÿåº“å­˜ï¼š%s" % [
+	var cooked_text: String = get_cooked_stock_text()
+	var raw_and_staple_text: String = "%s\nä¸»é£Ÿåº“å­˜ï¼š%s" % [
 		get_raw_stock_text(),
 		get_staple_stock_text()
 	]
@@ -455,15 +461,9 @@ func open_day_gift_choice_panel(gift_data: Dictionary) -> void:
 func close_day_gift_choice_panel() -> void:
 	day_event_system.close_day_gift_choice_panel()
 
-func generate_day_gift_options(gift_data: Dictionary) -> Array:
-	return day_event_system.generate_day_gift_options(gift_data)
-
 func _on_day_gift_option_pressed(option_index: int) -> void:
 	day_event_system._on_day_gift_option_pressed(option_index)
 
-
-func apply_day_gift_choice(gift_data: Dictionary, chosen_card: Dictionary) -> void:
-	day_event_system.apply_day_gift_choice(gift_data, chosen_card)
 
 func get_day_gift_option_button_text(option_data: Dictionary) -> String:
 	return day_event_system.get_day_gift_option_button_text(option_data)
@@ -476,7 +476,7 @@ func get_items_text(items: Dictionary) -> String:
 	var parts: Array[String] = []
 
 	for item_id in items.keys():
-		var amount := int(items.get(item_id, 0))
+		var amount: int = int(items.get(item_id, 0))
 
 		if amount <= 0:
 			continue
@@ -491,14 +491,8 @@ func get_items_text(items: Dictionary) -> String:
 
 	return "ï¼Œ".join(parts)
 
-func activate_and_apply_current_day_business_event() -> void:
-	day_event_system.activate_and_apply_current_day_business_event()
-
-func apply_random_raw_stock_bonus(amount: int) -> void:
-	day_event_system.apply_random_raw_stock_bonus(amount)
-
 func get_modified_spawn_timer_wait_time() -> float:
-	var multiplier := RunSetupData.get_current_day_multiplier(
+	var multiplier: float = RunSetupData.get_current_day_multiplier(
 		"customer_spawn_interval_multiplier",
 		1.0
 	)
@@ -529,9 +523,6 @@ func start_spawn_timer_if_needed() -> void:
 func show_pending_morning_info_if_any() -> void:
 	day_event_system.show_pending_morning_info_if_any()
 
-func _create_morning_info_layer(lines: Array[String]) -> void:
-	day_event_system._create_morning_info_layer(lines)
-
 func _apply_special_customer_plan_to_customer(customer: Node) -> void:
 	customer_queue_system.apply_special_customer_plan_to_customer(customer)
 
@@ -546,56 +537,8 @@ func get_stock_total(stock: Dictionary) -> int:
 	return inventory_system.get_stock_total(stock)
 
 
-func get_cart_pot_cooked_capacity_used() -> int:
-	return cooking_system.get_cart_pot_cooked_capacity_used()
-
-
-func get_cart_pot_cooking_capacity_used() -> int:
-	return cooking_system.get_cart_pot_cooking_capacity_used()
-
-
-func get_cart_pot_selection_total() -> int:
-	return cooking_system.get_cart_pot_selection_total()
-
-
-func get_cart_pot_used_capacity() -> int:
-	return cooking_system.get_cart_pot_used_capacity()
-
-
-func get_cart_pot_total_capacity_with_selection() -> int:
-	return cooking_system.get_cart_pot_total_capacity_with_selection()
-
-
-func get_cart_pot_available_capacity_for_selection() -> int:
-	return cooking_system.get_cart_pot_available_capacity_for_selection()
-
-
-func can_add_to_cart_pot_selection(item_id: String, amount: int = 1) -> bool:
-	return cooking_system.can_add_to_cart_pot_selection(item_id, amount)
-
-
-func add_to_cart_pot_selection(item_id: String, amount: int = 1) -> void:
-	cooking_system.add_to_cart_pot_selection(item_id, amount)
-
-
-func remove_from_cart_pot_selection(item_id: String, amount: int = 1) -> void:
-	cooking_system.remove_from_cart_pot_selection(item_id, amount)
-
-
-func max_add_to_cart_pot_selection(item_id: String) -> void:
-	cooking_system.max_add_to_cart_pot_selection(item_id)
-
-
-func start_cart_pot_batch_cooking() -> void:
-	cooking_system.start_cart_pot_batch_cooking()
-
-
 func initialize_staple_ladle_slots() -> void:
 	cooking_system.initialize_staple_ladle_slots()
-
-
-func has_busy_staple_ladle() -> bool:
-	return cooking_system.has_busy_staple_ladle()
 
 
 func get_first_pending_customer_waiting_for_main_food(main_food_id: String) -> Node:
@@ -605,26 +548,6 @@ func get_first_pending_customer_waiting_for_main_food(main_food_id: String) -> N
 func has_waiting_main_food_order(main_food_id: String) -> bool:
 	return cooking_system.has_waiting_main_food_order(main_food_id)
 
-func get_waiting_main_food_count(main_food_id: String) -> int:
-	return cooking_system.get_waiting_main_food_count(main_food_id)
-
-func get_assigned_staple_food_count(main_food_id: String) -> int:
-	return cooking_system.get_assigned_staple_food_count(main_food_id)
-
-
-func get_unassigned_waiting_main_food_count(main_food_id: String) -> int:
-	return cooking_system.get_unassigned_waiting_main_food_count(main_food_id)
-
-func can_start_staple_ladle_cooking(slot_index: int, main_food_id: String) -> bool:
-	return cooking_system.can_start_staple_ladle_cooking(slot_index, main_food_id)
-
-func start_staple_ladle_cooking(slot_index: int, main_food_id: String) -> void:
-	cooking_system.start_staple_ladle_cooking(slot_index, main_food_id)
-
-
-func take_ready_staple_from_ladle(slot_index: int) -> void:
-	cooking_system.take_ready_staple_from_ladle(slot_index)
-
 func interact_with_staple_basket(main_food_id: String) -> void:
 	cooking_system.interact_with_staple_basket(main_food_id)
 
@@ -633,30 +556,11 @@ func interact_with_staple_ladle(slot_index: int) -> void:
 	cooking_system.interact_with_staple_ladle(slot_index)
 
 
-func get_held_raw_staple_text() -> String:
-	return cooking_system.get_held_raw_staple_text()
-
-func get_held_staple_text() -> String:
-	return cooking_system.get_held_staple_text()
-
-
-func get_staple_ladle_text(slot_index: int) -> String:
-	return cooking_system.get_staple_ladle_text(slot_index)
-
 func initialize_cooker_slots() -> void:
 	cooking_system.initialize_cooker_slots()
 
 func apply_station_layout_from_run_setup() -> void:
 	station_layout_system.apply_station_layout_from_run_setup()
-
-func place_station_by_slot(station_node: Node2D, slot_id: String) -> void:
-	station_layout_system.place_station_by_slot(station_node, slot_id)
-
-func get_slot_marker_by_id(slot_id: String) -> Marker2D:
-	return station_layout_system.get_slot_marker_by_id(slot_id)
-
-func update_cooker_slots(delta: float) -> void:
-	cooking_system.update_cooker_slots(delta)
 
 func get_queue_positions() -> Array:
 	return customer_queue_system.get_queue_positions()
@@ -743,7 +647,7 @@ func build_night_queue_from_today_results() -> Array:
 	]
 
 	for entry in RunSetupData.today_special_customer_results:
-		var gift_id := str(entry.get("gift_id", ""))
+		var gift_id: String = str(entry.get("gift_id", ""))
 
 		if gift_id != "" and RunSetupData.is_gift_opened(gift_id):
 			print("Skip opened special echo at night: ", gift_id)
@@ -909,7 +813,7 @@ func get_customer_main_food_stock_id(customer: Node) -> String:
 
 
 func customer_has_main_food(customer: Node) -> bool:
-	var main_food_id := get_customer_main_food_stock_id(customer)
+	var main_food_id: String = get_customer_main_food_stock_id(customer)
 
 	return main_food_id != "none" and main_food_id != ""
 
@@ -1001,6 +905,7 @@ func add_money(amount: int) -> void:
 
 	today_income += amount
 	round_income += amount
+	RunSetupData.set_money_state(money, round_income, round_gross_income, round_expense)
 
 	var game_ui = get_tree().get_first_node_in_group("game_ui")
 
@@ -1070,6 +975,7 @@ func spend_money(amount: int) -> bool:
 
 	today_income -= amount
 	round_income -= amount
+	RunSetupData.set_money_state(money, round_income, round_gross_income, round_expense)
 
 	var game_ui = get_tree().get_first_node_in_group("game_ui")
 
@@ -1088,7 +994,7 @@ func get_run_income() -> int:
 	return round_income
 
 func get_waste_value() -> int:
-	var waste := 0
+	var waste: int = 0
 
 	for ingredient_name in raw_stock.keys():
 		waste += raw_stock[ingredient_name]
@@ -1131,7 +1037,7 @@ func has_active_customers_or_orders() -> bool:
 			if _customer_blocks_cart_cleanup(child):
 				return true
 
-	var customer_nodes := get_tree().get_nodes_in_group("customers")
+	var customer_nodes: Array = get_tree().get_nodes_in_group("customers")
 
 	for customer in customer_nodes:
 		if _customer_blocks_cart_cleanup(customer):
@@ -1193,25 +1099,18 @@ func clear_staple_ladle_and_held_food_at_day_end() -> Dictionary:
 func finish_day() -> void:
 	has_round_finished = true
 
-	var remaining_cooked_stock := cooked_stock.duplicate(true)
-	var remaining_raw_stock := raw_stock.duplicate(true)
-	var remaining_staple_stock := staple_stock.duplicate(true)
-	var discarded_staple_food := clear_staple_ladle_and_held_food_at_day_end()
-
-	RunSetupData.run_money = money
-	RunSetupData.run_total_income = round_income
-	RunSetupData.run_gross_income = round_gross_income
-	RunSetupData.run_total_expense = round_expense
-
-	RunSetupData.current_raw_stock = remaining_raw_stock
-	RunSetupData.current_staple_stock = remaining_staple_stock
+	var remaining_cooked_stock: Dictionary = cooked_stock.duplicate(true)
+	var remaining_raw_stock: Dictionary = raw_stock.duplicate(true)
+	var remaining_staple_stock: Dictionary = staple_stock.duplicate(true)
+	var discarded_staple_food: Dictionary = clear_staple_ladle_and_held_food_at_day_end()
 
 	# ç†Ÿé£Ÿä¸éš”å¤œï¼šæ—¥ç»“æ˜¾ç¤ºå‰©ä½™ç†Ÿé£Ÿï¼Œä½†ä¸‹ä¸€å¤©ä¸ç»§æ‰¿ç†Ÿé£Ÿã€‚
-	RunSetupData.current_cooked_stock = get_zero_food_stock()
+	RunSetupData.set_money_state(money, round_income, round_gross_income, round_expense)
+	RunSetupData.set_stock_state(remaining_raw_stock, get_zero_food_stock(), remaining_staple_stock)
 
 	RunSetupData.generated_night_queue = build_night_queue_from_today_results()
 
-	var day_summary := settlement_builder.build_day_summary(_build_settlement_summary_input(
+	var day_summary: Dictionary = settlement_builder.build_day_summary(_build_settlement_summary_input(
 		remaining_cooked_stock,
 		remaining_raw_stock,
 		remaining_staple_stock,
@@ -1242,14 +1141,14 @@ func finish_day() -> void:
 	get_tree().call_deferred("change_scene_to_file", "res://scenes/settlement/settlement_result.tscn")
 
 func finish_run() -> void:
-	var remaining_cooked_stock := cooked_stock.duplicate(true)
-	var remaining_raw_stock := raw_stock.duplicate(true)
-	var remaining_staple_stock := staple_stock.duplicate(true)
+	var remaining_cooked_stock: Dictionary = cooked_stock.duplicate(true)
+	var remaining_raw_stock: Dictionary = raw_stock.duplicate(true)
+	var remaining_staple_stock: Dictionary = staple_stock.duplicate(true)
 
-	RunSetupData.current_raw_stock = remaining_raw_stock
-	RunSetupData.current_staple_stock = remaining_staple_stock
+	RunSetupData.set_money_state(money, round_income, round_gross_income, round_expense)
+	RunSetupData.set_stock_state(remaining_raw_stock, get_zero_food_stock(), remaining_staple_stock)
 
-	var run_summary := settlement_builder.build_run_summary(_build_settlement_summary_input(
+	var run_summary: Dictionary = settlement_builder.build_run_summary(_build_settlement_summary_input(
 		remaining_cooked_stock,
 		remaining_raw_stock,
 		remaining_staple_stock,
@@ -1257,7 +1156,6 @@ func finish_run() -> void:
 	))
 
 	RunSetupData.set_run_summary(run_summary)
-	RunSetupData.current_cooked_stock = get_zero_food_stock()
 
 	print("=== æœ¬è½®ç»“ç®— ===")
 	print("Today gross income: ", today_gross_income)

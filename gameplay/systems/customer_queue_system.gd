@@ -1,7 +1,7 @@
-﻿class_name CustomerQueueSystem
+class_name CustomerQueueSystem
 extends RefCounted
 
-const CustomerOrderState := preload("res://gameplay/models/customer_order_state.gd")
+const CustomerOrderState = preload("res://gameplay/models/customer_order_state.gd")
 
 var manager = null
 var spawn_policy: Dictionary = {}
@@ -147,7 +147,8 @@ func get_counter_customer() -> Node:
 
 
 func remove_customer_from_queue(customer: Node) -> void:
-	var idx := manager.queued_customers.find(customer)
+	var idx: int = manager.queued_customers.find(customer)
+
 	if idx != -1:
 		manager.queued_customers.remove_at(idx)
 		refresh_queue_positions()
@@ -163,7 +164,7 @@ func release_counter_customer(customer: Node) -> void:
 
 
 func notify_customer_leaving(customer: Node) -> void:
-	var paid_price := 0
+	var paid_price: int = 0
 
 	if customer != null and is_instance_valid(customer):
 		if CustomerOrderState.is_checked_out(customer) and not CustomerOrderState.is_served(customer):
@@ -173,6 +174,7 @@ func notify_customer_leaving(customer: Node) -> void:
 		manager.money = max(manager.money - paid_price, 0)
 		manager.round_income -= paid_price
 		manager.today_income -= paid_price
+		RunSetupData.set_money_state(manager.money, manager.round_income, manager.round_gross_income, manager.round_expense)
 		print("Refund applied because customer left after payment: ", paid_price)
 
 	var game_ui = manager.get_tree().get_first_node_in_group("game_ui")

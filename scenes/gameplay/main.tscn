@@ -9,17 +9,50 @@
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_7dm0k"]
 size = Vector2(180, 120)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_xsaao"]
+size = Vector2(110, 70)
+
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ig7tw"]
 size = Vector2(140, 95)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_aurnk"]
+size = Vector2(110, 70)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_0xm2m"]
 size = Vector2(120, 80)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_tlw26"]
+size = Vector2(100, 60)
+
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_1bvp3"]
+size = Vector2(120, 80)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_n672w"]
 size = Vector2(120, 80)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_lquwl"]
 size = Vector2(160, 120)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_vrg53"]
+size = Vector2(110, 80)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_tip_interaction"]
+size = Vector2(150, 120)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_tip_solid"]
+size = Vector2(92, 72)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_basket_interaction"]
+size = Vector2(150, 110)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_basket_solid"]
+size = Vector2(92, 70)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ladle_interaction"]
+size = Vector2(130, 105)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ladle_solid"]
+size = Vector2(72, 58)
 
 [node name="Main" type="Node2D" unique_id=963038254]
 
@@ -28,7 +61,7 @@ size = Vector2(160, 120)
 [node name="Spawns" type="Node2D" parent="." unique_id=902001230]
 
 [node name="PlayerSpawn" type="Marker2D" parent="Spawns" unique_id=341334920]
-position = Vector2(480, 420)
+position = Vector2(250, 300)
 
 [node name="CustomerSpawn" type="Marker2D" parent="Spawns" unique_id=1112229354]
 position = Vector2(100, 220)
@@ -66,6 +99,11 @@ shape = SubResource("RectangleShape2D_7dm0k")
 
 [node name="LabelPoint" type="Marker2D" parent="Stations/Counter" unique_id=1699715487]
 
+[node name="SolidBody" type="StaticBody2D" parent="Stations/Counter" unique_id=657541198]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/Counter/SolidBody" unique_id=698510185]
+shape = SubResource("RectangleShape2D_xsaao")
+
 [node name="Cooker" type="Node2D" parent="Stations" unique_id=1584601145]
 position = Vector2(480, 220)
 
@@ -86,6 +124,11 @@ shape = SubResource("RectangleShape2D_ig7tw")
 
 [node name="LabelPoint" type="Marker2D" parent="Stations/Cooker" unique_id=681115274]
 
+[node name="SolidBody" type="StaticBody2D" parent="Stations/Cooker" unique_id=587457809]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/Cooker/SolidBody" unique_id=1659364766]
+shape = SubResource("RectangleShape2D_aurnk")
+
 [node name="DeliveryPoint" type="Node2D" parent="Stations" unique_id=1177242921 groups=["delivery_spot"]]
 position = Vector2(680, 220)
 
@@ -105,6 +148,11 @@ shape = SubResource("RectangleShape2D_0xm2m")
 
 [node name="LabelPoint" type="Marker2D" parent="Stations/DeliveryPoint" unique_id=1486560963]
 
+[node name="SolidBody" type="StaticBody2D" parent="Stations/DeliveryPoint" unique_id=231312554]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/DeliveryPoint/SolidBody" unique_id=1242628352]
+shape = SubResource("RectangleShape2D_tlw26")
+
 [node name="StorageArea" type="Node2D" parent="Stations" unique_id=1616193361]
 position = Vector2(650, 380)
 
@@ -115,6 +163,7 @@ color = Color(0.078431375, 1, 1, 1)
 polygon = PackedVector2Array(-60, -40, 60, -40, 60, 40, -60, 40)
 
 [node name="InteractionArea" type="Area2D" parent="Stations/StorageArea" unique_id=853223621]
+collision_layer = 2
 script = ExtResource("1_0xm2m")
 station_name = "StorageArea"
 
@@ -122,6 +171,11 @@ station_name = "StorageArea"
 shape = SubResource("RectangleShape2D_1bvp3")
 
 [node name="LabelPoint" type="Marker2D" parent="Stations/StorageArea" unique_id=871541465]
+
+[node name="SolidBody" type="StaticBody2D" parent="Stations/StorageArea" unique_id=529847002]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/StorageArea/SolidBody" unique_id=83457629]
+shape = SubResource("RectangleShape2D_n672w")
 
 [node name="EmergencyShop" type="Node2D" parent="Stations" unique_id=514943712]
 
@@ -132,6 +186,7 @@ color = Color(0.50980395, 0, 1, 1)
 polygon = PackedVector2Array(-60, -40, 60, -40, 60, 40, -60, 40)
 
 [node name="InteractionArea" type="Area2D" parent="Stations/EmergencyShop" unique_id=930475026]
+collision_layer = 2
 script = ExtResource("1_0xm2m")
 station_name = "EmergencyShop"
 
@@ -139,6 +194,11 @@ station_name = "EmergencyShop"
 shape = SubResource("RectangleShape2D_lquwl")
 
 [node name="LabelPoint" type="Marker2D" parent="Stations/EmergencyShop" unique_id=7260532]
+
+[node name="SolidBody" type="StaticBody2D" parent="Stations/EmergencyShop" unique_id=1337402265]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/EmergencyShop/SolidBody" unique_id=777744159]
+shape = SubResource("RectangleShape2D_vrg53")
 
 [node name="GlassNoodleBasket" type="Node2D" parent="Stations" unique_id=1630752081]
 position = Vector2(500, 300)
@@ -151,13 +211,19 @@ color = Color(0.078431375, 1, 1, 1)
 polygon = PackedVector2Array(-60, -40, 60, -40, 60, 40, -60, 40)
 
 [node name="InteractionArea" type="Area2D" parent="Stations/GlassNoodleBasket" unique_id=1209998590]
+collision_layer = 2
 script = ExtResource("1_0xm2m")
 station_name = "GlassNoodleBasket"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/GlassNoodleBasket/InteractionArea" unique_id=2139567060]
-shape = SubResource("RectangleShape2D_1bvp3")
+shape = SubResource("RectangleShape2D_basket_interaction")
 
 [node name="LabelPoint" type="Marker2D" parent="Stations/GlassNoodleBasket" unique_id=1587903561]
+
+[node name="SolidBody" type="StaticBody2D" parent="Stations/GlassNoodleBasket"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/GlassNoodleBasket/SolidBody"]
+shape = SubResource("RectangleShape2D_basket_solid")
 
 [node name="NoodleBasket" type="Node2D" parent="Stations" unique_id=283729249]
 position = Vector2(560, 300)
@@ -170,13 +236,19 @@ color = Color(0.078431375, 1, 1, 1)
 polygon = PackedVector2Array(-60, -40, 60, -40, 60, 40, -60, 40)
 
 [node name="InteractionArea" type="Area2D" parent="Stations/NoodleBasket" unique_id=1404811644]
+collision_layer = 2
 script = ExtResource("1_0xm2m")
 station_name = "NoodleBasket"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/NoodleBasket/InteractionArea" unique_id=1370360968]
-shape = SubResource("RectangleShape2D_1bvp3")
+shape = SubResource("RectangleShape2D_basket_interaction")
 
 [node name="LabelPoint" type="Marker2D" parent="Stations/NoodleBasket" unique_id=250395910]
+
+[node name="SolidBody" type="StaticBody2D" parent="Stations/NoodleBasket"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/NoodleBasket/SolidBody"]
+shape = SubResource("RectangleShape2D_basket_solid")
 
 [node name="StapleLadle1" type="Node2D" parent="Stations" unique_id=241111430]
 position = Vector2(500, 350)
@@ -189,13 +261,19 @@ color = Color(0.078431375, 1, 1, 1)
 polygon = PackedVector2Array(-60, -40, 60, -40, 60, 40, -60, 40)
 
 [node name="InteractionArea" type="Area2D" parent="Stations/StapleLadle1" unique_id=1620084798]
+collision_layer = 2
 script = ExtResource("1_0xm2m")
 station_name = "StapleLadle1"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/StapleLadle1/InteractionArea" unique_id=248531754]
-shape = SubResource("RectangleShape2D_1bvp3")
+shape = SubResource("RectangleShape2D_ladle_interaction")
 
 [node name="LabelPoint" type="Marker2D" parent="Stations/StapleLadle1" unique_id=772515222]
+
+[node name="SolidBody" type="StaticBody2D" parent="Stations/StapleLadle1"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/StapleLadle1/SolidBody"]
+shape = SubResource("RectangleShape2D_ladle_solid")
 
 [node name="StapleLadle2" type="Node2D" parent="Stations" unique_id=1443454171]
 position = Vector2(560, 350)
@@ -208,13 +286,19 @@ color = Color(0.078431375, 1, 1, 1)
 polygon = PackedVector2Array(-60, -40, 60, -40, 60, 40, -60, 40)
 
 [node name="InteractionArea" type="Area2D" parent="Stations/StapleLadle2" unique_id=2010027832]
+collision_layer = 2
 script = ExtResource("1_0xm2m")
 station_name = "StapleLadle2"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/StapleLadle2/InteractionArea" unique_id=424560111]
-shape = SubResource("RectangleShape2D_1bvp3")
+shape = SubResource("RectangleShape2D_ladle_interaction")
 
 [node name="LabelPoint" type="Marker2D" parent="Stations/StapleLadle2" unique_id=459484310]
+
+[node name="SolidBody" type="StaticBody2D" parent="Stations/StapleLadle2"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/StapleLadle2/SolidBody"]
+shape = SubResource("RectangleShape2D_ladle_solid")
 
 [node name="GiftBox" type="Node2D" parent="Stations" unique_id=1071373065]
 position = Vector2(320, 250)
@@ -223,22 +307,29 @@ scale = Vector2(0.35, 0.35)
 [node name="Visual" type="Node2D" parent="Stations/GiftBox" unique_id=1525595814]
 
 [node name="Polygon2D" type="Polygon2D" parent="Stations/GiftBox/Visual" unique_id=709043481]
-color = Color(0.078431375, 1, 1, 1)
+color = Color(1, 0.78, 0.18, 1)
 polygon = PackedVector2Array(-60, -40, 60, -40, 60, 40, -60, 40)
 
 [node name="InteractionArea" type="Area2D" parent="Stations/GiftBox" unique_id=238210520]
+collision_layer = 2
 script = ExtResource("1_0xm2m")
 station_name = "GiftBox"
+interaction_priority = 105
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/GiftBox/InteractionArea" unique_id=2013235050]
-shape = SubResource("RectangleShape2D_1bvp3")
+shape = SubResource("RectangleShape2D_tip_interaction")
 
 [node name="LabelPoint" type="Marker2D" parent="Stations/GiftBox" unique_id=8585083]
+
+[node name="SolidBody" type="StaticBody2D" parent="Stations/GiftBox"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/GiftBox/SolidBody"]
+shape = SubResource("RectangleShape2D_tip_solid")
 
 [node name="Characters" type="Node2D" parent="." unique_id=1772073976]
 
 [node name="Player" parent="Characters" unique_id=1448892241 instance=ExtResource("1_ig7tw")]
-position = Vector2(326, 526)
+position = Vector2(250, 300)
 
 [node name="Orders" type="Node" parent="." unique_id=1001496981]
 
@@ -346,19 +437,19 @@ one_shot = true
 [node name="LayoutSlots" type="Node2D" parent="." unique_id=806798287]
 
 [node name="SlotA" type="Marker2D" parent="LayoutSlots" unique_id=1077234080]
-position = Vector2(220, 180)
+position = Vector2(240, 220)
 
 [node name="SlotB" type="Marker2D" parent="LayoutSlots" unique_id=2033913141]
-position = Vector2(420, 180)
+position = Vector2(420, 220)
 
 [node name="SlotC" type="Marker2D" parent="LayoutSlots" unique_id=344607718]
-position = Vector2(220, 320)
+position = Vector2(600, 220)
 
 [node name="SlotD" type="Marker2D" parent="LayoutSlots" unique_id=1316249324]
-position = Vector2(420, 320)
+position = Vector2(510, 220)
 
 [node name="SlotE" type="Marker2D" parent="LayoutSlots" unique_id=819792884]
-position = Vector2(620, 180)
+position = Vector2(420, 380)
 
 [node name="SlotF" type="Marker2D" parent="LayoutSlots" unique_id=1389469593]
-position = Vector2(620, 320)
+position = Vector2(780, 220)

@@ -1,7 +1,7 @@
 class_name EmergencyPurchaseSystem
 extends RefCounted
 
-const CustomerOrderState := preload("res://gameplay/models/customer_order_state.gd")
+const CustomerOrderState = preload("res://gameplay/models/customer_order_state.gd")
 
 var manager = null
 
@@ -71,7 +71,7 @@ func get_total_shortage() -> Dictionary:
 		var item_key: String = str(item_id)
 		var total_need: int = int(total_main_food_need.get(item_key, 0))
 		var stock_amount: int = int(manager.staple_stock.get(item_key, 0))
-		var assigned_amount: int = manager.get_assigned_staple_food_count(item_key)
+		var assigned_amount: int = manager.cooking_system.get_assigned_staple_food_count(item_key)
 		var available_amount: int = stock_amount + assigned_amount
 		var missing_amount: int = total_need - available_amount
 
@@ -129,7 +129,7 @@ func get_customer_shortage(customer: Node) -> Dictionary:
 		if main_food_id != "" and main_food_id != "none":
 			if CustomerOrderState.needs_main_food(customer) and not CustomerOrderState.is_main_food_ready(customer):
 				var stock_amount: int = int(manager.staple_stock.get(main_food_id, 0))
-				var assigned_amount: int = manager.get_assigned_staple_food_count(main_food_id)
+				var assigned_amount: int = manager.cooking_system.get_assigned_staple_food_count(main_food_id)
 				var available_amount: int = stock_amount + assigned_amount
 
 				if available_amount <= 0:

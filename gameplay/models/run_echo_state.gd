@@ -25,8 +25,8 @@ func reset_today_stats() -> void:
 func add_pending_gift(source_type: String, source_name: String, result: String, received_day: int) -> Dictionary:
 	gift_sequence_id += 1
 
-	var display_name := ""
-	var display_kind := ""
+	var display_name: String = ""
+	var display_kind: String = ""
 
 	if result == "good":
 		display_name = "%s留下的祝愿" % source_name
@@ -38,7 +38,7 @@ func add_pending_gift(source_type: String, source_name: String, result: String, 
 		display_name = "%s留下的回响" % source_name
 		display_kind = "echo"
 
-	var gift_data := {
+	var gift_data: Dictionary = {
 		"gift_id": "gift_%d" % gift_sequence_id,
 		"source_type": source_type,
 		"source_name": source_name,
@@ -72,7 +72,7 @@ func get_pending_gift_index_by_id(gift_id: String) -> int:
 
 
 func get_unopened_gift_by_id(gift_id: String) -> Dictionary:
-	var index := get_pending_gift_index_by_id(gift_id)
+	var index: int = get_pending_gift_index_by_id(gift_id)
 
 	if index == -1:
 		return {}
@@ -86,7 +86,7 @@ func get_unopened_gift_by_id(gift_id: String) -> Dictionary:
 
 
 func is_gift_opened(gift_id: String) -> bool:
-	var index := get_pending_gift_index_by_id(gift_id)
+	var index: int = get_pending_gift_index_by_id(gift_id)
 
 	if index == -1:
 		return false
@@ -97,7 +97,7 @@ func is_gift_opened(gift_id: String) -> bool:
 
 
 func get_gift_current_options(gift_id: String) -> Array:
-	var index := get_pending_gift_index_by_id(gift_id)
+	var index: int = get_pending_gift_index_by_id(gift_id)
 
 	if index == -1:
 		return []
@@ -112,7 +112,7 @@ func get_gift_current_options(gift_id: String) -> Array:
 
 
 func set_gift_current_options(gift_id: String, options: Array) -> void:
-	var index := get_pending_gift_index_by_id(gift_id)
+	var index: int = get_pending_gift_index_by_id(gift_id)
 
 	if index == -1:
 		return
@@ -127,7 +127,7 @@ func set_gift_current_options(gift_id: String, options: Array) -> void:
 
 
 func mark_gift_opened(gift_id: String, chosen_card: Dictionary, opened_day: int) -> Dictionary:
-	var index := get_pending_gift_index_by_id(gift_id)
+	var index: int = get_pending_gift_index_by_id(gift_id)
 
 	if index == -1:
 		return {}
@@ -163,7 +163,7 @@ func get_unopened_pending_gifts() -> Array:
 
 func get_pending_gift_lines() -> Array[String]:
 	var lines: Array[String] = []
-	var unopened_gifts := get_unopened_pending_gifts()
+	var unopened_gifts: Array = get_unopened_pending_gifts()
 
 	if unopened_gifts.is_empty():
 		lines.append("当前没有未查看的特殊客人回响。")
@@ -172,11 +172,11 @@ func get_pending_gift_lines() -> Array[String]:
 	lines.append("特殊客人的回响：")
 
 	for gift_data in unopened_gifts:
-		var display_name := str(gift_data.get("display_name", ""))
+		var display_name: String = str(gift_data.get("display_name", ""))
 
 		if display_name == "":
-			var source_name := str(gift_data.get("source_name", "特殊客人"))
-			var result := str(gift_data.get("result", "neutral"))
+			var source_name: String = str(gift_data.get("source_name", "特殊客人"))
+			var result: String = str(gift_data.get("result", "neutral"))
 
 			if result == "good":
 				display_name = "%s留下的祝愿" % source_name

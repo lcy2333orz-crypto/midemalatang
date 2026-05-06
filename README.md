@@ -21,10 +21,11 @@
 - `CustomerOrderState`：集中封装顾客订单、库存预留、付款、离开、队列快照和特殊顾客状态访问；现在优先调用 `customer.gd` 明确方法，动态字段只作兼容 fallback。
 - `RunEchoState`：承接特殊顾客礼物、打开记录和每日小摊回响统计；`RunSetupData` 保留原字段和方法作为 facade。
 - `RunSettlementState`：承接最近一次日结/轮结 summary 和结算页模式；`RunSetupData` 保留原字段与 getter/setter 作为 facade。
-- `CartPotPanelController`、`SupplierOrderPanelController`、`DayGiftPanelController`、`MorningInfoPanelController`：脚本化 UI controller，负责大锅、补货、礼物和晨间提示面板节点构建和刷新；晨间提示和礼物面板已有 `.tscn` 场景化样板。
+- `RunRuntimeState`：承接 run 资金、累计收入/支出和当前库存缓存；`RunSetupData` 保留原字段与 getter/setter 作为 facade。
+- `CartPotPanelController`、`SupplierOrderPanelController`、`DayGiftPanelController`、`MorningInfoPanelController`：脚本化 UI controller，负责大锅、补货、礼物和晨间提示面板节点构建和刷新；晨间提示、礼物面板和补货面板已有 `.tscn` 场景化样板。
 - `SettlementWidgetsController`：结算页猫粮/剩菜 widget 的脚本化构建入口，结算主页面继续负责流程和布局。
 
-下一步重点不是继续把新玩法塞进 `GameManager`，而是把更多脚本化 UI controller 沉淀成独立 Control 场景、继续拆 `RunSetupData` 的配置/运行时职责，并补 Godot CLI smoke test。
+下一步重点不是继续把新玩法塞进 `GameManager`，而是把更多脚本化 UI controller 沉淀成独立 Control 场景、继续拆 `RunSetupData` 的配置/每日事件生成职责，并补 Godot CLI smoke test。
 
 ## 已实现功能
 
@@ -57,10 +58,10 @@
 - `scenes/menus/`: 标题页、主页、选关页。
 - `scenes/gameplay/`: 主经营场景、玩家、顾客、`GameManager`。
 - `scenes/stations/`: 站点交互分发脚本。
-- `scenes/ui/`: HUD、待处理订单卡，当前脚本化的大锅、补货、礼物和晨间提示 controller，以及晨间提示、礼物面板 `.tscn` 样板。
+- `scenes/ui/`: HUD、待处理订单卡，当前脚本化的大锅、补货、礼物和晨间提示 controller，以及晨间提示、礼物面板、补货面板 `.tscn` 样板。
 - `scenes/settlement/`: 日结/轮结页面、喂猫区域、可拖拽剩菜按钮和局部 widget controller。
 - `gameplay/systems/`: 正在拆分出的玩法系统。`InventorySystem`、`SupplierSystem`、`EmergencyPurchaseSystem`、`CookingSystem`、`OrderSystem`、`PendingOrderSystem`、`ReputationSystem`、`DayEventSystem`、`StationLayoutSystem` 已经承接主要真实逻辑；`GameManager` 保留旧方法名作为兼容入口。
-- `gameplay/models/`: 玩法常量和工具，例如物品 id、订单结果常量、库存工具、顾客订单状态访问 helper、run 回响状态 helper、run 结算状态 helper。
+- `gameplay/models/`: 玩法常量和工具，例如物品 id、订单结果常量、库存工具、顾客订单状态访问 helper、run 回响状态 helper、run 结算状态 helper、run 运行时状态 helper。
 
 ## Debug 基础说明
 
@@ -149,7 +150,7 @@ rg "res://(game_manager|main|customer|player|title_menu|home_menu|stage_select|s
 
 ### 补货和应急采购
 
-- 供应商订单、倒计时、送达和待送达数量查询主要在 `gameplay/systems/supplier_system.gd`；普通补货面板构建和刷新由 `scenes/ui/supplier_order_panel_controller.gd` 承接。
+- 供应商订单、倒计时、送达和待送达数量查询主要在 `gameplay/systems/supplier_system.gd`；普通补货面板布局在 `scenes/ui/supplier_order_panel.tscn`，刷新和按钮绑定由 `scenes/ui/supplier_order_panel_controller.gd` 承接。
 - 应急采购缺货聚合、采购成本、扣钱、补货和采购后刷新顾客状态主要在 `gameplay/systems/emergency_purchase_system.gd`。
 - 两条补货路径的实际库存落库都统一调用 `InventorySystem.add_stock()`。
 
@@ -159,6 +160,7 @@ rg "res://(game_manager|main|customer|player|title_menu|home_menu|stage_select|s
 - 白天礼物、每日营业事件、晨间提示和早晨生食奖励主要在 `gameplay/systems/day_event_system.gd`；`GameManager` 保留礼物/晨间提示兼容入口。
 - 特殊顾客回响保存和每日统计：优先改 `gameplay/models/run_echo_state.gd`；`autoload/run_setup_data.gd` 保留 facade 方法。
 - 最近一次日结/轮结 summary 和结算页模式：优先改 `gameplay/models/run_settlement_state.gd`；`autoload/run_setup_data.gd` 保留 `set_day_summary()`、`set_run_summary()`、`get_day_summary()`、`get_run_summary()`、`get_settlement_view_mode()` 作为 facade。
+- Run 资金、累计收入/支出和当前库存缓存：优先改 `gameplay/models/run_runtime_state.gd`；`autoload/run_setup_data.gd` 保留原字段和 `set_money_state()`、`get_money_state()`、`set_stock_state()`、`get_stock_state()` 作为 facade。
 - 卡牌数据：改 `data/card_db.json`。
 - 卡牌读取和 modifier 计算：改 `autoload/effect_manager.gd`。
 

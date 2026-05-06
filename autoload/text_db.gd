@@ -3,7 +3,7 @@ extends Node
 var current_language: String = "zh"
 var texts: Dictionary = {}
 
-var item_key_map := {
+var item_key_map: Dictionary = {
 	"none": "UI_ITEM_NONE",
 	"glass_noodle": "UI_ITEM_GLASS_NOODLE",
 	"noodle": "UI_ITEM_NOODLE",
@@ -12,7 +12,7 @@ var item_key_map := {
 	"tofu_puff": "UI_ITEM_TOFU_PUFF"
 }
 
-var status_key_map := {
+var status_key_map: Dictionary = {
 	"waiting_restock": "UI_STATUS_WAITING_RESTOCK",
 	"ready_delivery": "UI_STATUS_READY_DELIVERY",
 	"cooking": "UI_STATUS_COOKING",
@@ -23,16 +23,16 @@ func _ready() -> void:
 	load_json()
 
 func load_json() -> void:
-	var file := FileAccess.open("res://data/text_db.json", FileAccess.READ)
+	var file: FileAccess = FileAccess.open("res://data/text_db.json", FileAccess.READ)
 
 	if file == null:
 		push_error("text_db.json not found")
 		texts = {}
 		return
 
-	var content := file.get_as_text()
-	var json := JSON.new()
-	var result := json.parse(content)
+	var content: String = file.get_as_text()
+	var json: JSON = JSON.new()
+	var result: int = json.parse(content)
 
 	if result != OK:
 		push_error("JSON parse failed: " + json.get_error_message())

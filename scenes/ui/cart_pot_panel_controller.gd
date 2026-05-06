@@ -40,7 +40,7 @@ func open() -> void:
 	panel.position = Vector2(viewport_size.x * 0.5 - 360, viewport_size.y * 0.5 - 215)
 	layer.add_child(panel)
 
-	var title_label := Label.new()
+	var title_label: Label = Label.new()
 	title_label.name = "CartPotTitle"
 	title_label.text = "大锅：批量煮配菜"
 	title_label.position = Vector2(24, 14)
@@ -50,7 +50,7 @@ func open() -> void:
 	title_label.add_theme_font_size_override("font_size", 22)
 	panel.add_child(title_label)
 
-	var desc_label := Label.new()
+	var desc_label: Label = Label.new()
 	desc_label.name = "CartPotDesc"
 	desc_label.text = "选择这次要加入大锅的配菜数量。关上锅盖后，如果本次准备不为空，就会自动开始煮。"
 	desc_label.position = Vector2(40, 48)
@@ -82,7 +82,7 @@ func open() -> void:
 		var item_id: String = str(item_ids[i])
 		var row_y: int = start_y + i * row_h
 
-		var row_label := Label.new()
+		var row_label: Label = Label.new()
 		row_label.name = "CartPot_%s_Label" % item_id
 		row_label.position = Vector2(40, row_y)
 		row_label.size = Vector2(360, 34)
@@ -91,7 +91,7 @@ func open() -> void:
 		panel.add_child(row_label)
 		row_labels[item_id] = row_label
 
-		var minus_button := Button.new()
+		var minus_button: Button = Button.new()
 		minus_button.name = "CartPot_%s_MinusButton" % item_id
 		minus_button.text = "-"
 		minus_button.position = Vector2(420, row_y)
@@ -100,7 +100,7 @@ func open() -> void:
 		panel.add_child(minus_button)
 		minus_buttons[item_id] = minus_button
 
-		var plus_button := Button.new()
+		var plus_button: Button = Button.new()
 		plus_button.name = "CartPot_%s_PlusButton" % item_id
 		plus_button.text = "+"
 		plus_button.position = Vector2(478, row_y)
@@ -109,7 +109,7 @@ func open() -> void:
 		panel.add_child(plus_button)
 		plus_buttons[item_id] = plus_button
 
-		var max_button := Button.new()
+		var max_button: Button = Button.new()
 		max_button.name = "CartPot_%s_MaxButton" % item_id
 		max_button.text = "最大"
 		max_button.position = Vector2(538, row_y)
@@ -118,7 +118,7 @@ func open() -> void:
 		panel.add_child(max_button)
 		max_buttons[item_id] = max_button
 
-	var close_button := Button.new()
+	var close_button: Button = Button.new()
 	close_button.name = "CartPotCloseButton"
 	close_button.text = "盖上锅盖"
 	close_button.position = Vector2(290, 360)
@@ -162,14 +162,14 @@ func refresh() -> void:
 
 		status_label.text = "\n".join(lines)
 
-	var disabled_by_cooking := cooking_system.cart_pot_is_cooking
+	var disabled_by_cooking: bool = cooking_system.cart_pot_is_cooking
 
 	for item_id in cooking_system.get_cart_pot_ingredient_ids():
-		var item_key := str(item_id)
-		var raw_amount := int(manager.raw_stock.get(item_key, 0))
-		var cooked_amount := int(manager.cooked_stock.get(item_key, 0))
-		var selected_amount := int(cooking_system.cart_pot_selection.get(item_key, 0))
-		var display_name := manager.get_ingredient_display_name(item_key)
+		var item_key: String = str(item_id)
+		var raw_amount: int = int(manager.raw_stock.get(item_key, 0))
+		var cooked_amount: int = int(manager.cooked_stock.get(item_key, 0))
+		var selected_amount: int = int(cooking_system.cart_pot_selection.get(item_key, 0))
+		var display_name: String = manager.get_ingredient_display_name(item_key)
 
 		if row_labels.has(item_key):
 			var row_label: Label = row_labels[item_key]

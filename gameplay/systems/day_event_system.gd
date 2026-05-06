@@ -1,8 +1,8 @@
 class_name DayEventSystem
 extends RefCounted
 
-const DayGiftPanelControllerScript := preload("res://scenes/ui/day_gift_panel_controller.gd")
-const MorningInfoPanelControllerScript := preload("res://scenes/ui/morning_info_panel_controller.gd")
+const DayGiftPanelControllerScript = preload("res://scenes/ui/day_gift_panel_controller.gd")
+const MorningInfoPanelControllerScript = preload("res://scenes/ui/morning_info_panel_controller.gd")
 
 var manager = null
 var day_gift_panel_controller: DayGiftPanelController = null
@@ -244,14 +244,14 @@ func get_day_gift_option_button_text(option_data: Dictionary) -> String:
 
 
 func activate_and_apply_current_day_business_event() -> void:
-	var event := RunSetupData.activate_pending_tomorrow_event()
+	var event: Dictionary = RunSetupData.activate_pending_tomorrow_event()
 
 	if event.is_empty():
 		return
 
 	print("Activated tomorrow business event: ", event)
 
-	var raw_bonus := int(RunSetupData.get_current_day_additive("random_raw_stock_bonus", 0.0))
+	var raw_bonus: int = int(RunSetupData.get_current_day_additive("random_raw_stock_bonus", 0.0))
 
 	if raw_bonus > 0:
 		apply_random_raw_stock_bonus(raw_bonus)
@@ -269,7 +269,7 @@ func apply_random_raw_stock_bonus(amount: int) -> void:
 	var gained: Dictionary = {}
 
 	for i in range(amount):
-		var item_id := item_pool[randi() % item_pool.size()]
+		var item_id: String = item_pool[randi() % item_pool.size()]
 
 		manager.inventory_system.add_stock(item_id, 1)
 		gained[item_id] = int(gained.get(item_id, 0)) + 1
@@ -279,7 +279,7 @@ func apply_random_raw_stock_bonus(amount: int) -> void:
 
 
 func show_pending_morning_info_if_any() -> void:
-	var lines := RunSetupData.consume_pending_morning_info_lines()
+	var lines: Array[String] = RunSetupData.consume_pending_morning_info_lines()
 
 	if lines.is_empty():
 		return

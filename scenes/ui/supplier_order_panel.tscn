@@ -1,0 +1,51 @@
+[gd_scene format=3 uid="uid://dlb5rn6nh3r10"]
+
+[node name="SupplierOrderLayer" type="CanvasLayer"]
+layer = 90
+
+[node name="SupplierOrderPanel" type="Panel" parent="."]
+offset_right = 640.0
+offset_bottom = 430.0
+
+[node name="SupplierOrderTitle" type="Label" parent="SupplierOrderPanel"]
+offset_left = 24.0
+offset_top = 14.0
+offset_right = 616.0
+offset_bottom = 46.0
+theme_override_font_sizes/font_size = 22
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="SupplierOrderDesc" type="Label" parent="SupplierOrderPanel"]
+offset_left = 36.0
+offset_top = 48.0
+offset_right = 604.0
+offset_bottom = 92.0
+theme_override_font_sizes/font_size = 13
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="SupplierOrderStatus" type="Label" parent="SupplierOrderPanel"]
+offset_left = 34.0
+offset_top = 92.0
+offset_right = 606.0
+offset_bottom = 200.0
+theme_override_font_sizes/font_size = 13
+text = ""
+autowrap_mode = 3
+
+[node name="SupplierOrderOptions" type="Control" parent="SupplierOrderPanel"]
+offset_left = 34.0
+offset_top = 210.0
+offset_right = 606.0
+offset_bottom = 360.0
+
+[node name="SupplierOrderCloseButton" type="Button" parent="SupplierOrderPanel"]
+offset_left = 250.0
+offset_top = 370.0
+offset_right = 390.0
+offset_bottom = 412.0
+text = ""

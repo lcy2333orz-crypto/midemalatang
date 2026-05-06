@@ -33,7 +33,7 @@ func _input(event: InputEvent) -> void:
 
 
 func _can_open_for_current_scene() -> bool:
-	var current_scene := get_tree().current_scene
+	var current_scene: Node = get_tree().current_scene
 	if current_scene == null:
 		return false
 
@@ -114,7 +114,7 @@ func _position_menu() -> void:
 	if root == null:
 		return
 
-	var viewport_size := get_viewport().get_visible_rect().size
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
 
 	root.position = Vector2.ZERO
 	root.size = viewport_size
@@ -181,14 +181,14 @@ func _show_overview() -> void:
 
 	var lines: Array[String] = []
 
-	var effect_lines := EffectManager.get_active_effect_lines()
+	var effect_lines: Array[String] = EffectManager.get_active_effect_lines()
 	for line in effect_lines:
 		lines.append(line)
 
 	lines.append("")
 	lines.append("----------------")
 
-	var gift_lines := RunSetupData.get_pending_gift_lines()
+	var gift_lines: Array[String] = RunSetupData.get_pending_gift_lines()
 	for line in gift_lines:
 		lines.append(line)
 
@@ -203,10 +203,10 @@ func _show_overview() -> void:
 func _refresh_overview_actions() -> void:
 	_clear_action_container()
 
-	var unopened_gifts := RunSetupData.get_unopened_pending_gifts()
+	var unopened_gifts: Array = RunSetupData.get_unopened_pending_gifts()
 
 	if unopened_gifts.is_empty():
-		var empty_label := Label.new()
+		var empty_label: Label = Label.new()
 		empty_label.text = "当前没有可以打开的回响。"
 		empty_label.size = Vector2(492, 34)
 		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -218,10 +218,10 @@ func _refresh_overview_actions() -> void:
 		if typeof(gift_data) != TYPE_DICTIONARY:
 			continue
 
-		var gift_id := str(gift_data.get("gift_id", ""))
-		var display_name := str(gift_data.get("display_name", "特殊客人的回响"))
+		var gift_id: String = str(gift_data.get("gift_id", ""))
+		var display_name: String = str(gift_data.get("display_name", "特殊客人的回响"))
 
-		var button := Button.new()
+		var button: Button = Button.new()
 		button.text = "打开：%s" % display_name
 		button.custom_minimum_size = Vector2(492, 36)
 		button.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -232,7 +232,7 @@ func _refresh_overview_actions() -> void:
 
 
 func _on_open_gift_pressed(gift_id: String) -> void:
-	var gift_data := RunSetupData.get_unopened_gift_by_id(gift_id)
+	var gift_data: Dictionary = RunSetupData.get_unopened_gift_by_id(gift_id)
 
 	if gift_data.is_empty():
 		_show_overview()
@@ -240,7 +240,7 @@ func _on_open_gift_pressed(gift_id: String) -> void:
 
 	current_opening_gift_id = gift_id
 
-	var saved_options := RunSetupData.get_gift_current_options(gift_id)
+	var saved_options: Array = RunSetupData.get_gift_current_options(gift_id)
 
 	if saved_options.is_empty():
 		saved_options = EffectManager.get_card_options_for_special_echo(gift_data)
@@ -254,7 +254,7 @@ func _on_open_gift_pressed(gift_id: String) -> void:
 func _show_gift_choice(gift_data: Dictionary) -> void:
 	_clear_action_container()
 
-	var display_name := str(gift_data.get("display_name", "特殊客人的回响"))
+	var display_name: String = str(gift_data.get("display_name", "特殊客人的回响"))
 
 	title_label.text = display_name
 
@@ -264,11 +264,11 @@ func _show_gift_choice(gift_data: Dictionary) -> void:
 		if typeof(card_data) != TYPE_DICTIONARY:
 			continue
 
-		var card_id := str(card_data.get("id", "unknown_card"))
-		var card_name := str(card_data.get("name", "未知卡牌"))
-		var description := str(card_data.get("description", ""))
+		var card_id: String = str(card_data.get("id", "unknown_card"))
+		var card_name: String = str(card_data.get("name", "未知卡牌"))
+		var description: String = str(card_data.get("description", ""))
 
-		var button := Button.new()
+		var button: Button = Button.new()
 		button.text = card_name
 
 		if description != "":
@@ -281,7 +281,7 @@ func _show_gift_choice(gift_data: Dictionary) -> void:
 
 		action_container.add_child(button)
 
-	var back_button := Button.new()
+	var back_button: Button = Button.new()
 	back_button.text = "先不打开"
 	back_button.custom_minimum_size = Vector2(492, 36)
 	back_button.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -291,20 +291,20 @@ func _show_gift_choice(gift_data: Dictionary) -> void:
 
 
 func _on_choose_gift_card_pressed(gift_id: String, card_id: String) -> void:
-	var gift_data := RunSetupData.get_unopened_gift_by_id(gift_id)
+	var gift_data: Dictionary = RunSetupData.get_unopened_gift_by_id(gift_id)
 
 	if gift_data.is_empty():
 		_show_overview()
 		return
 
-	var card_data := EffectManager.get_card_definition(card_id)
+	var card_data: Dictionary = EffectManager.get_card_definition(card_id)
 
 	if card_data.is_empty():
 		print("Cannot open echo: missing card definition: ", card_id)
 		_show_overview()
 		return
 
-	var card_name := str(card_data.get("name", "未知卡牌"))
+	var card_name: String = str(card_data.get("name", "未知卡牌"))
 
 	RunSetupData.active_effects.append({
 		"source": str(gift_data.get("display_name", gift_data.get("source_name", "特殊客人"))),

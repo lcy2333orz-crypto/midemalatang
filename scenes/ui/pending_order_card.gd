@@ -36,7 +36,7 @@ func apply_data(card_data: Dictionary) -> void:
 	patience_label.text = TextDB.get_text("UI_PATIENCE") % _parse_patience_text(patience_text)
 
 func _parse_patience_text(patience_text: String) -> Array:
-	var parts := patience_text.split("/")
+	var parts: PackedStringArray = patience_text.split("/")
 	if parts.size() != 2:
 		return [0, 0]
 

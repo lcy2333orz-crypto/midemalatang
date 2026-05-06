@@ -1,6 +1,6 @@
 extends Control
 
-const SettlementWidgetsControllerScript := preload("res://scenes/settlement/settlement_widgets_controller.gd")
+const SettlementWidgetsControllerScript = preload("res://scenes/settlement/settlement_widgets_controller.gd")
 
 @onready var card_container: Control = $CardContainer
 @onready var card_buttons = [
@@ -61,11 +61,11 @@ func _ready() -> void:
 	back_home_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	$ButtonBox.z_index = 200
 
-	var retry_callable := Callable(self, "_on_retry_button_pressed")
+	var retry_callable: Callable = Callable(self, "_on_retry_button_pressed")
 	if not retry_button.pressed.is_connected(retry_callable):
 		retry_button.pressed.connect(_on_retry_button_pressed)
 
-	var back_callable := Callable(self, "_on_back_home_button_pressed")
+	var back_callable: Callable = Callable(self, "_on_back_home_button_pressed")
 	if not back_home_button.pressed.is_connected(back_callable):
 		back_home_button.pressed.connect(_on_back_home_button_pressed)
 
@@ -89,22 +89,22 @@ func _ready() -> void:
 	show_current_choice()
 
 	for i in range(3):
-		var card_callable := Callable(self, "_on_card_selected").bind(i)
+		var card_callable: Callable = Callable(self, "_on_card_selected").bind(i)
 
 		if not card_buttons[i].pressed.is_connected(card_callable):
 			card_buttons[i].pressed.connect(_on_card_selected.bind(i))
 
 func load_card_db() -> void:
-	var file := FileAccess.open("res://data/card_db.json", FileAccess.READ)
+	var file: FileAccess = FileAccess.open("res://data/card_db.json", FileAccess.READ)
 
 	if file == null:
 		push_error("card_db.json not found")
 		card_db = {}
 		return
 
-	var content := file.get_as_text()
-	var json := JSON.new()
-	var result := json.parse(content)
+	var content: String = file.get_as_text()
+	var json: JSON = JSON.new()
+	var result: int = json.parse(content)
 
 	if result != OK:
 		push_error("card_db.json parse failed: " + json.get_error_message())
@@ -119,10 +119,10 @@ func load_card_db() -> void:
 	card_db = json.data
 
 func get_card_options_for_entry(entry: Dictionary) -> Array:
-	var pool_name := "fallback"
+	var pool_name: String = "fallback"
 
-	var entry_type := str(entry.get("type", ""))
-	var result := str(entry.get("result", "neutral"))
+	var entry_type: String = str(entry.get("type", ""))
+	var result: String = str(entry.get("result", "neutral"))
 
 	if entry_type == "insight":
 		pool_name = "insight"
@@ -223,7 +223,7 @@ func _create_card_overlay() -> void:
 	add_child(card_choice_title_label)
 
 func _create_cat_feed_widgets() -> void:
-	var widgets := SettlementWidgetsControllerScript.create_cat_feed_widgets(self)
+	var widgets: Dictionary = SettlementWidgetsControllerScript.create_cat_feed_widgets(self)
 	cat_feed_area = widgets.get("cat_feed_area", null) as Panel
 	cat_reaction_label = widgets.get("cat_reaction_label", null) as Label
 	leftover_food_panel = widgets.get("leftover_food_panel", null) as Panel
@@ -265,10 +265,10 @@ func _create_accounting_extra_labels() -> void:
 		$SummaryBox.add_child(net_income_label)
 
 func _setup_layout_positions() -> void:
-	var viewport_size := get_viewport_rect().size
+	var viewport_size: Vector2 = get_viewport_rect().size
 
-	var center_x := viewport_size.x * 0.5
-	var top_y := 36.0
+	var center_x: float = viewport_size.x * 0.5
+	var top_y: float = 36.0
 
 	# ===== 底层：标题 =====
 	title_label.position = Vector2(center_x - 160, top_y)
@@ -338,13 +338,13 @@ func _setup_layout_positions() -> void:
 	$ButtonBox.z_index = 200
 
 func _arrange_summary_box_labels() -> void:
-	var x := 16
-	var y := 16
-	var line_h := 28
-	var label_w := 238
-	var label_h := 24
+	var x: int = 16
+	var y: int = 16
+	var line_h: int = 28
+	var label_w: int = 238
+	var label_h: int = 24
 
-	var labels := [
+	var labels: Array = [
 		today_income_label,
 		expense_label,
 		net_income_label,
@@ -393,7 +393,7 @@ func _setup_day_settlement() -> void:
 	raw_stock_label.text = TextDB.get_text("UI_SETTLEMENT_RAW_STOCK") % str(summary.get("raw_stock_text", TextDB.get_text("UI_ITEM_NONE")))
 
 	var reputation_delta: int = int(summary.get("today_reputation_delta", 0))
-	var reputation_sign := ""
+	var reputation_sign: String = ""
 
 	if reputation_delta >= 0:
 		reputation_sign = "+"
@@ -432,7 +432,7 @@ func _setup_run_settlement() -> void:
 	raw_stock_label.text = TextDB.get_text("UI_SETTLEMENT_RAW_STOCK") % str(summary.get("raw_stock_text", TextDB.get_text("UI_ITEM_NONE")))
 
 	var reputation_delta: int = int(summary.get("today_reputation_delta", 0))
-	var reputation_sign := ""
+	var reputation_sign: String = ""
 
 	if reputation_delta >= 0:
 		reputation_sign = "+"
@@ -469,8 +469,8 @@ func _setup_night_activity(has_next_day: bool) -> void:
 	if night_activity_label == null:
 		return
 
-	var activity := RunSetupData.generate_night_background_activity(has_next_day)
-	var activity_text := str(activity.get("activity_text", ""))
+	var activity: Dictionary = RunSetupData.generate_night_background_activity(has_next_day)
+	var activity_text: String = str(activity.get("activity_text", ""))
 
 	if activity_text == "":
 		night_activity_label.visible = false
@@ -487,7 +487,7 @@ func _setup_cat_leftover_food(summary: Dictionary) -> void:
 
 	if typeof(cooked_data) == TYPE_DICTIONARY:
 		for item_id in cooked_data.keys():
-			var amount := int(cooked_data.get(item_id, 0))
+			var amount: int = int(cooked_data.get(item_id, 0))
 			leftover_cooked_stock_for_cat[str(item_id)] = max(amount, 0)
 
 	_refresh_leftover_food_buttons()
@@ -505,7 +505,7 @@ func _refresh_leftover_food_buttons() -> void:
 		return
 
 	for item_id in leftover_cooked_stock_for_cat.keys():
-		var amount := int(leftover_cooked_stock_for_cat.get(item_id, 0))
+		var amount: int = int(leftover_cooked_stock_for_cat.get(item_id, 0))
 
 		if amount <= 0:
 			continue
@@ -539,7 +539,7 @@ func feed_cat_with_leftover_food(item_id: String) -> void:
 		show_cat_reaction("喵？")
 		return
 
-	var amount := int(leftover_cooked_stock_for_cat.get(item_id, 0))
+	var amount: int = int(leftover_cooked_stock_for_cat.get(item_id, 0))
 
 	if amount <= 0:
 		show_cat_reaction("已经吃完啦")
@@ -584,7 +584,7 @@ func show_cat_reaction(text: String) -> void:
 	cat_reaction_label.modulate.a = 1.0
 	cat_reaction_label.scale = Vector2.ONE
 
-	var tween := create_tween()
+	var tween: Tween = create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(cat_reaction_label, "position:y", cat_reaction_label.position.y - 12.0, 0.8)
 	tween.tween_property(cat_reaction_label, "modulate:a", 0.0, 0.8)
@@ -617,7 +617,7 @@ func setup_night_queue() -> void:
 	update_night_queue_preview()
 
 func format_card_button_text(card_name: String, card_description: String) -> String:
-	var wrapped_description := wrap_cjk_text(card_description, 12)
+	var wrapped_description: String = wrap_cjk_text(card_description, 12)
 
 	if wrapped_description == "":
 		return card_name
@@ -629,16 +629,16 @@ func format_card_button_text(card_name: String, card_description: String) -> Str
 
 
 func wrap_cjk_text(text: String, max_chars_per_line: int = 12) -> String:
-	var cleaned := text.strip_edges()
+	var cleaned: String = text.strip_edges()
 
 	if cleaned == "":
 		return ""
 
 	var lines: Array[String] = []
-	var current_line := ""
+	var current_line: String = ""
 
 	for i in range(cleaned.length()):
-		var ch := cleaned.substr(i, 1)
+		var ch: String = cleaned.substr(i, 1)
 		current_line += ch
 
 		if current_line.length() >= max_chars_per_line:
@@ -670,8 +670,8 @@ func show_current_choice() -> void:
 
 	for i in range(3):
 		var card_data: Dictionary = options[i]
-		var card_name := str(card_data.get("name", "未知卡牌"))
-		var card_description := str(card_data.get("description", ""))
+		var card_name: String = str(card_data.get("name", "未知卡牌"))
+		var card_description: String = str(card_data.get("description", ""))
 
 		card_buttons[i].text = format_card_button_text(card_name, card_description)
 		card_buttons[i].set_meta("card_id", str(card_data.get("id", "unknown_card")))
@@ -707,21 +707,21 @@ func _on_card_selected(index: int) -> void:
 
 	var entry: Dictionary = night_queue[current_index]
 
-	var chosen_id := str(card_buttons[index].get_meta("card_id", "unknown_card"))
-	var chosen_name := str(card_buttons[index].get_meta("card_name", card_buttons[index].text))
-	var gift_id := str(entry.get("gift_id", ""))
+	var chosen_id: String = str(card_buttons[index].get_meta("card_id", "unknown_card"))
+	var chosen_name: String = str(card_buttons[index].get_meta("card_name", card_buttons[index].text))
+	var gift_id: String = str(entry.get("gift_id", ""))
 
-	var source_name := str(entry.get("name", "unknown"))
-	var effect_type := str(entry.get("type", "unknown"))
-	var effect_result := str(entry.get("result", "neutral"))
+	var source_name: String = str(entry.get("name", "unknown"))
+	var effect_type: String = str(entry.get("type", "unknown"))
+	var effect_result: String = str(entry.get("result", "neutral"))
 
-	var chosen_card := {
+	var chosen_card: Dictionary = {
 		"id": chosen_id,
 		"name": chosen_name
 	}
 
 	if gift_id != "":
-		var gift_data := RunSetupData.get_unopened_gift_by_id(gift_id)
+		var gift_data: Dictionary = RunSetupData.get_unopened_gift_by_id(gift_id)
 
 		if not gift_data.is_empty():
 			source_name = str(gift_data.get("display_name", source_name))
@@ -730,7 +730,7 @@ func _on_card_selected(index: int) -> void:
 
 	print("选了：", chosen_name, " / id=", chosen_id)
 
-	var effect_data := {
+	var effect_data: Dictionary = {
 		"source": source_name,
 		"type": effect_type,
 		"result": effect_result,
@@ -794,13 +794,13 @@ func update_night_queue_preview() -> void:
 
 	for i in range(night_queue.size()):
 		var entry: Dictionary = night_queue[i]
-		var text := ""
+		var text: String = ""
 
 		if str(entry.get("type", "")) == "insight":
 			text = "领悟"
 		else:
-			var name := str(entry.get("name", "特殊客人"))
-			var result := str(entry.get("result", "neutral"))
+			var name: String = str(entry.get("name", "特殊客人"))
+			var result: String = str(entry.get("result", "neutral"))
 
 			if result == "good":
 				text = "%s✓" % name
