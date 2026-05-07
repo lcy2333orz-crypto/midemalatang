@@ -573,28 +573,27 @@ func get_pending_order_card_status_text(customer: Node) -> String:
 		return ""
 
 	if CustomerOrderState.is_served(customer):
-		return "å·²å®Œæˆ"
+		return TextDB.get_text("UI_PENDING_CARD_DONE")
 
 	if customer.can_be_delivered() or is_pending_customer_fully_submitted(customer):
-		return "å¯å‡ºé¤"
+		return TextDB.get_text("UI_PENDING_CARD_DELIVERABLE")
 
 	if CustomerOrderState.needs_emergency_purchase(customer):
-		return "ç¼ºè´§"
+		return TextDB.get_text("UI_PENDING_CARD_SHORTAGE")
 
 	var remaining_main_food: String = get_pending_order_remaining_main_food_text(customer)
 	var remaining_ingredients: Dictionary = get_pending_order_remaining_ingredients(customer)
 
 	if remaining_main_food != "" and not remaining_ingredients.is_empty():
-		return "ç­‰ä¸»é£Ÿå’Œé…èœ"
+		return TextDB.get_text("UI_PENDING_CARD_WAIT_MAIN_AND_INGREDIENTS")
 
 	if remaining_main_food != "":
-		return "ç­‰ä¸»é£Ÿ"
+		return TextDB.get_text("UI_PENDING_CARD_WAIT_MAIN")
 
 	if not remaining_ingredients.is_empty():
-		return "ç­‰é…èœ"
+		return TextDB.get_text("UI_PENDING_CARD_WAIT_INGREDIENTS")
 
-	return "ç­‰å¾…ç¡®è®¤"
-
+	return TextDB.get_text("UI_PENDING_CARD_WAIT_CONFIRM")
 
 func get_pending_order_card_data(customer: Node) -> Dictionary:
 	var patience_text: String = "%d/%d" % [

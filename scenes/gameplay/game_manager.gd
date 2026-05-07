@@ -333,6 +333,8 @@ func _unhandled_input(event: InputEvent) -> void:
 func _apply_upgrade_flags() -> void:
 	has_second_cooker = ProgressData.has_second_cooker
 	order_panel_upgrade_level = ProgressData.order_panel_upgrade_level
+	if cooking_system != null:
+		cooking_system.cart_pot_capacity = ProgressData.get_cart_pot_capacity()
 
 	if has_second_cooker:
 		unlocked_cooker_slots = 2
@@ -437,9 +439,10 @@ func show_storage_stock_only() -> void:
 		return
 
 	var cooked_text: String = get_cooked_stock_text()
-	var raw_and_staple_text: String = "%s\nä¸»é£Ÿåº“å­˜ï¼š%s" % [
+	var raw_and_staple_text: String = "%s
+%s" % [
 		get_raw_stock_text(),
-		get_staple_stock_text()
+		TextDB.get_text("UI_STAPLE_STOCK_LINE") % get_staple_stock_text()
 	]
 
 	game_ui.show_stock(
@@ -450,7 +453,6 @@ func show_storage_stock_only() -> void:
 	print("Show storage stock only.")
 	print("Cooked stock text: ", cooked_text)
 	print("Raw / staple stock text: ", raw_and_staple_text)
-
 func interact_with_gift_box() -> void:
 	day_event_system.interact_with_gift_box()
 
@@ -487,10 +489,9 @@ func get_items_text(items: Dictionary) -> String:
 		])
 
 	if parts.is_empty():
-		return "æ— "
+		return TextDB.get_text("UI_ITEM_NONE")
 
-	return "ï¼Œ".join(parts)
-
+	return "?".join(parts)
 func get_modified_spawn_timer_wait_time() -> float:
 	var multiplier: float = RunSetupData.get_current_day_multiplier(
 		"customer_spawn_interval_multiplier",
@@ -641,7 +642,7 @@ func build_night_queue_from_today_results() -> Array:
 	var queue: Array = [
 		{
 			"type": "insight",
-			"name": "å°çŒ«é¢†æ‚Ÿ",
+			"name": TextDB.get_text("UI_NIGHT_CHOICE_INSIGHT"),
 			"result": "neutral"
 		}
 	]
@@ -654,7 +655,7 @@ func build_night_queue_from_today_results() -> Array:
 			continue
 
 		var result_text: String = str(entry.get("result", "neutral"))
-		var entry_name: String = str(entry.get("name", "ç‰¹æ®Šå®¢äºº"))
+		var entry_name: String = str(entry.get("name", TextDB.get_text("UI_FALLBACK_SPECIAL_CUSTOMER")))
 
 		if result_text == "good":
 			queue.append({
@@ -672,7 +673,6 @@ func build_night_queue_from_today_results() -> Array:
 			})
 
 	return queue
-
 func handle_stock_shortage_for_customer(customer: Node) -> Dictionary:
 	return order_system.handle_stock_shortage_for_customer(customer)
 
@@ -1190,9 +1190,10 @@ func _build_settlement_summary_input(
 		"run_net_income": round_income,
 		"current_money": money,
 		"cooked_stock_text": get_cooked_stock_text(),
-		"raw_stock_text": "%s\n主食库存：%s" % [
+		"raw_stock_text": "%s
+%s" % [
 			get_raw_stock_text(),
-			get_staple_stock_text()
+			TextDB.get_text("UI_STAPLE_STOCK_LINE") % get_staple_stock_text()
 		],
 		"cooked_stock_data": remaining_cooked_stock,
 		"raw_stock_data": remaining_raw_stock,

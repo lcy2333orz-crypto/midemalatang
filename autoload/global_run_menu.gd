@@ -64,7 +64,7 @@ func _create_menu() -> void:
 
 	title_label = Label.new()
 	title_label.name = "TitleLabel"
-	title_label.text = "当前效果与回响"
+	title_label.text = TextDB.get_text("UI_GLOBAL_RUN_TITLE")
 	title_label.position = Vector2(24, 18)
 	title_label.size = Vector2(512, 36)
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -89,7 +89,7 @@ func _create_menu() -> void:
 
 	close_button = Button.new()
 	close_button.name = "CloseButton"
-	close_button.text = "关闭面板"
+	close_button.text = TextDB.get_text("UI_GLOBAL_RUN_CLOSE")
 	close_button.position = Vector2(34, 405)
 	close_button.size = Vector2(180, 44)
 	close_button.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -99,7 +99,7 @@ func _create_menu() -> void:
 
 	abandon_button = Button.new()
 	abandon_button.name = "AbandonButton"
-	abandon_button.text = "放弃本局，返回主页"
+	abandon_button.text = TextDB.get_text("UI_GLOBAL_RUN_ABANDON")
 	abandon_button.position = Vector2(250, 405)
 	abandon_button.size = Vector2(276, 44)
 	abandon_button.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -177,7 +177,7 @@ func _show_overview() -> void:
 	current_opening_gift_id = ""
 	current_gift_options = []
 
-	title_label.text = "当前效果与回响"
+	title_label.text = TextDB.get_text("UI_GLOBAL_RUN_TITLE")
 
 	var lines: Array[String] = []
 
@@ -193,7 +193,7 @@ func _show_overview() -> void:
 		lines.append(line)
 
 	lines.append("")
-	lines.append("可以打开特殊客人的回响，选择其中一种影响。")
+	lines.append(TextDB.get_text("UI_GLOBAL_RUN_HINT"))
 
 	buff_label.text = "\n".join(lines)
 
@@ -207,7 +207,7 @@ func _refresh_overview_actions() -> void:
 
 	if unopened_gifts.is_empty():
 		var empty_label: Label = Label.new()
-		empty_label.text = "当前没有可以打开的回响。"
+		empty_label.text = TextDB.get_text("UI_GLOBAL_RUN_NO_GIFTS")
 		empty_label.size = Vector2(492, 34)
 		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		empty_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -219,10 +219,10 @@ func _refresh_overview_actions() -> void:
 			continue
 
 		var gift_id: String = str(gift_data.get("gift_id", ""))
-		var display_name: String = str(gift_data.get("display_name", "特殊客人的回响"))
+		var display_name: String = str(gift_data.get("display_name", TextDB.get_text("UI_GLOBAL_RUN_SPECIAL_ECHO")))
 
 		var button: Button = Button.new()
-		button.text = "打开：%s" % display_name
+		button.text = TextDB.get_text("UI_GLOBAL_RUN_OPEN_GIFT") % display_name
 		button.custom_minimum_size = Vector2(492, 36)
 		button.process_mode = Node.PROCESS_MODE_ALWAYS
 		button.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -254,18 +254,18 @@ func _on_open_gift_pressed(gift_id: String) -> void:
 func _show_gift_choice(gift_data: Dictionary) -> void:
 	_clear_action_container()
 
-	var display_name: String = str(gift_data.get("display_name", "特殊客人的回响"))
+	var display_name: String = str(gift_data.get("display_name", TextDB.get_text("UI_GLOBAL_RUN_SPECIAL_ECHO")))
 
 	title_label.text = display_name
 
-	buff_label.text = "选择一种回响。\n\n打开后会立刻成为当前效果；今晚不会再重复结算这个回响。"
+	buff_label.text = TextDB.get_text("UI_GLOBAL_RUN_CHOOSE_ECHO")
 
 	for card_data in current_gift_options:
 		if typeof(card_data) != TYPE_DICTIONARY:
 			continue
 
 		var card_id: String = str(card_data.get("id", "unknown_card"))
-		var card_name: String = str(card_data.get("name", "未知卡牌"))
+		var card_name: String = str(card_data.get("name", TextDB.get_text("UI_FALLBACK_UNKNOWN_CARD")))
 		var description: String = str(card_data.get("description", ""))
 
 		var button: Button = Button.new()
@@ -282,7 +282,7 @@ func _show_gift_choice(gift_data: Dictionary) -> void:
 		action_container.add_child(button)
 
 	var back_button: Button = Button.new()
-	back_button.text = "先不打开"
+	back_button.text = TextDB.get_text("UI_DAY_GIFT_CLOSE")
 	back_button.custom_minimum_size = Vector2(492, 36)
 	back_button.process_mode = Node.PROCESS_MODE_ALWAYS
 	back_button.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -304,10 +304,10 @@ func _on_choose_gift_card_pressed(gift_id: String, card_id: String) -> void:
 		_show_overview()
 		return
 
-	var card_name: String = str(card_data.get("name", "未知卡牌"))
+	var card_name: String = str(card_data.get("name", TextDB.get_text("UI_FALLBACK_UNKNOWN_CARD")))
 
 	RunSetupData.active_effects.append({
-		"source": str(gift_data.get("display_name", gift_data.get("source_name", "特殊客人"))),
+		"source": str(gift_data.get("display_name", gift_data.get("source_name", TextDB.get_text("UI_FALLBACK_SPECIAL_CUSTOMER")))),
 		"type": "special_echo",
 		"result": str(gift_data.get("result", "neutral")),
 		"effect_id": card_id,

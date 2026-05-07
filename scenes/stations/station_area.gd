@@ -45,90 +45,88 @@ func get_interaction_prompt() -> String:
 		"Counter":
 			return _get_counter_prompt(game_manager)
 		"Cooker":
-			return "E 大锅 / 备菜"
+			return TextDB.get_text("UI_PROMPT_COOKER")
 		"DeliveryPoint":
 			return _get_delivery_prompt(game_manager)
 		"StorageArea":
-			return "E 查看仓库 / 开业前补货"
+			return TextDB.get_text("UI_PROMPT_STORAGE")
 		"EmergencyShop":
-			return "E 应急采购"
+			return TextDB.get_text("UI_PROMPT_EMERGENCY_SHOP")
 		"GiftBox":
-			return "E 打开礼物"
+			return TextDB.get_text("UI_PROMPT_GIFT_BOX")
 		"GlassNoodleBasket":
-			return _get_staple_basket_prompt(game_manager, "glass_noodle", "粉丝")
+			return _get_staple_basket_prompt(game_manager, "glass_noodle")
 		"NoodleBasket":
-			return _get_staple_basket_prompt(game_manager, "noodle", "面")
+			return _get_staple_basket_prompt(game_manager, "noodle")
 		"StapleLadle1":
-			return _get_ladle_prompt(game_manager, 0, "漏勺1")
+			return _get_ladle_prompt(game_manager, 0, TextDB.get_text("UI_LADLE_1"))
 		"StapleLadle2":
-			return _get_ladle_prompt(game_manager, 1, "漏勺2")
+			return _get_ladle_prompt(game_manager, 1, TextDB.get_text("UI_LADLE_2"))
 		_:
-			return "E 交互"
-
+			return TextDB.get_text("UI_PROMPT_INTERACT")
 
 func _get_counter_prompt(game_manager: Node) -> String:
 	if game_manager == null:
-		return "E 柜台"
+		return TextDB.get_text("UI_PROMPT_COUNTER")
 
 	if game_manager.has_method("can_finalize_day_now"):
 		if game_manager.can_finalize_day_now():
-			return "E 进入结算"
+			return TextDB.get_text("UI_PROMPT_COUNTER_SETTLEMENT")
 
 	if not game_manager.is_open_for_business:
-		return "T 开业 / E 柜台"
+		return TextDB.get_text("UI_PROMPT_COUNTER_OPEN")
 
 	var customer = null
 	if game_manager.has_method("get_counter_customer"):
 		customer = game_manager.get_counter_customer()
 
 	if customer == null:
-		return "柜台：等待顾客"
+		return TextDB.get_text("UI_PROMPT_COUNTER_WAITING")
 
 	if not bool(customer.order_revealed):
-		return "E 查看订单"
+		return TextDB.get_text("UI_PROMPT_COUNTER_VIEW_ORDER")
 
 	if not bool(customer.is_checked_out):
-		return "E 收钱"
+		return TextDB.get_text("UI_PROMPT_COUNTER_PAY")
 
-	return "柜台：顾客已付款"
-
+	return TextDB.get_text("UI_PROMPT_COUNTER_PAID")
 
 func _get_delivery_prompt(game_manager: Node) -> String:
 	if game_manager == null:
-		return "E 出餐"
+		return TextDB.get_text("UI_PROMPT_DELIVERY")
 
 	if game_manager.cooking_system != null:
 		if str(game_manager.cooking_system.held_staple_food_id) != "":
-			return "E 提交主食 / 出餐"
+			return TextDB.get_text("UI_PROMPT_DELIVERY_STAPLE")
 
-	return "E 出餐"
+	return TextDB.get_text("UI_PROMPT_DELIVERY")
 
+func _get_staple_basket_prompt(game_manager: Node, main_food_id: String) -> String:
+	var display_name: String = TextDB.get_item_name(main_food_id)
 
-func _get_staple_basket_prompt(game_manager: Node, main_food_id: String, display_name: String) -> String:
 	if game_manager == null or game_manager.cooking_system == null:
-		return "E 拿%s" % display_name
+		return TextDB.get_text("UI_PROMPT_TAKE_ITEM") % display_name
 
 	var held_raw: String = str(game_manager.cooking_system.held_raw_staple_food_id)
 	var held_cooked: String = str(game_manager.cooking_system.held_staple_food_id)
 
 	if held_cooked != "":
-		return "手持熟主食：先去出餐点"
+		return TextDB.get_text("UI_PROMPT_HELD_COOKED_STAPLE")
 
 	if held_raw == "":
-		return "E 拿%s" % display_name
+		return TextDB.get_text("UI_PROMPT_TAKE_ITEM") % display_name
 
 	if held_raw == main_food_id:
-		return "E 放回%s" % display_name
+		return TextDB.get_text("UI_PROMPT_RETURN_ITEM") % display_name
 
-	return "手持其他主食：回对应筐放回"
-
+	return TextDB.get_text("UI_PROMPT_HELD_OTHER_STAPLE")
 
 func _get_ladle_prompt(game_manager: Node, slot_index: int, display_name: String) -> String:
 	if game_manager == null or game_manager.cooking_system == null:
-		return "E %s" % display_name
+		return TextDB.get_text("UI_PROMPT_INTERACT")
 
 	if slot_index < 0 or slot_index >= game_manager.cooking_system.staple_ladle_slots.size():
-		return "E %s" % display_name
+		return TextDB.get_text("UI_PROMPT_INTERACT")
 
 	var slot: Dictionary = game_manager.cooking_system.staple_ladle_slots[slot_index] as Dictionary
 	var state: String = str(slot.get("state", "empty"))
@@ -137,20 +135,19 @@ func _get_ladle_prompt(game_manager: Node, slot_index: int, display_name: String
 
 	if state == "empty":
 		if held_raw != "":
-			return "E 放入%s" % display_name
-		return "%s：空" % display_name
+			return TextDB.get_text("UI_PROMPT_PUT_IN_LADLE") % display_name
+		return TextDB.get_text("UI_PROMPT_LADLE_EMPTY") % display_name
 
 	if state == "cooking":
 		var time_left: float = float(slot.get("time_left", 0.0))
-		return "%s：烹饪中 %.1fs" % [display_name, time_left]
+		return TextDB.get_text("UI_PROMPT_LADLE_COOKING") % [display_name, time_left]
 
 	if state == "ready":
 		if held_cooked == "":
-			return "E 取出%s" % display_name
-		return "手里已有熟主食"
+			return TextDB.get_text("UI_PROMPT_TAKE_FROM_LADLE") % display_name
+		return TextDB.get_text("UI_PROMPT_HAND_HAS_COOKED_STAPLE")
 
-	return "E %s" % display_name
-
+	return TextDB.get_text("UI_PROMPT_INTERACT")
 
 func interact() -> void:
 	print("Interact with ", station_name)

@@ -89,16 +89,16 @@ func get_active_effect_lines() -> Array[String]:
 	var lines: Array[String] = []
 
 	if RunSetupData.active_effects.is_empty():
-		lines.append("当前没有已获得效果。")
+		lines.append(TextDB.get_text("UI_EFFECT_NONE"))
 		return lines
 
-	lines.append("已获得效果：")
+	lines.append(TextDB.get_text("UI_EFFECT_HEADER"))
 
 	for effect_data in RunSetupData.active_effects:
 		if typeof(effect_data) != TYPE_DICTIONARY:
 			continue
 
-		var source: String = str(effect_data.get("source", "未知来源"))
+		var source: String = str(effect_data.get("source", TextDB.get_text("UI_EFFECT_UNKNOWN_SOURCE")))
 		var effect_id: String = str(effect_data.get("effect_id", ""))
 		var effect_name: String = str(effect_data.get("effect", ""))
 
@@ -108,12 +108,11 @@ func get_active_effect_lines() -> Array[String]:
 		var description: String = get_card_description(effect_id)
 
 		if description == "":
-			lines.append(" - [%s] %s" % [source, effect_name])
+			lines.append(TextDB.get_text("UI_EFFECT_LINE") % [source, effect_name])
 		else:
-			lines.append(" - [%s] %s：%s" % [source, effect_name, description])
+			lines.append(TextDB.get_text("UI_EFFECT_LINE_DESC") % [source, effect_name, description])
 
 	return lines
-
 
 func get_multiplier(modifier_id: String, default_value: float = 1.0) -> float:
 	var value: float = default_value

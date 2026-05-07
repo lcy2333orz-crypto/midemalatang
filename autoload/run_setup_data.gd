@@ -59,12 +59,12 @@ var supplier_base_prices: Dictionary = {
 var supplier_package_options: Array = [
 	{
 		"id": "basket",
-		"name": "一篮",
+		"text_key": "UI_SUPPLIER_PACKAGE_BASKET",
 		"amount": 10
 	},
 	{
 		"id": "box",
-		"name": "一箱",
+		"text_key": "UI_SUPPLIER_PACKAGE_BOX",
 		"amount": 30
 	}
 ]
@@ -337,10 +337,9 @@ func setup_daily_special_customer_plan() -> void:
 	current_day_special_spawn_plan = [
 		{
 			"type": "mouse",
-			"name": "老鼠"
+			"name": TextDB.get_text("UI_SPECIAL_CUSTOMER_MOUSE")
 		}
 	]
-
 
 func add_pending_gift(source_type: String, source_name: String, result: String) -> Dictionary:
 	_sync_echo_state_from_fields()
@@ -432,45 +431,15 @@ func generate_night_background_activity(has_next_day: bool = true) -> Dictionary
 
 	if has_next_day:
 		options = [
-			{
-				"id": "reading_notes",
-				"activity_text": "小猫正在翻看一本油乎乎的小本子。",
-				"morning_title": "昨晚小猫翻了翻小本子",
-				"morning_text": "小猫从笔记里整理出了一点明日小摊情报。"
-			},
-			{
-				"id": "chatting_neighbor",
-				"activity_text": "小猫在和路过的街坊小声聊天。",
-				"morning_title": "昨晚小猫和街坊聊了聊",
-				"morning_text": "小猫听到了一些关于明天街口的小消息。"
-			},
-			{
-				"id": "checking_notice",
-				"activity_text": "小猫认真看了看贴在街口的小纸条。",
-				"morning_title": "昨晚小猫看了街口的小纸条",
-				"morning_text": "小猫注意到明天附近可能会有些变化。"
-			},
-			{
-				"id": "sorting_ingredients",
-				"activity_text": "小猫把剩下的食材重新数了一遍。",
-				"morning_title": "昨晚小猫整理了食材",
-				"morning_text": "小猫对明天的备货有了一点想法。"
-			},
-			{
-				"id": "resting_cart",
-				"activity_text": "小猫趴在餐车旁边，尾巴轻轻晃着。",
-				"morning_title": "昨晚小猫好好休息了一会儿",
-				"morning_text": "小猫决定明天也要稳稳地把热乎乎的东西端出去。"
-			}
+			_make_night_activity("reading_notes", "UI_NIGHT_ACTIVITY_READING_NOTES", "UI_MORNING_TITLE_READING_NOTES", "UI_MORNING_TEXT_READING_NOTES"),
+			_make_night_activity("chatting_neighbor", "UI_NIGHT_ACTIVITY_CHATTING_NEIGHBOR", "UI_MORNING_TITLE_CHATTING_NEIGHBOR", "UI_MORNING_TEXT_CHATTING_NEIGHBOR"),
+			_make_night_activity("checking_notice", "UI_NIGHT_ACTIVITY_CHECKING_NOTICE", "UI_MORNING_TITLE_CHECKING_NOTICE", "UI_MORNING_TEXT_CHECKING_NOTICE"),
+			_make_night_activity("sorting_ingredients", "UI_NIGHT_ACTIVITY_SORTING_INGREDIENTS", "UI_MORNING_TITLE_SORTING_INGREDIENTS", "UI_MORNING_TEXT_SORTING_INGREDIENTS"),
+			_make_night_activity("resting_cart", "UI_NIGHT_ACTIVITY_RESTING_CART", "UI_MORNING_TITLE_RESTING_CART", "UI_MORNING_TEXT_RESTING_CART")
 		]
 	else:
 		options = [
-			{
-				"id": "final_rest",
-				"activity_text": "小猫收好餐车，安静地看着今天的小摊灯光慢慢暗下去。",
-				"morning_title": "",
-				"morning_text": ""
-			}
+			_make_night_activity("final_rest", "UI_NIGHT_ACTIVITY_FINAL_REST", "", "")
 		]
 
 	var chosen: Dictionary = options[randi() % options.size()]
@@ -491,71 +460,77 @@ func generate_night_background_activity(has_next_day: bool = true) -> Dictionary
 
 	return current_night_activity.duplicate(true)
 
+
+func _make_night_activity(activity_id: String, activity_key: String, morning_title_key: String, morning_text_key: String) -> Dictionary:
+	var morning_title: String = ""
+	var morning_text: String = ""
+
+	if morning_title_key != "":
+		morning_title = TextDB.get_text(morning_title_key)
+
+	if morning_text_key != "":
+		morning_text = TextDB.get_text(morning_text_key)
+
+	return {
+		"id": activity_id,
+		"activity_text": TextDB.get_text(activity_key),
+		"morning_title": morning_title,
+		"morning_text": morning_text
+	}
+
 func generate_tomorrow_business_event_for_activity(activity_id: String) -> Dictionary:
 	match activity_id:
 		"chatting_neighbor":
 			return make_tomorrow_business_event(
 				"street_gets_busy",
-				"街口热闹",
-				"今天路过小摊的人会多一点。",
+				TextDB.get_text("UI_EVENT_STREET_BUSY"),
+				TextDB.get_text("UI_EVENT_STREET_BUSY_TEXT"),
 				"mixed",
-				{
-					"customer_spawn_interval_multiplier": 0.85
-				}
+				{"customer_spawn_interval_multiplier": 0.85}
 			)
 
 		"checking_notice":
 			return make_tomorrow_business_event(
 				"street_gets_busy",
-				"街口热闹",
-				"今天附近人流会比平时多一点。",
+				TextDB.get_text("UI_EVENT_STREET_BUSY"),
+				TextDB.get_text("UI_EVENT_STREET_BUSY_NOTICE_TEXT"),
 				"mixed",
-				{
-					"customer_spawn_interval_multiplier": 0.85
-				}
+				{"customer_spawn_interval_multiplier": 0.85}
 			)
 
 		"resting_cart":
 			return make_tomorrow_business_event(
 				"slow_easy_day",
-				"慢悠悠的一天",
-				"今天大家好像都不太着急。",
+				TextDB.get_text("UI_EVENT_SLOW_DAY"),
+				TextDB.get_text("UI_EVENT_SLOW_DAY_TEXT"),
 				"positive",
-				{
-					"customer_patience_multiplier": 1.25
-				}
+				{"customer_patience_multiplier": 1.25}
 			)
 
 		"sorting_ingredients":
 			return make_tomorrow_business_event(
 				"extra_raw_prep",
-				"早上多备一点",
-				"小猫今天早上多找出了一点能用的生食材。",
+				TextDB.get_text("UI_EVENT_EXTRA_RAW_PREP"),
+				TextDB.get_text("UI_EVENT_EXTRA_RAW_PREP_TEXT"),
 				"positive",
-				{
-					"random_raw_stock_bonus": 2
-				}
+				{"random_raw_stock_bonus": 2}
 			)
 
 		"reading_notes":
 			var options: Array = [
 				make_tomorrow_business_event(
 					"market_friend",
-					"菜摊熟脸",
-					"今天临时补货会便宜一点。",
+					TextDB.get_text("UI_EVENT_MARKET_FRIEND"),
+					TextDB.get_text("UI_EVENT_MARKET_FRIEND_TEXT"),
 					"positive",
-					{
-						"emergency_shop_price_multiplier": 0.75
-					}
+					{"emergency_shop_price_multiplier": 0.75}
 				),
 				make_tomorrow_business_event(
 					"slow_easy_day",
-					"慢悠悠的一天",
-					"今天大家好像都不太着急。",
+					TextDB.get_text("UI_EVENT_SLOW_DAY"),
+					TextDB.get_text("UI_EVENT_SLOW_DAY_TEXT"),
 					"positive",
-					{
-						"customer_patience_multiplier": 1.25
-					}
+					{"customer_patience_multiplier": 1.25}
 				)
 			]
 
@@ -564,12 +539,10 @@ func generate_tomorrow_business_event_for_activity(activity_id: String) -> Dicti
 		_:
 			return make_tomorrow_business_event(
 				"slow_easy_day",
-				"慢悠悠的一天",
-				"今天大家好像都不太着急。",
+				TextDB.get_text("UI_EVENT_SLOW_DAY"),
+				TextDB.get_text("UI_EVENT_SLOW_DAY_TEXT"),
 				"positive",
-				{
-					"customer_patience_multiplier": 1.15
-				}
+				{"customer_patience_multiplier": 1.15}
 			)
 
 func make_tomorrow_business_event(
@@ -649,7 +622,7 @@ func consume_pending_morning_info_lines() -> Array[String]:
 	if not has_pending_morning_info():
 		return lines
 
-	var title: String = str(pending_morning_info.get("title", "昨晚小猫获得的信息"))
+	var title: String = str(pending_morning_info.get("title", TextDB.get_text("UI_MORNING_INFO_DEFAULT_TITLE")))
 	var text: String = str(pending_morning_info.get("text", ""))
 	var event = pending_morning_info.get("event", {})
 
@@ -659,12 +632,12 @@ func consume_pending_morning_info_lines() -> Array[String]:
 		lines.append(text)
 
 	if typeof(event) == TYPE_DICTIONARY and not event.is_empty():
-		var event_title: String = str(event.get("title", "明日营业变化"))
+		var event_title: String = str(event.get("title", TextDB.get_text("UI_TOMORROW_EVENT_DEFAULT_TITLE")))
 		var event_text: String = str(event.get("text", ""))
 
 		if event_text != "":
 			lines.append("")
-			lines.append("%s：%s" % [event_title, event_text])
+			lines.append(TextDB.get_text("UI_MORNING_EVENT_LINE") % [event_title, event_text])
 
 	pending_morning_info = {}
 

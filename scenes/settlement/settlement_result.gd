@@ -161,30 +161,29 @@ func _get_fallback_card_options() -> Array:
 	return [
 		{
 			"id": "tidy_up",
-			"name": "整理一下",
-			"description": "小猫把摊位重新整理好。每天早上额外获得一点随机生食材。",
+			"name": TextDB.get_text("UI_CARD_TIDY_UP_NAME"),
+			"description": TextDB.get_text("UI_CARD_TIDY_UP_DESC"),
 			"modifiers": {
 				"random_raw_stock_bonus": 1
 			}
 		},
 		{
 			"id": "take_a_breath",
-			"name": "缓一口气",
-			"description": "小猫坐下来缓了一口气。之后顾客耐心略微提高。",
+			"name": TextDB.get_text("UI_CARD_TAKE_A_BREATH_NAME"),
+			"description": TextDB.get_text("UI_CARD_TAKE_A_BREATH_DESC"),
 			"modifiers": {
 				"customer_patience_multiplier": 1.1
 			}
 		},
 		{
 			"id": "cheer_up_again",
-			"name": "重新打起精神",
-			"description": "小猫重新打起精神。之后顾客来得略微更快。",
+			"name": TextDB.get_text("UI_CARD_CHEER_UP_AGAIN_NAME"),
+			"description": TextDB.get_text("UI_CARD_CHEER_UP_AGAIN_DESC"),
 			"modifiers": {
 				"customer_spawn_interval_multiplier": 0.95
 			}
 		}
 	]
-
 
 func _show_confirm_button_only() -> void:
 	$ButtonBox.visible = true
@@ -193,7 +192,7 @@ func _show_confirm_button_only() -> void:
 
 	retry_button.visible = true
 	retry_button.disabled = false
-	retry_button.text = "确认"
+	retry_button.text = TextDB.get_text("UI_SETTLEMENT_CONFIRM")
 	retry_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	retry_button.z_index = 201
 
@@ -375,20 +374,18 @@ func _setup_day_settlement() -> void:
 	var summary: Dictionary = RunSetupData.get_day_summary()
 
 	title_label.text = TextDB.get_text("UI_DAY_SETTLEMENT_TITLE") % int(summary.get("day_index", 1))
-
-	today_income_label.text = "今日营业额：%d" % int(summary.get("today_gross_income", summary.get("today_income", 0)))
+	today_income_label.text = TextDB.get_text("UI_SETTLEMENT_TODAY_GROSS") % int(summary.get("today_gross_income", summary.get("today_income", 0)))
 
 	if expense_label != null:
-		expense_label.text = "今日支出：%d" % int(summary.get("today_expense", 0))
+		expense_label.text = TextDB.get_text("UI_SETTLEMENT_TODAY_EXPENSE") % int(summary.get("today_expense", 0))
 
 	if net_income_label != null:
-		net_income_label.text = "今日净收入：%d" % int(summary.get("today_net_income", summary.get("today_income", 0)))
+		net_income_label.text = TextDB.get_text("UI_SETTLEMENT_TODAY_NET") % int(summary.get("today_net_income", summary.get("today_income", 0)))
 
-	round_income_label.text = "本轮净收入：%d" % int(summary.get("run_net_income", summary.get("run_income", 0)))
+	round_income_label.text = TextDB.get_text("UI_SETTLEMENT_RUN_NET") % int(summary.get("run_net_income", summary.get("run_income", 0)))
 	money_label.text = TextDB.get_text("UI_SETTLEMENT_CURRENT_MONEY") % int(summary.get("current_money", 0))
 
 	cooked_stock_label.visible = false
-
 	raw_stock_label.visible = true
 	raw_stock_label.text = TextDB.get_text("UI_SETTLEMENT_RAW_STOCK") % str(summary.get("raw_stock_text", TextDB.get_text("UI_ITEM_NONE")))
 
@@ -398,10 +395,10 @@ func _setup_day_settlement() -> void:
 	if reputation_delta >= 0:
 		reputation_sign = "+"
 
-	waste_label.text = "今日口碑：%s%d" % [reputation_sign, reputation_delta]
-	profit_label.text = "当前口碑：%d" % int(summary.get("shop_reputation", 50))
+	waste_label.text = TextDB.get_text("UI_SETTLEMENT_TODAY_REPUTATION") % [reputation_sign, reputation_delta]
+	profit_label.text = TextDB.get_text("UI_SETTLEMENT_CURRENT_REPUTATION") % int(summary.get("shop_reputation", 50))
 
-	retry_button.text = "确认"
+	retry_button.text = TextDB.get_text("UI_SETTLEMENT_CONFIRM")
 	back_home_button.text = TextDB.get_text("UI_SETTLEMENT_ABORT_RUN")
 
 	_setup_stall_echo(summary)
@@ -409,25 +406,22 @@ func _setup_day_settlement() -> void:
 	_setup_night_activity(true)
 	_setup_layout_positions()
 
-
 func _setup_run_settlement() -> void:
 	var summary: Dictionary = RunSetupData.get_run_summary()
 
 	title_label.text = TextDB.get_text("UI_RUN_SETTLEMENT_TITLE")
-
-	today_income_label.text = "最后一天营业额：%d" % int(summary.get("today_gross_income", 0))
+	today_income_label.text = TextDB.get_text("UI_SETTLEMENT_LAST_GROSS") % int(summary.get("today_gross_income", 0))
 
 	if expense_label != null:
-		expense_label.text = "最后一天支出：%d" % int(summary.get("today_expense", 0))
+		expense_label.text = TextDB.get_text("UI_SETTLEMENT_LAST_EXPENSE") % int(summary.get("today_expense", 0))
 
 	if net_income_label != null:
-		net_income_label.text = "最后一天净收入：%d" % int(summary.get("today_net_income", 0))
+		net_income_label.text = TextDB.get_text("UI_SETTLEMENT_LAST_NET") % int(summary.get("today_net_income", 0))
 
-	round_income_label.text = "本轮净收入：%d" % int(summary.get("run_net_income", summary.get("run_income", 0)))
+	round_income_label.text = TextDB.get_text("UI_SETTLEMENT_RUN_NET") % int(summary.get("run_net_income", summary.get("run_income", 0)))
 	money_label.text = TextDB.get_text("UI_SETTLEMENT_CURRENT_MONEY") % int(summary.get("current_money", 0))
 
 	cooked_stock_label.visible = false
-
 	raw_stock_label.visible = true
 	raw_stock_label.text = TextDB.get_text("UI_SETTLEMENT_RAW_STOCK") % str(summary.get("raw_stock_text", TextDB.get_text("UI_ITEM_NONE")))
 
@@ -437,10 +431,10 @@ func _setup_run_settlement() -> void:
 	if reputation_delta >= 0:
 		reputation_sign = "+"
 
-	waste_label.text = "今日口碑：%s%d" % [reputation_sign, reputation_delta]
-	profit_label.text = "当前口碑：%d" % int(summary.get("shop_reputation", 50))
+	waste_label.text = TextDB.get_text("UI_SETTLEMENT_TODAY_REPUTATION") % [reputation_sign, reputation_delta]
+	profit_label.text = TextDB.get_text("UI_SETTLEMENT_CURRENT_REPUTATION") % int(summary.get("shop_reputation", 50))
 
-	retry_button.text = "确认"
+	retry_button.text = TextDB.get_text("UI_SETTLEMENT_CONFIRM")
 	back_home_button.text = TextDB.get_text("UI_SETTLEMENT_BACK_HOME")
 
 	_setup_stall_echo(summary)
@@ -455,7 +449,7 @@ func _setup_stall_echo(summary: Dictionary) -> void:
 	var echo_lines = summary.get("today_echo_lines", [])
 
 	if typeof(echo_lines) != TYPE_ARRAY or echo_lines.is_empty():
-		stall_echo_label.text = "今日小摊回响：\n暂无记录"
+		stall_echo_label.text = TextDB.get_text("UI_SETTLEMENT_STALL_ECHO_EMPTY")
 		return
 
 	var lines: Array[String] = []
@@ -463,7 +457,8 @@ func _setup_stall_echo(summary: Dictionary) -> void:
 	for line in echo_lines:
 		lines.append(str(line))
 
-	stall_echo_label.text = "\n".join(lines)
+	stall_echo_label.text = "
+".join(lines)
 
 func _setup_night_activity(has_next_day: bool) -> void:
 	if night_activity_label == null:
@@ -536,44 +531,42 @@ func feed_cat_with_leftover_food(item_id: String) -> void:
 		return
 
 	if not leftover_cooked_stock_for_cat.has(item_id):
-		show_cat_reaction("喵？")
+		show_cat_reaction(TextDB.get_text("UI_CAT_REACTION_CONFUSED"))
 		return
 
 	var amount: int = int(leftover_cooked_stock_for_cat.get(item_id, 0))
 
 	if amount <= 0:
-		show_cat_reaction("已经吃完啦")
+		show_cat_reaction(TextDB.get_text("UI_CAT_REACTION_FINISHED"))
 		return
 
 	leftover_cooked_stock_for_cat[item_id] = amount - 1
 	cat_hand_fed_count += 1
 
 	var reaction_options: Array[String] = [
-		"喵~",
-		"好吃！",
-		"呼噜呼噜",
-		"满足~",
-		"❤️"
+		TextDB.get_text("UI_CAT_REACTION_EAT_1"),
+		TextDB.get_text("UI_CAT_REACTION_EAT_2"),
+		TextDB.get_text("UI_CAT_REACTION_EAT_3"),
+		TextDB.get_text("UI_CAT_REACTION_EAT_4"),
+		TextDB.get_text("UI_CAT_REACTION_EAT_5")
 	]
 
 	show_cat_reaction(reaction_options[randi() % reaction_options.size()])
 	_refresh_leftover_food_buttons()
 
 	if not _has_leftover_food_for_cat():
-		show_cat_reaction("小猫把今天剩下的都解决啦")
-
+		show_cat_reaction(TextDB.get_text("UI_CAT_REACTION_ALL_DONE"))
 
 func pet_settlement_cat() -> void:
 	var pet_options: Array[String] = [
-		"喵~",
-		"蹭蹭",
-		"呼噜~",
-		"❤️",
-		"今天也辛苦啦"
+		TextDB.get_text("UI_CAT_REACTION_PET_1"),
+		TextDB.get_text("UI_CAT_REACTION_PET_2"),
+		TextDB.get_text("UI_CAT_REACTION_PET_3"),
+		TextDB.get_text("UI_CAT_REACTION_PET_4"),
+		TextDB.get_text("UI_CAT_REACTION_PET_5")
 	]
 
 	show_cat_reaction(pet_options[randi() % pet_options.size()])
-
 
 func show_cat_reaction(text: String) -> void:
 	if cat_reaction_label == null:
@@ -609,7 +602,7 @@ func setup_night_queue() -> void:
 
 	if night_queue.is_empty():
 		night_queue = [
-			{"type": "insight", "name": "小猫领悟", "result": "neutral"}
+			{"type": "insight", "name": TextDB.get_text("UI_NIGHT_CHOICE_INSIGHT"), "result": "neutral"}
 		]
 
 	current_index = 0
@@ -670,7 +663,7 @@ func show_current_choice() -> void:
 
 	for i in range(3):
 		var card_data: Dictionary = options[i]
-		var card_name: String = str(card_data.get("name", "未知卡牌"))
+		var card_name: String = str(card_data.get("name", TextDB.get_text("UI_FALLBACK_UNKNOWN_CARD")))
 		var card_description: String = str(card_data.get("description", ""))
 
 		card_buttons[i].text = format_card_button_text(card_name, card_description)
@@ -686,20 +679,19 @@ func show_current_choice() -> void:
 
 func get_night_choice_title(entry: Dictionary) -> String:
 	var entry_type: String = str(entry.get("type", ""))
-	var entry_name: String = str(entry.get("name", "特殊客人"))
+	var entry_name: String = str(entry.get("name", TextDB.get_text("UI_FALLBACK_SPECIAL_CUSTOMER")))
 	var result: String = str(entry.get("result", "neutral"))
 
 	if entry_type == "insight":
-		return "小猫领悟"
+		return TextDB.get_text("UI_NIGHT_CHOICE_INSIGHT")
 
 	if result == "good":
-		return "%s：成功服务结算" % entry_name
+		return TextDB.get_text("UI_NIGHT_CHOICE_GOOD") % entry_name
 
 	if result == "bad":
-		return "%s：服务失败结算" % entry_name
+		return TextDB.get_text("UI_NIGHT_CHOICE_BAD") % entry_name
 
-	return "%s：夜间结算" % entry_name
-
+	return TextDB.get_text("UI_NIGHT_CHOICE_NEUTRAL") % entry_name
 
 func _on_card_selected(index: int) -> void:
 	if current_index >= night_queue.size():
@@ -797,25 +789,24 @@ func update_night_queue_preview() -> void:
 		var text: String = ""
 
 		if str(entry.get("type", "")) == "insight":
-			text = "领悟"
+			text = TextDB.get_text("UI_NIGHT_INSIGHT")
 		else:
-			var name: String = str(entry.get("name", "特殊客人"))
+			var name: String = str(entry.get("name", TextDB.get_text("UI_FALLBACK_SPECIAL_CUSTOMER")))
 			var result: String = str(entry.get("result", "neutral"))
 
 			if result == "good":
-				text = "%s✓" % name
+				text = "%s+" % name
 			elif result == "bad":
-				text = "%s✗" % name
+				text = "%s-" % name
 			else:
 				text = name
 
 		if i == current_index:
-			text = "【%s】" % text
+			text = "[%s]" % text
 
 		parts.append(text)
 
-	night_queue_label.text = "今夜结算：%s" % "  ".join(parts)
-
+	night_queue_label.text = TextDB.get_text("UI_NIGHT_QUEUE") % "  ".join(parts)
 
 func _on_retry_button_pressed() -> void:
 	print("Confirm button pressed. mode=", RunSetupData.get_settlement_view_mode(), " night_finished=", night_finished)

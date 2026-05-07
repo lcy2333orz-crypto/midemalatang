@@ -186,34 +186,32 @@ func _build_ladle_row(ladle_index: int) -> HBoxContainer:
 		slot_state = str(slot.get("state", "empty"))
 
 	var cook_glass_button: Button = Button.new()
-	cook_glass_button.text = "ç…®ç²‰ä¸"
+	cook_glass_button.text = TextDB.get_text("UI_STAPLE_LADLE_COOK_ITEM") % TextDB.get_item_name("glass_noodle")
 	cook_glass_button.custom_minimum_size = Vector2(74, 28)
 	cook_glass_button.disabled = not can_start_staple_ladle_cooking(slot_index, "glass_noodle")
 	row.add_child(cook_glass_button)
 
 	var cook_noodle_button: Button = Button.new()
-	cook_noodle_button.text = "ç…®é¢"
+	cook_noodle_button.text = TextDB.get_text("UI_STAPLE_LADLE_COOK_ITEM") % TextDB.get_item_name("noodle")
 	cook_noodle_button.custom_minimum_size = Vector2(74, 28)
 	cook_noodle_button.disabled = not can_start_staple_ladle_cooking(slot_index, "noodle")
 	row.add_child(cook_noodle_button)
 
 	var take_out_button: Button = Button.new()
-	take_out_button.text = "å–å‡º"
+	take_out_button.text = TextDB.get_text("UI_STAPLE_LADLE_TAKE_OUT")
 	take_out_button.custom_minimum_size = Vector2(64, 28)
 	take_out_button.disabled = slot_state != "ready" or held_staple_food_id != ""
 	row.add_child(take_out_button)
 
 	return row
 
-
 func _get_ladle_state_text(ladle_index: int) -> String:
 	var slot_index: int = ladle_index - 1
 
 	if slot_index < 0 or slot_index >= staple_ladle_slots.size():
-		return "æ¼å‹º%dï¼šç©º" % ladle_index
+		return TextDB.get_text("UI_STAPLE_LADLE_EMPTY") % ladle_index
 
 	return get_staple_ladle_text(slot_index)
-
 
 func request_cart_pot_panel_refresh() -> void:
 	panel_controller.request_refresh()
@@ -834,47 +832,44 @@ func interact_with_staple_ladle(slot_index: int) -> void:
 
 func get_held_raw_staple_text() -> String:
 	if held_raw_staple_food_id == "":
-		return "ç©º"
+		return TextDB.get_text("UI_ITEM_NONE")
 	return manager.get_ingredient_display_name(held_raw_staple_food_id)
-
 
 func get_held_staple_text() -> String:
 	if held_staple_food_id == "":
-		return "ç©º"
+		return TextDB.get_text("UI_ITEM_NONE")
 
 	return manager.get_ingredient_display_name(held_staple_food_id)
 
-
 func get_staple_ladle_text(slot_index: int) -> String:
 	if slot_index < 0 or slot_index >= staple_ladle_slots.size():
-		return "æ¼å‹ºä¸å­˜åœ¨"
+		return TextDB.get_text("UI_STAPLE_LADLE_MISSING")
 
 	var slot: Dictionary = staple_ladle_slots[slot_index] as Dictionary
 	var state: String = str(slot.get("state", "empty"))
 	var main_food_id: String = str(slot.get("main_food_id", ""))
-	var main_food_text: String = "æ— "
+	var main_food_text: String = TextDB.get_text("UI_ITEM_NONE")
 
 	if main_food_id != "":
 		main_food_text = manager.get_ingredient_display_name(main_food_id)
 
 	if state == "empty":
-		return "æ¼å‹º %dï¼šç©º" % [slot_index + 1]
+		return TextDB.get_text("UI_STAPLE_LADLE_EMPTY") % [slot_index + 1]
 
 	if state == "cooking":
-		return "æ¼å‹º %dï¼šæ­£åœ¨ç…® %sï¼Œå‰©ä½™ %.1f ç§’" % [
+		return TextDB.get_text("UI_STAPLE_LADLE_COOKING") % [
 			slot_index + 1,
 			main_food_text,
 			float(slot.get("time_left", 0.0))
 		]
 
 	if state == "ready":
-		return "æ¼å‹º %dï¼š%s å·²ç…®å¥½ï¼Œç­‰å¾…å–å‡º" % [
+		return TextDB.get_text("UI_STAPLE_LADLE_READY") % [
 			slot_index + 1,
 			main_food_text
 		]
 
-	return "æ¼å‹º %dï¼šæœªçŸ¥çŠ¶æ€" % [slot_index + 1]
-
+	return TextDB.get_text("UI_STAPLE_LADLE_UNKNOWN") % [slot_index + 1]
 
 func get_cart_ingredients_needed_from_pot(customer: Node) -> Dictionary:
 	if customer == null or not is_instance_valid(customer):

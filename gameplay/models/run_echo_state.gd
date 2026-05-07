@@ -29,13 +29,13 @@ func add_pending_gift(source_type: String, source_name: String, result: String, 
 	var display_kind: String = ""
 
 	if result == "good":
-		display_name = "%s留下的祝愿" % source_name
+		display_name = TextDB.get_text("UI_ECHO_GIFT_BLESSING") % source_name
 		display_kind = "blessing"
 	elif result == "bad":
-		display_name = "%s留下的呸" % source_name
+		display_name = TextDB.get_text("UI_ECHO_GIFT_SPIT") % source_name
 		display_kind = "spit"
 	else:
-		display_name = "%s留下的回响" % source_name
+		display_name = TextDB.get_text("UI_ECHO_GIFT_ECHO") % source_name
 		display_kind = "echo"
 
 	var gift_data: Dictionary = {
@@ -56,7 +56,6 @@ func add_pending_gift(source_type: String, source_name: String, result: String, 
 	record_today_special_echo(display_name, result)
 
 	return gift_data
-
 
 func get_pending_gift_index_by_id(gift_id: String) -> int:
 	for i in range(pending_gifts.size()):
@@ -140,7 +139,7 @@ func mark_gift_opened(gift_id: String, chosen_card: Dictionary, opened_day: int)
 	gift_data["opened"] = true
 	gift_data["opened_day"] = opened_day
 	gift_data["chosen_card_id"] = str(chosen_card.get("id", "unknown_card"))
-	gift_data["chosen_card_name"] = str(chosen_card.get("name", "未知卡牌"))
+	gift_data["chosen_card_name"] = str(chosen_card.get("name", TextDB.get_text("UI_FALLBACK_UNKNOWN_CARD")))
 
 	pending_gifts[index] = gift_data
 	opened_gifts.append(gift_data.duplicate(true))
@@ -166,29 +165,28 @@ func get_pending_gift_lines() -> Array[String]:
 	var unopened_gifts: Array = get_unopened_pending_gifts()
 
 	if unopened_gifts.is_empty():
-		lines.append("当前没有未查看的特殊客人回响。")
+		lines.append(TextDB.get_text("UI_ECHO_PENDING_NONE"))
 		return lines
 
-	lines.append("特殊客人的回响：")
+	lines.append(TextDB.get_text("UI_ECHO_PENDING_HEADER"))
 
 	for gift_data in unopened_gifts:
 		var display_name: String = str(gift_data.get("display_name", ""))
 
 		if display_name == "":
-			var source_name: String = str(gift_data.get("source_name", "特殊客人"))
+			var source_name: String = str(gift_data.get("source_name", TextDB.get_text("UI_FALLBACK_SPECIAL_CUSTOMER")))
 			var result: String = str(gift_data.get("result", "neutral"))
 
 			if result == "good":
-				display_name = "%s留下的祝愿" % source_name
+				display_name = TextDB.get_text("UI_ECHO_GIFT_BLESSING") % source_name
 			elif result == "bad":
-				display_name = "%s留下的呸" % source_name
+				display_name = TextDB.get_text("UI_ECHO_GIFT_SPIT") % source_name
 			else:
-				display_name = "%s留下的回响" % source_name
+				display_name = TextDB.get_text("UI_ECHO_GIFT_ECHO") % source_name
 
-		lines.append(" - %s" % display_name)
+		lines.append(TextDB.get_text("UI_ECHO_PENDING_LINE") % display_name)
 
 	return lines
-
 
 func record_today_served_customer() -> void:
 	today_customers_served += 1
@@ -208,13 +206,13 @@ func record_today_special_echo(display_name: String, result: String) -> void:
 func get_today_stall_echo_lines() -> Array[String]:
 	var lines: Array[String] = []
 
-	lines.append("今日小摊回响：")
-	lines.append("服务顾客：%d" % today_customers_served)
-	lines.append("满意离开：%d" % today_customers_served)
-	lines.append("遗憾离开：%d" % today_customers_failed)
+	lines.append(TextDB.get_text("UI_STALL_ECHO_HEADER"))
+	lines.append(TextDB.get_text("UI_STALL_ECHO_SERVED") % today_customers_served)
+	lines.append(TextDB.get_text("UI_STALL_ECHO_SATISFIED") % today_customers_served)
+	lines.append(TextDB.get_text("UI_STALL_ECHO_FAILED") % today_customers_failed)
 
 	if today_special_echo_records.is_empty():
-		lines.append("特殊客人回响：无")
+		lines.append(TextDB.get_text("UI_STALL_ECHO_SPECIAL_NONE"))
 	else:
 		var echo_names: Array[String] = []
 
@@ -222,15 +220,14 @@ func get_today_stall_echo_lines() -> Array[String]:
 			if typeof(record) != TYPE_DICTIONARY:
 				continue
 
-			echo_names.append(str(record.get("display_name", "特殊客人的回响")))
+			echo_names.append(str(record.get("display_name", TextDB.get_text("UI_GLOBAL_RUN_SPECIAL_ECHO"))))
 
 		if echo_names.is_empty():
-			lines.append("特殊客人回响：无")
+			lines.append(TextDB.get_text("UI_STALL_ECHO_SPECIAL_NONE"))
 		else:
-			lines.append("特殊客人回响：%s" % "，".join(echo_names))
+			lines.append(TextDB.get_text("UI_STALL_ECHO_SPECIAL") % TextDB.get_text("UI_LIST_JOIN_COMMA").join(echo_names))
 
 	return lines
-
 
 func debug_validate() -> Array[String]:
 	var warnings: Array[String] = []

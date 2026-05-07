@@ -652,6 +652,6 @@ func get_customer_display_name() -> String:
 		if special_customer_name != "":
 			return special_customer_name
 
-		return "特殊客人"
+		return TextDB.get_text("UI_CUSTOMER_SPECIAL")
 
-	return "普通客人"
+	return TextDB.get_text("UI_CUSTOMER_NORMAL")

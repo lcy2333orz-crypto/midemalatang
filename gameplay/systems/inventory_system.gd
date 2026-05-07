@@ -173,10 +173,9 @@ func get_staple_stock_text() -> String:
 		])
 
 	if parts.is_empty():
-		return "æ— "
+		return TextDB.get_text("UI_ITEM_NONE")
 
 	return ", ".join(parts)
-
 
 func get_order_shortage(ingredients: Dictionary) -> Dictionary:
 	var shortage: Dictionary = {}

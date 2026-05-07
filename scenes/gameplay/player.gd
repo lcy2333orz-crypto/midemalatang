@@ -190,12 +190,12 @@ func get_current_hand_text() -> String:
 	var held_raw: String = str(game_manager.cooking_system.held_raw_staple_food_id)
 
 	if held_cooked != "":
-		return "手里：熟%s" % game_manager.get_ingredient_display_name(held_cooked)
+		return TextDB.get_text("UI_HAND_COOKED") % game_manager.get_ingredient_display_name(held_cooked)
 
 	if held_raw != "":
-		return "手里：生%s" % game_manager.get_ingredient_display_name(held_raw)
+		return TextDB.get_text("UI_HAND_RAW") % game_manager.get_ingredient_display_name(held_raw)
 
-	return "手里：空"
+	return TextDB.get_text("UI_HAND_EMPTY")
 
 
 func _update_interaction_prompt() -> void:
@@ -210,7 +210,7 @@ func _update_interaction_prompt() -> void:
 			game_ui.hide_interaction_prompt()
 		return
 
-	var prompt_text: String = "E 交互"
+	var prompt_text: String = TextDB.get_text("UI_PROMPT_INTERACT")
 	if target_station.has_method("get_interaction_prompt"):
 		prompt_text = str(target_station.get_interaction_prompt())
 

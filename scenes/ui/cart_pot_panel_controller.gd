@@ -7,6 +7,7 @@ var cooking_system = null
 var layer: CanvasLayer = null
 var panel: Panel = null
 var status_label: Label = null
+var capacity_grid: GridContainer = null
 var row_labels: Dictionary = {}
 var minus_buttons: Dictionary = {}
 var plus_buttons: Dictionary = {}
@@ -36,13 +37,13 @@ func open() -> void:
 
 	panel = Panel.new()
 	panel.name = "CartPotPanel"
-	panel.size = Vector2(720, 430)
-	panel.position = Vector2(viewport_size.x * 0.5 - 360, viewport_size.y * 0.5 - 215)
+	panel.size = Vector2(720, 470)
+	panel.position = Vector2(viewport_size.x * 0.5 - 360, viewport_size.y * 0.5 - 235)
 	layer.add_child(panel)
 
 	var title_label: Label = Label.new()
 	title_label.name = "CartPotTitle"
-	title_label.text = "大锅：批量煮配菜"
+	title_label.text = TextDB.get_text("UI_CART_POT_TITLE")
 	title_label.position = Vector2(24, 14)
 	title_label.size = Vector2(672, 32)
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -52,7 +53,7 @@ func open() -> void:
 
 	var desc_label: Label = Label.new()
 	desc_label.name = "CartPotDesc"
-	desc_label.text = "选择这次要加入大锅的配菜数量。关上锅盖后，如果本次准备不为空，就会自动开始煮。"
+	desc_label.text = TextDB.get_text("UI_CART_POT_DESC")
 	desc_label.position = Vector2(40, 48)
 	desc_label.size = Vector2(640, 42)
 	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -64,10 +65,19 @@ func open() -> void:
 	status_label = Label.new()
 	status_label.name = "CartPotStatus"
 	status_label.position = Vector2(36, 94)
-	status_label.size = Vector2(648, 96)
+	status_label.size = Vector2(648, 80)
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	status_label.add_theme_font_size_override("font_size", 13)
 	panel.add_child(status_label)
+
+	capacity_grid = GridContainer.new()
+	capacity_grid.name = "CartPotCapacityGrid"
+	capacity_grid.position = Vector2(40, 178)
+	capacity_grid.size = Vector2(640, 44)
+	capacity_grid.columns = 6
+	capacity_grid.add_theme_constant_override("h_separation", 6)
+	capacity_grid.add_theme_constant_override("v_separation", 6)
+	panel.add_child(capacity_grid)
 
 	row_labels.clear()
 	minus_buttons.clear()
@@ -75,7 +85,7 @@ func open() -> void:
 	max_buttons.clear()
 
 	var item_ids: Array = cooking_system.get_cart_pot_ingredient_ids()
-	var start_y: int = 205
+	var start_y: int = 235
 	var row_h: int = 46
 
 	for i in range(item_ids.size()):
@@ -111,7 +121,7 @@ func open() -> void:
 
 		var max_button: Button = Button.new()
 		max_button.name = "CartPot_%s_MaxButton" % item_id
-		max_button.text = "最大"
+		max_button.text = TextDB.get_text("UI_CART_POT_MAX")
 		max_button.position = Vector2(538, row_y)
 		max_button.size = Vector2(72, 34)
 		max_button.pressed.connect(cooking_system._on_cart_pot_max_pressed.bind(item_id))
@@ -120,8 +130,8 @@ func open() -> void:
 
 	var close_button: Button = Button.new()
 	close_button.name = "CartPotCloseButton"
-	close_button.text = "盖上锅盖"
-	close_button.position = Vector2(290, 360)
+	close_button.text = TextDB.get_text("UI_CART_POT_CLOSE")
+	close_button.position = Vector2(290, 405)
 	close_button.size = Vector2(140, 42)
 	close_button.pressed.connect(cooking_system.close_cart_pot_panel_and_auto_start)
 	panel.add_child(close_button)
@@ -141,26 +151,28 @@ func refresh() -> void:
 
 	if status_label != null:
 		var lines: Array[String] = []
-		lines.append("大锅容量：%d / %d" % [
+		lines.append(TextDB.get_text("UI_CART_POT_CAPACITY") % [
 			cooking_system.get_cart_pot_total_capacity_with_selection(),
 			cooking_system.cart_pot_capacity
 		])
-		lines.append("锅中熟配菜：%s" % manager.get_cooked_stock_text())
+		lines.append(TextDB.get_text("UI_CART_POT_COOKED_STOCK") % manager.get_cooked_stock_text())
 
 		if cooking_system.cart_pot_is_cooking:
-			lines.append("正在煮：%s，剩余 %.1f 秒" % [
+			lines.append(TextDB.get_text("UI_CART_POT_COOKING") % [
 				manager.get_items_text(cooking_system.cart_pot_cooking_batch),
 				max(cooking_system.cart_pot_time_left, 0.0)
 			])
 		else:
-			lines.append("正在煮：无")
+			lines.append(TextDB.get_text("UI_CART_POT_COOKING_NONE"))
 
 		if cooking_system.cart_pot_selection.is_empty():
-			lines.append("本次准备：无")
+			lines.append(TextDB.get_text("UI_CART_POT_SELECTION_NONE"))
 		else:
-			lines.append("本次准备：%s" % manager.get_items_text(cooking_system.cart_pot_selection))
+			lines.append(TextDB.get_text("UI_CART_POT_SELECTION") % manager.get_items_text(cooking_system.cart_pot_selection))
 
 		status_label.text = "\n".join(lines)
+
+	_refresh_capacity_grid()
 
 	var disabled_by_cooking: bool = cooking_system.cart_pot_is_cooking
 
@@ -173,7 +185,7 @@ func refresh() -> void:
 
 		if row_labels.has(item_key):
 			var row_label: Label = row_labels[item_key]
-			row_label.text = "%s 生 x%d 锅中熟 x%d 本次煮 x%d" % [
+			row_label.text = TextDB.get_text("UI_CART_POT_ROW") % [
 				display_name,
 				raw_amount,
 				cooked_amount,
@@ -204,7 +216,51 @@ func close() -> void:
 	layer = null
 	panel = null
 	status_label = null
+	capacity_grid = null
 	row_labels.clear()
 	minus_buttons.clear()
 	plus_buttons.clear()
 	max_buttons.clear()
+
+
+func _refresh_capacity_grid() -> void:
+	if capacity_grid == null:
+		return
+
+	var capacity: int = max(int(cooking_system.cart_pot_capacity), 0)
+	var used_capacity: int = clamp(
+		int(cooking_system.get_cart_pot_total_capacity_with_selection()),
+		0,
+		capacity
+	)
+
+	if capacity > 6:
+		capacity_grid.columns = 6
+	else:
+		capacity_grid.columns = max(capacity, 1)
+
+	_ensure_capacity_cells(capacity)
+
+	for i in range(capacity_grid.get_child_count()):
+		var cell: ColorRect = capacity_grid.get_child(i) as ColorRect
+		if cell == null:
+			continue
+
+		if i < used_capacity:
+			cell.color = Color(0.96, 0.44, 0.18, 1)
+		else:
+			cell.color = Color(0.18, 0.18, 0.18, 0.28)
+
+
+func _ensure_capacity_cells(capacity: int) -> void:
+	while capacity_grid.get_child_count() > capacity:
+		var last_index: int = capacity_grid.get_child_count() - 1
+		var child: Node = capacity_grid.get_child(last_index)
+		capacity_grid.remove_child(child)
+		child.queue_free()
+
+	while capacity_grid.get_child_count() < capacity:
+		var cell: ColorRect = ColorRect.new()
+		cell.custom_minimum_size = Vector2(42, 16)
+		cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		capacity_grid.add_child(cell)

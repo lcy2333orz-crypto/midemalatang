@@ -6,12 +6,12 @@ const ATTACHED_STATION_OFFSETS: Dictionary = {
 		"gift_box": Vector2(52, -12)
 	},
 	"cooker_1": {
-		"staple_ladle_1": Vector2(-34, 2),
-		"staple_ladle_2": Vector2(34, 2)
+		"staple_ladle_1": Vector2(-105, 45),
+		"staple_ladle_2": Vector2(105, 45)
 	},
 	"storage": {
-		"glass_noodle_basket": Vector2(-42, -54),
-		"noodle_basket": Vector2(42, -54)
+		"glass_noodle_basket": Vector2(170, 0),
+		"noodle_basket": Vector2(315, 0)
 	}
 }
 

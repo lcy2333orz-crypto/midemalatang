@@ -13,10 +13,10 @@ size = Vector2(180, 120)
 size = Vector2(110, 70)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ig7tw"]
-size = Vector2(140, 95)
+size = Vector2(260, 150)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_aurnk"]
-size = Vector2(110, 70)
+size = Vector2(210, 80)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_0xm2m"]
 size = Vector2(120, 80)
@@ -29,6 +29,12 @@ size = Vector2(120, 80)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_n672w"]
 size = Vector2(120, 80)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_storage_interaction"]
+size = Vector2(190, 150)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_storage_solid"]
+size = Vector2(110, 75)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_lquwl"]
 size = Vector2(160, 120)
@@ -43,16 +49,16 @@ size = Vector2(150, 120)
 size = Vector2(92, 72)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_basket_interaction"]
-size = Vector2(150, 110)
+size = Vector2(180, 130)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_basket_solid"]
-size = Vector2(92, 70)
+size = Vector2(100, 76)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ladle_interaction"]
-size = Vector2(130, 105)
+size = Vector2(100, 120)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ladle_solid"]
-size = Vector2(72, 58)
+size = Vector2(64, 52)
 
 [node name="Main" type="Node2D" unique_id=963038254]
 
@@ -61,7 +67,7 @@ size = Vector2(72, 58)
 [node name="Spawns" type="Node2D" parent="." unique_id=902001230]
 
 [node name="PlayerSpawn" type="Marker2D" parent="Spawns" unique_id=341334920]
-position = Vector2(250, 300)
+position = Vector2(250, 305)
 
 [node name="CustomerSpawn" type="Marker2D" parent="Spawns" unique_id=1112229354]
 position = Vector2(100, 220)
@@ -111,8 +117,8 @@ position = Vector2(480, 220)
 
 [node name="Polygon2D" type="Polygon2D" parent="Stations/Cooker/Visual" unique_id=1769552252]
 color = Color(0.7058824, 0, 0.8156863, 1)
-polygon = PackedVector2Array(-60, -40, 60, -40, 60, 40, -60, 40)
-uv = PackedVector2Array(-60, -40, 60, -40, 60, 40, -60, 40)
+polygon = PackedVector2Array(-120, -45, 120, -45, 120, 45, -120, 45)
+uv = PackedVector2Array(-120, -45, 120, -45, 120, 45, -120, 45)
 
 [node name="InteractionArea" type="Area2D" parent="Stations/Cooker" unique_id=887792751]
 collision_layer = 2
@@ -168,14 +174,14 @@ script = ExtResource("1_0xm2m")
 station_name = "StorageArea"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/StorageArea/InteractionArea" unique_id=1010917241]
-shape = SubResource("RectangleShape2D_1bvp3")
+shape = SubResource("RectangleShape2D_storage_interaction")
 
 [node name="LabelPoint" type="Marker2D" parent="Stations/StorageArea" unique_id=871541465]
 
 [node name="SolidBody" type="StaticBody2D" parent="Stations/StorageArea" unique_id=529847002]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/StorageArea/SolidBody" unique_id=83457629]
-shape = SubResource("RectangleShape2D_n672w")
+shape = SubResource("RectangleShape2D_storage_solid")
 
 [node name="EmergencyShop" type="Node2D" parent="Stations" unique_id=514943712]
 
@@ -329,7 +335,7 @@ shape = SubResource("RectangleShape2D_tip_solid")
 [node name="Characters" type="Node2D" parent="." unique_id=1772073976]
 
 [node name="Player" parent="Characters" unique_id=1448892241 instance=ExtResource("1_ig7tw")]
-position = Vector2(250, 300)
+position = Vector2(250, 305)
 
 [node name="Orders" type="Node" parent="." unique_id=1001496981]
 
@@ -437,19 +443,19 @@ one_shot = true
 [node name="LayoutSlots" type="Node2D" parent="." unique_id=806798287]
 
 [node name="SlotA" type="Marker2D" parent="LayoutSlots" unique_id=1077234080]
-position = Vector2(240, 220)
+position = Vector2(220, 190)
 
 [node name="SlotB" type="Marker2D" parent="LayoutSlots" unique_id=2033913141]
-position = Vector2(420, 220)
+position = Vector2(450, 190)
 
 [node name="SlotC" type="Marker2D" parent="LayoutSlots" unique_id=344607718]
-position = Vector2(600, 220)
+position = Vector2(660, 190)
 
 [node name="SlotD" type="Marker2D" parent="LayoutSlots" unique_id=1316249324]
-position = Vector2(510, 220)
+position = Vector2(540, 190)
 
 [node name="SlotE" type="Marker2D" parent="LayoutSlots" unique_id=819792884]
-position = Vector2(420, 380)
+position = Vector2(220, 420)
 
 [node name="SlotF" type="Marker2D" parent="LayoutSlots" unique_id=1389469593]
-position = Vector2(780, 220)
+position = Vector2(830, 190)

@@ -96,76 +96,37 @@ func generate_day_gift_options(gift_data: Dictionary) -> Array:
 
 	if result == "bad":
 		return [
-			{
-				"id": "mouse_bad_slow_start",
-				"name": "æ‘Šå£æœ‰ç‚¹ä¹±",
-				"description": "ä»Šå¤©é¡¾å®¢ç­‰å¾…è€å¿ƒç•¥å¾®ä¸‹é™ã€‚",
-				"effect_type": "active_effect"
-			},
-			{
-				"id": "mouse_bad_extra_cost",
-				"name": "ä¸´æ—¶æ·»ä¹±",
-				"description": "ç«‹åˆ»æŸå¤± 2 é‡‘ã€‚",
-				"effect_type": "instant_money",
-				"money_delta": -2
-			},
-			{
-				"id": "mouse_bad_reputation",
-				"name": "å°å°åå°è±¡",
-				"description": "ç«‹åˆ»å¤±åŽ» 1 ç‚¹å£ç¢‘ã€‚",
-				"effect_type": "instant_reputation",
-				"reputation_delta": -1
-			}
+			_build_day_gift_option("mouse_bad_slow_start", "UI_GIFT_MOUSE_BAD_SLOW_START_NAME", "UI_GIFT_MOUSE_BAD_SLOW_START_DESC", "active_effect"),
+			_build_day_gift_option("mouse_bad_extra_cost", "UI_GIFT_MOUSE_BAD_EXTRA_COST_NAME", "UI_GIFT_MOUSE_BAD_EXTRA_COST_DESC", "instant_money", {"money_delta": -2}),
+			_build_day_gift_option("mouse_bad_reputation", "UI_GIFT_MOUSE_BAD_REPUTATION_NAME", "UI_GIFT_MOUSE_BAD_REPUTATION_DESC", "instant_reputation", {"reputation_delta": -1})
 		]
 
 	if source_type == "mouse":
 		return [
-			{
-				"id": "busy_stall",
-				"name": "çƒ­é—¹æ‘Šå£",
-				"description": "é¡¾å®¢æ¥å¾—æ›´å¿«ï¼Œé€‚åˆæƒ³å¤šåšå‡ å•çš„æ—¶å€™ã€‚",
-				"effect_type": "active_effect"
-			},
-			{
-				"id": "mouse_spare_coin",
-				"name": "è€é¼ çš„å°é›¶é’±",
-				"description": "ç«‹åˆ»èŽ·å¾— 2 é‡‘ã€‚",
-				"effect_type": "instant_money",
-				"money_delta": 2
-			},
-			{
-				"id": "mouse_found_spinach",
-				"name": "è€é¼ æ‰¾åˆ°çš„é’èœ",
-				"description": "ç«‹åˆ»èŽ·å¾—è èœ x2ã€‚",
-				"effect_type": "instant_stock",
-				"stock_item_id": "spinach",
-				"stock_amount": 2
-			}
+			_build_day_gift_option("busy_stall", "UI_GIFT_BUSY_STALL_NAME", "UI_GIFT_BUSY_STALL_DESC", "active_effect"),
+			_build_day_gift_option("mouse_spare_coin", "UI_GIFT_MOUSE_SPARE_COIN_NAME", "UI_GIFT_MOUSE_SPARE_COIN_DESC", "instant_money", {"money_delta": 2}),
+			_build_day_gift_option("mouse_found_spinach", "UI_GIFT_MOUSE_FOUND_SPINACH_NAME", "UI_GIFT_MOUSE_FOUND_SPINACH_DESC", "instant_stock", {"stock_item_id": "spinach", "stock_amount": 2})
 		]
 
 	return [
-		{
-			"id": "small_tip",
-			"name": "ä¸€ç‚¹å°å¿ƒæ„",
-			"description": "ç«‹åˆ»èŽ·å¾— 1 é‡‘ã€‚",
-			"effect_type": "instant_money",
-			"money_delta": 1
-		},
-		{
-			"id": "warm_memory",
-			"name": "æ¸©çƒ­å›žå“",
-			"description": "ç«‹åˆ»èŽ·å¾— 1 ç‚¹å£ç¢‘ã€‚",
-			"effect_type": "instant_reputation",
-			"reputation_delta": 1
-		},
-		{
-			"id": "steady_paws",
-			"name": "ç¨³ç¨³çˆªçˆª",
-			"description": "è®°å½•ä¸ºä¸€ä¸ªç¨³å®šç»è¥æ•ˆæžœã€‚",
-			"effect_type": "active_effect"
-		}
+		_build_day_gift_option("small_tip", "UI_GIFT_SMALL_TIP_NAME", "UI_GIFT_SMALL_TIP_DESC", "instant_money", {"money_delta": 1}),
+		_build_day_gift_option("warm_memory", "UI_GIFT_WARM_MEMORY_NAME", "UI_GIFT_WARM_MEMORY_DESC", "instant_reputation", {"reputation_delta": 1}),
+		_build_day_gift_option("steady_paws", "UI_GIFT_STEADY_PAWS_NAME", "UI_GIFT_STEADY_PAWS_DESC", "active_effect")
 	]
 
+
+func _build_day_gift_option(option_id: String, name_key: String, description_key: String, effect_type: String, extra_data: Dictionary = {}) -> Dictionary:
+	var option_data: Dictionary = {
+		"id": option_id,
+		"name": TextDB.get_text(name_key),
+		"description": TextDB.get_text(description_key),
+		"effect_type": effect_type
+	}
+
+	for key in extra_data.keys():
+		option_data[key] = extra_data[key]
+
+	return option_data
 
 func _on_day_gift_option_pressed(option_index: int) -> void:
 	if day_gift_current_gift_id == "":
@@ -195,9 +156,9 @@ func _on_day_gift_option_pressed(option_index: int) -> void:
 func apply_day_gift_choice(gift_data: Dictionary, chosen_card: Dictionary) -> void:
 	var effect_type: String = str(chosen_card.get("effect_type", "active_effect"))
 	var card_id: String = str(chosen_card.get("id", "unknown_card"))
-	var card_name: String = str(chosen_card.get("name", "æœªçŸ¥å¡ç‰Œ"))
+	var card_name: String = str(chosen_card.get("name", TextDB.get_text("UI_FALLBACK_UNKNOWN_CARD")))
 	var gift_id: String = str(gift_data.get("gift_id", ""))
-	var display_name: String = str(gift_data.get("display_name", "ç‰¹æ®Šå®¢äººçš„ç¤¼ç‰©"))
+	var display_name: String = str(gift_data.get("display_name", TextDB.get_text("UI_DAY_GIFT_DEFAULT_TITLE")))
 	var result: String = str(gift_data.get("result", "neutral"))
 
 	if effect_type == "instant_money":
@@ -238,7 +199,7 @@ func apply_day_gift_choice(gift_data: Dictionary, chosen_card: Dictionary) -> vo
 
 
 func get_day_gift_option_button_text(option_data: Dictionary) -> String:
-	var name: String = str(option_data.get("name", "æœªçŸ¥å¡ç‰Œ"))
+	var name: String = str(option_data.get("name", TextDB.get_text("UI_FALLBACK_UNKNOWN_CARD")))
 	var desc: String = str(option_data.get("description", ""))
 	return "%s\n\n%s" % [name, desc]
 

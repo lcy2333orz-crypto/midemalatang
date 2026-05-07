@@ -70,7 +70,7 @@ func _ensure_interaction_widgets() -> void:
 
 
 func update_money(value: int) -> void:
-	money_label.text = "金钱：%d\n口碑：%d" % [
+	money_label.text = TextDB.get_text("UI_MONEY") % [
 		value,
 		RunSetupData.shop_reputation
 	]
@@ -198,7 +198,7 @@ func update_business_state(
 		return
 
 	if is_cleanup:
-		business_state_label.text = "收摊整理：在收银台按 E 进入结算"
+		business_state_label.text = TextDB.get_text("UI_DAY_STATE_CLEANUP")
 		return
 
 	if is_open:

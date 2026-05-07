@@ -63,7 +63,7 @@ func open() -> void:
 
 			var amount: int = int(package_data.get("amount", 1))
 			var package_id: String = str(package_data.get("id", "package"))
-			var package_name: String = str(package_data.get("name", "一批"))
+			var package_name: String = _get_package_name(package_data)
 			var button: Button = Button.new()
 			button.name = "Order_%s_%s_Button" % [item_id, package_id]
 			button.position = Vector2(
@@ -94,20 +94,20 @@ func refresh() -> void:
 
 	if status_label != null:
 		var lines: Array[String] = []
-		lines.append("当前资金：%d" % manager.money)
-		lines.append("生食材：%s" % manager.get_raw_stock_text())
-		lines.append("主食库存：%s" % manager.get_staple_stock_text())
+		lines.append(TextDB.get_text("UI_SUPPLIER_MONEY") % manager.money)
+		lines.append(TextDB.get_text("UI_SUPPLIER_RAW_STOCK") % manager.get_raw_stock_text())
+		lines.append(TextDB.get_text("UI_SUPPLIER_STAPLE_STOCK") % manager.get_staple_stock_text())
 
 		if supplier_system.supplier_orders.is_empty():
-			lines.append("待送达：无")
+			lines.append(TextDB.get_text("UI_SUPPLIER_PENDING_NONE"))
 		else:
-			lines.append("待送达：")
+			lines.append(TextDB.get_text("UI_SUPPLIER_PENDING_HEADER"))
 			for order_data in supplier_system.supplier_orders:
 				if typeof(order_data) != TYPE_DICTIONARY:
 					continue
 				var order_items: Dictionary = order_data.get("items", {})
 				var time_left: float = float(order_data.get("time_left", 0.0))
-				lines.append("- %s，约 %.1f 秒后送达" % [
+				lines.append(TextDB.get_text("UI_SUPPLIER_PENDING_LINE") % [
 					manager.get_items_text(order_items),
 					time_left
 				])
@@ -119,7 +119,7 @@ func refresh() -> void:
 
 		var item_id: String = str(button.get_meta("item_id", ""))
 		var amount: int = int(button.get_meta("amount", 1))
-		var package_name: String = str(button.get_meta("package_name", "一批"))
+		var package_name: String = str(button.get_meta("package_name", TextDB.get_text("UI_SUPPLIER_PACKAGE_FALLBACK")))
 		if item_id == "":
 			continue
 
@@ -134,7 +134,7 @@ func refresh() -> void:
 		var display_name: String = manager.get_ingredient_display_name(item_id)
 
 		if pending_amount > 0:
-			button.text = "%s %s x%d\n%d金｜库%d 待%d" % [
+			button.text = TextDB.get_text("UI_SUPPLIER_BUTTON_PENDING") % [
 				display_name,
 				package_name,
 				amount,
@@ -143,7 +143,7 @@ func refresh() -> void:
 				pending_amount
 			]
 		else:
-			button.text = "%s %s x%d\n%d金｜库存%d" % [
+			button.text = TextDB.get_text("UI_SUPPLIER_BUTTON") % [
 				display_name,
 				package_name,
 				amount,
@@ -163,3 +163,12 @@ func close() -> void:
 	status_label = null
 	options_root = null
 	buttons.clear()
+
+
+func _get_package_name(package_data: Dictionary) -> String:
+	var text_key: String = str(package_data.get("text_key", ""))
+
+	if text_key != "":
+		return TextDB.get_text(text_key)
+
+	return str(package_data.get("name", TextDB.get_text("UI_SUPPLIER_PACKAGE_FALLBACK")))
