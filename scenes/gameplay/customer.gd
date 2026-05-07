@@ -581,7 +581,7 @@ func get_ingredients_text() -> String:
 			]
 		)
 
-	return ", ".join(parts)
+	return TextDB.get_text("UI_LIST_JOIN_COMMA").join(parts)
 
 func setup_special_customer(special_type: String, display_name: String) -> void:
 	is_special_customer = true

@@ -409,7 +409,7 @@ func interact_with_delivery_point() -> void:
 		var staple_customer: Node = manager.hand_over_held_staple_to_waiting_customer()
 
 		if staple_customer == null:
-			print("æ²¡æœ‰ç­‰å¾…è¿™ä¸ªä¸»é£Ÿçš„é¡¾å®¢ã€‚")
+			print(TextDB.get_text("LOG_ORDER_NO_CUSTOMER_WAITING_STAPLE"))
 			return
 
 		changed_anything = true
@@ -421,7 +421,7 @@ func interact_with_delivery_point() -> void:
 			complete_delivery(completed_customer)
 			return
 
-		print("å·²æäº¤ä¸»é£Ÿã€‚è®¢å•è¿˜æ²¡å®Œæˆï¼Œè®¢å•å¡ä¼šç»§ç»­æ˜¾ç¤ºå‰©ä½™å†…å®¹ã€‚")
+		print(TextDB.get_text("LOG_ORDER_STAPLE_SUBMITTED_PARTIAL"))
 		_refresh_cart_pot_panel_if_open()
 		return
 
@@ -449,7 +449,7 @@ func interact_with_delivery_point() -> void:
 		return
 
 	if changed_anything:
-		print("å·²æäº¤å½“å‰èƒ½äº¤çš„é…èœã€‚è®¢å•è¿˜æ²¡å®Œæˆï¼Œè®¢å•å¡ä¼šç»§ç»­æ˜¾ç¤ºå‰©ä½™å†…å®¹ã€‚")
+		print(TextDB.get_text("LOG_ORDER_INGREDIENTS_SUBMITTED_PARTIAL"))
 		_refresh_cart_pot_panel_if_open()
 		return
 

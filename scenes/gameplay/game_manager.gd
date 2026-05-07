@@ -491,7 +491,8 @@ func get_items_text(items: Dictionary) -> String:
 	if parts.is_empty():
 		return TextDB.get_text("UI_ITEM_NONE")
 
-	return "?".join(parts)
+	return TextDB.get_text("UI_LIST_JOIN_COMMA").join(parts)
+
 func get_modified_spawn_timer_wait_time() -> float:
 	var multiplier: float = RunSetupData.get_current_day_multiplier(
 		"customer_spawn_interval_multiplier",

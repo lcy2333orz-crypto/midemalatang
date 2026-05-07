@@ -1,108 +1,215 @@
 {
+
   "pools": {
+
 	"insight": [
+
 	  {
+
 		"id": "claw_dance",
-		"name": "爪爪飞舞",
-		"description": "小猫收摊时练了练爪子。之后顾客来得稍微更快。",
+
 		"modifiers": {
+
 		  "customer_spawn_interval_multiplier": 0.9
-		}
+
+		},
+
+		"name_key": "UI_CARD_CLAW_DANCE_NAME",
+
+		"description_key": "UI_CARD_CLAW_DANCE_DESC"
+
 	  },
+
 	  {
+
 		"id": "slow_down_meow",
-		"name": "慢慢来喵",
-		"description": "小猫决定不要那么慌。之后顾客耐心稍微提高。",
+
 		"modifiers": {
+
 		  "customer_patience_multiplier": 1.2
-		}
+
+		},
+
+		"name_key": "UI_CARD_SLOW_DOWN_MEOW_NAME",
+
+		"description_key": "UI_CARD_SLOW_DOWN_MEOW_DESC"
+
 	  },
+
 	  {
+
 		"id": "prepare_first",
-		"name": "先备一点",
-		"description": "小猫学会提前整理食材。每天早上额外获得少量随机生食材。",
+
 		"modifiers": {
+
 		  "random_raw_stock_bonus": 2
-		}
+
+		},
+
+		"name_key": "UI_CARD_PREPARE_FIRST_NAME",
+
+		"description_key": "UI_CARD_PREPARE_FIRST_DESC"
+
 	  }
+
 	],
+
 	"good": [
+
 	  {
+
 		"id": "busy_stall",
-		"name": "热闹摊口",
-		"description": "老鼠把这家小摊告诉了附近的朋友。之后顾客来得更快。",
+
 		"modifiers": {
+
 		  "customer_spawn_interval_multiplier": 0.85
-		}
+
+		},
+
+		"name_key": "UI_CARD_BUSY_STALL_NAME",
+
+		"description_key": "UI_CARD_BUSY_STALL_DESC"
+
 	  },
+
 	  {
+
 		"id": "clean_plate",
-		"name": "一点不剩",
-		"description": "老鼠把碗吃得干干净净。之后普通供货商进货稍微便宜。",
+
 		"modifiers": {
+
 		  "supplier_order_price_multiplier": 0.9
-		}
+
+		},
+
+		"name_key": "UI_CARD_CLEAN_PLATE_NAME",
+
+		"description_key": "UI_CARD_CLEAN_PLATE_DESC"
+
 	  },
+
 	  {
+
 		"id": "sneak_around",
-		"name": "钻来钻去",
-		"description": "老鼠知道附近哪里能临时借到食材。之后临时借货稍微便宜。",
+
 		"modifiers": {
+
 		  "emergency_shop_price_multiplier": 0.75
-		}
+
+		},
+
+		"name_key": "UI_CARD_SNEAK_AROUND_NAME",
+
+		"description_key": "UI_CARD_SNEAK_AROUND_DESC"
+
 	  }
+
 	],
+
 	"bad": [
+
 	  {
+
 		"id": "messy_rhythm",
-		"name": "乱成一团",
-		"description": "今晚的小摊有些慌乱。之后顾客耐心稍微降低。",
+
 		"modifiers": {
+
 		  "customer_patience_multiplier": 0.9
-		}
+
+		},
+
+		"name_key": "UI_CARD_MESSY_RHYTHM_NAME",
+
+		"description_key": "UI_CARD_MESSY_RHYTHM_DESC"
+
 	  },
+
 	  {
+
 		"id": "impatient_customers",
-		"name": "顾客不耐烦",
-		"description": "不好的服务让一些顾客留下了坏印象。之后顾客耐心明显降低。",
+
 		"modifiers": {
+
 		  "customer_patience_multiplier": 0.8
-		}
+
+		},
+
+		"name_key": "UI_CARD_IMPATIENT_CUSTOMERS_NAME",
+
+		"description_key": "UI_CARD_IMPATIENT_CUSTOMERS_DESC"
+
 	  },
+
 	  {
+
 		"id": "slower_rhythm",
-		"name": "节奏变慢",
-		"description": "今晚的失误打乱了小摊节奏。之后顾客来得稍微慢一点。",
+
 		"modifiers": {
+
 		  "customer_spawn_interval_multiplier": 1.15
-		}
+
+		},
+
+		"name_key": "UI_CARD_SLOWER_RHYTHM_NAME",
+
+		"description_key": "UI_CARD_SLOWER_RHYTHM_DESC"
+
 	  }
+
 	],
+
 	"fallback": [
+
 	  {
+
 		"id": "tidy_up",
-		"name": "整理一下",
-		"description": "小猫把摊位重新整理好。每天早上额外获得一点随机生食材。",
+
 		"modifiers": {
+
 		  "random_raw_stock_bonus": 1
-		}
+
+		},
+
+		"name_key": "UI_CARD_TIDY_UP_NAME",
+
+		"description_key": "UI_CARD_TIDY_UP_DESC"
+
 	  },
+
 	  {
+
 		"id": "take_a_breath",
-		"name": "缓一口气",
-		"description": "小猫坐下来缓了一口气。之后顾客耐心略微提高。",
+
 		"modifiers": {
+
 		  "customer_patience_multiplier": 1.1
-		}
+
+		},
+
+		"name_key": "UI_CARD_TAKE_A_BREATH_NAME",
+
+		"description_key": "UI_CARD_TAKE_A_BREATH_DESC"
+
 	  },
+
 	  {
+
 		"id": "cheer_up_again",
-		"name": "重新打起精神",
-		"description": "小猫重新打起精神。之后顾客来得略微更快。",
+
 		"modifiers": {
+
 		  "customer_spawn_interval_multiplier": 0.95
-		}
+
+		},
+
+		"name_key": "UI_CARD_CHEER_UP_AGAIN_NAME",
+
+		"description_key": "UI_CARD_CHEER_UP_AGAIN_DESC"
+
 	  }
+
 	]
+
   }
+
 }
