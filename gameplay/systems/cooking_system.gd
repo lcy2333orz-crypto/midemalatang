@@ -1844,27 +1844,39 @@ func try_fulfill_cart_ingredients_for_customer(customer: Node) -> bool:
 
 
 
+	var needed_ingredients: Dictionary = get_cart_ingredients_needed_from_pot(customer)
+
+
+
 	if CustomerOrderState.needs_emergency_purchase(customer):
 
-		print(TextDB.get_text("LOG_CUSTOMER_STILL_SHORTAGE_EMERGENCY"))
+		var current_shortage: Dictionary = {}
+
+		if manager.emergency_purchase_system != null:
+
+			current_shortage = manager.emergency_purchase_system.get_customer_shortage(customer)
+
+		if current_shortage.is_empty():
+
+			CustomerOrderState.set_needs_emergency_purchase(customer, false)
+
+		else:
+
+			print(TextDB.get_text("LOG_CUSTOMER_STILL_SHORTAGE_EMERGENCY"))
+
+			return false
+
+
+
+	if needed_ingredients.is_empty() and not CustomerOrderState.needs_ingredients(customer):
 
 		return false
 
 
 
-	if not CustomerOrderState.needs_ingredients(customer):
+	if needed_ingredients.is_empty() and CustomerOrderState.is_ingredients_ready(customer):
 
 		return false
-
-
-
-	if CustomerOrderState.is_ingredients_ready(customer):
-
-		return false
-
-
-
-	var needed_ingredients: Dictionary = get_cart_ingredients_needed_from_pot(customer)
 
 
 
