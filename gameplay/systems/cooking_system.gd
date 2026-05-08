@@ -1,4 +1,4 @@
-class_name CookingSystem
+﻿class_name CookingSystem
 
 extends RefCounted
 
@@ -280,13 +280,13 @@ func remove_customer_from_cooker_slots(customer: Node) -> void:
 
 func start_shop_order_bound_cooking_pending_order() -> void:
 
-	var customer: Node = manager.get_first_uncooked_pending_customer() as Node
+	var customer: Node = manager.pending_order_system.get_first_uncooked() as Node
 
 
 
 	if customer == null:
 
-		if manager.get_first_customer_needing_emergency_purchase() != null:
+		if manager.emergency_purchase_system.get_first_customer_needing_purchase() != null:
 
 			print("Need emergency purchase first.")
 
@@ -608,7 +608,7 @@ func get_cart_pot_ingredient_ids() -> Array:
 
 func get_cart_pot_cooked_capacity_used() -> int:
 
-	return manager.get_stock_total(manager.cooked_stock)
+	return manager.inventory_system.get_stock_total(manager.cooked_stock)
 
 
 
@@ -636,7 +636,7 @@ func get_cart_pot_cooking_capacity_used() -> int:
 
 
 
-		total += manager.get_stock_total(items as Dictionary)
+		total += manager.inventory_system.get_stock_total(items as Dictionary)
 
 
 
@@ -646,7 +646,7 @@ func get_cart_pot_cooking_capacity_used() -> int:
 
 func get_cart_pot_selection_total() -> int:
 
-	return manager.get_stock_total(cart_pot_selection)
+	return manager.inventory_system.get_stock_total(cart_pot_selection)
 
 
 
@@ -1136,7 +1136,7 @@ func update_staple_ladle_slots(delta: float) -> void:
 
 			slot["time_left"] = 0.0
 
-			print(TextDB.get_text("LOG_STAPLE_LADLE_READY") % [i + 1, manager.get_ingredient_display_name(str(slot.get("main_food_id", "")))])
+			print(TextDB.get_text("LOG_STAPLE_LADLE_READY") % [i + 1, TextDB.get_item_name(str(slot.get("main_food_id", "")))])
 
 		else:
 
@@ -1180,13 +1180,13 @@ func get_first_pending_customer_waiting_for_main_food(main_food_id: String) -> N
 
 
 
-		if not manager.customer_has_main_food(customer):
+		if not manager.order_system.customer_has_main_food(customer):
 
 			continue
 
 
 
-		if manager.get_customer_main_food_stock_id(customer) != main_food_id:
+		if manager.order_system.get_customer_main_food_stock_id(customer) != main_food_id:
 
 			continue
 
@@ -1242,13 +1242,13 @@ func get_waiting_main_food_count(main_food_id: String) -> int:
 
 
 
-		if not manager.customer_has_main_food(customer):
+		if not manager.order_system.customer_has_main_food(customer):
 
 			continue
 
 
 
-		if manager.get_customer_main_food_stock_id(customer) != main_food_id:
+		if manager.order_system.get_customer_main_food_stock_id(customer) != main_food_id:
 
 			continue
 
@@ -1412,7 +1412,7 @@ func start_staple_ladle_cooking(slot_index: int, main_food_id: String) -> void:
 
 
 
-	print(TextDB.get_text("LOG_STAPLE_LADLE_STARTED") % [slot_index + 1, manager.get_ingredient_display_name(main_food_id)])
+	print(TextDB.get_text("LOG_STAPLE_LADLE_STARTED") % [slot_index + 1, TextDB.get_item_name(main_food_id)])
 
 	print(TextDB.get_text("LOG_STAPLE_LADLE_DURATION") % [float(slot["time_left"])])
 
@@ -1436,7 +1436,7 @@ func take_ready_staple_from_ladle(slot_index: int) -> void:
 
 	if held_staple_food_id != "":
 
-		print(TextDB.get_text("LOG_STAPLE_HAND_HAS_COOKED_DELIVER_FIRST") % [manager.get_ingredient_display_name(held_staple_food_id)])
+		print(TextDB.get_text("LOG_STAPLE_HAND_HAS_COOKED_DELIVER_FIRST") % [TextDB.get_item_name(held_staple_food_id)])
 
 		return
 
@@ -1480,7 +1480,7 @@ func take_ready_staple_from_ladle(slot_index: int) -> void:
 
 
 
-	print(TextDB.get_text("LOG_STAPLE_TAKEN_FROM_LADLE") % [slot_index + 1, manager.get_ingredient_display_name(main_food_id)])
+	print(TextDB.get_text("LOG_STAPLE_TAKEN_FROM_LADLE") % [slot_index + 1, TextDB.get_item_name(main_food_id)])
 
 
 
@@ -1508,13 +1508,13 @@ func interact_with_staple_basket(main_food_id: String) -> void:
 
 
 
-	var display_name: String = manager.get_ingredient_display_name(main_food_id)
+	var display_name: String = TextDB.get_item_name(main_food_id)
 
 
 
 	if held_staple_food_id != "":
 
-		print(TextDB.get_text("LOG_STAPLE_HAND_HAS_COOKED_DELIVER_FIRST") % [manager.get_ingredient_display_name(held_staple_food_id)])
+		print(TextDB.get_text("LOG_STAPLE_HAND_HAS_COOKED_DELIVER_FIRST") % [TextDB.get_item_name(held_staple_food_id)])
 
 		return
 
@@ -1554,7 +1554,7 @@ func interact_with_staple_basket(main_food_id: String) -> void:
 
 
 
-	print(TextDB.get_text("LOG_STAPLE_HELD_RAW_NEEDS_MATCHING_BASKET") % [manager.get_ingredient_display_name(held_raw_staple_food_id)])
+	print(TextDB.get_text("LOG_STAPLE_HELD_RAW_NEEDS_MATCHING_BASKET") % [TextDB.get_item_name(held_raw_staple_food_id)])
 
 
 
@@ -1588,7 +1588,7 @@ func interact_with_staple_ladle(slot_index: int) -> void:
 
 		if held_staple_food_id != "":
 
-			print(TextDB.get_text("LOG_STAPLE_HAND_HAS_COOKED_DELIVER_FIRST") % [manager.get_ingredient_display_name(held_staple_food_id)])
+			print(TextDB.get_text("LOG_STAPLE_HAND_HAS_COOKED_DELIVER_FIRST") % [TextDB.get_item_name(held_staple_food_id)])
 
 			return
 
@@ -1600,7 +1600,7 @@ func interact_with_staple_ladle(slot_index: int) -> void:
 
 		if not can_start_staple_ladle_cooking(slot_index, main_food_id):
 
-			print(TextDB.get_text("LOG_STAPLE_CANNOT_PUT_IN_LADLE") % [manager.get_ingredient_display_name(main_food_id), slot_index + 1])
+			print(TextDB.get_text("LOG_STAPLE_CANNOT_PUT_IN_LADLE") % [TextDB.get_item_name(main_food_id), slot_index + 1])
 
 			return
 
@@ -1622,7 +1622,7 @@ func interact_with_staple_ladle(slot_index: int) -> void:
 
 		var time_left: float = float(slot.get("time_left", 0.0))
 
-		print(TextDB.get_text("LOG_STAPLE_LADLE_COOKING_STATUS") % [slot_index + 1, manager.get_ingredient_display_name(cooking_food_id), time_left])
+		print(TextDB.get_text("LOG_STAPLE_LADLE_COOKING_STATUS") % [slot_index + 1, TextDB.get_item_name(cooking_food_id), time_left])
 
 		return
 
@@ -1632,7 +1632,7 @@ func interact_with_staple_ladle(slot_index: int) -> void:
 
 		if held_raw_staple_food_id != "":
 
-			print(TextDB.get_text("LOG_STAPLE_HELD_RAW_BLOCKS_READY") % [manager.get_ingredient_display_name(held_raw_staple_food_id)])
+			print(TextDB.get_text("LOG_STAPLE_HELD_RAW_BLOCKS_READY") % [TextDB.get_item_name(held_raw_staple_food_id)])
 
 			return
 
@@ -1656,7 +1656,7 @@ func get_held_raw_staple_text() -> String:
 
 		return TextDB.get_text("UI_ITEM_NONE")
 
-	return manager.get_ingredient_display_name(held_raw_staple_food_id)
+	return TextDB.get_item_name(held_raw_staple_food_id)
 
 
 
@@ -1668,7 +1668,7 @@ func get_held_staple_text() -> String:
 
 
 
-	return manager.get_ingredient_display_name(held_staple_food_id)
+	return TextDB.get_item_name(held_staple_food_id)
 
 
 
@@ -1692,7 +1692,7 @@ func get_staple_ladle_text(slot_index: int) -> String:
 
 	if main_food_id != "":
 
-		main_food_text = manager.get_ingredient_display_name(main_food_id)
+		main_food_text = TextDB.get_item_name(main_food_id)
 
 
 
@@ -2002,7 +2002,7 @@ func hand_over_held_staple_to_waiting_customer() -> Node:
 
 	var held_food_id: String = held_staple_food_id
 
-	var held_food_name: String = manager.get_ingredient_display_name(held_food_id)
+	var held_food_name: String = TextDB.get_item_name(held_food_id)
 
 
 
@@ -2020,7 +2020,7 @@ func hand_over_held_staple_to_waiting_customer() -> Node:
 
 
 
-		if not manager.customer_has_main_food(customer):
+		if not manager.order_system.customer_has_main_food(customer):
 
 			continue
 
@@ -2158,7 +2158,7 @@ func get_effective_cart_pot_batch_duration() -> float:
 
 
 
-	if manager.has_effect("claw_dance"):
+	if manager.day_event_system.has_effect("claw_dance"):
 
 		duration *= 0.8
 
@@ -2176,7 +2176,7 @@ func get_effective_staple_ladle_duration() -> float:
 
 
 
-	if manager.has_effect("claw_dance"):
+	if manager.day_event_system.has_effect("claw_dance"):
 
 		duration *= 0.8
 

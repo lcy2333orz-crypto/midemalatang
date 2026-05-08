@@ -13,6 +13,13 @@ func debug_validate() -> Array[String]:
 
 	if manager == null or not is_instance_valid(manager):
 		warnings.append("SettlementBuilder is not bound to a valid GameManager.")
+		return warnings
+
+	if manager.economy_system == null:
+		warnings.append("SettlementBuilder: EconomySystem is missing.")
+
+	if manager.inventory_system == null:
+		warnings.append("SettlementBuilder: InventorySystem is missing.")
 
 	return warnings
 

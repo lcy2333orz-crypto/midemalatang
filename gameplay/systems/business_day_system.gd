@@ -61,13 +61,13 @@ func open_business() -> void:
 		return
 
 	manager.has_opened_for_business_today = true
-	manager.close_supplier_order_panel()
+	manager.supplier_system.close_panel()
 
 	manager.is_open_for_business = true
 
 	print("=== Business opened ===")
 
-	manager.start_initial_customer_wave()
+	manager.customer_queue_system.start_initial_customer_wave()
 
 
 func close_business() -> void:

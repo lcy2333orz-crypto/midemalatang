@@ -172,8 +172,16 @@ func _ready() -> void:
 
 	_setup_day_settlement()
 
-	setup_night_queue()
+	if RunSetupData.current_day_in_run >= RunSetupData.total_days_in_run:
+		night_finished = true
+		card_overlay_bg.visible = false
+		card_choice_title_label.visible = false
+		night_queue_label.visible = false
+		card_container.visible = false
+		_show_confirm_button_only()
+		return
 
+	setup_night_queue()
 	show_current_choice()
 
 
@@ -857,75 +865,85 @@ func _setup_day_settlement() -> void:
 
 
 func _setup_run_settlement() -> void:
-
 	var summary: Dictionary = RunSetupData.get_run_summary()
 
+	var total_days: int = int(summary.get("total_days", RunSetupData.total_days_in_run))
+	var run_gross_income: int = int(summary.get("run_gross_income", 0))
+	var run_expense: int = int(summary.get("run_expense", 0))
+	var run_net_income: int = int(summary.get("run_net_income", summary.get("run_income", 0)))
+	var current_money: int = int(summary.get("current_money", 0))
 
+	title_label.text = TextDB.get_text("UI_RUN_SETTLEMENT_COMPLETE_TITLE") % total_days
 
-	title_label.text = TextDB.get_text("UI_RUN_SETTLEMENT_TITLE")
-
-	today_income_label.text = TextDB.get_text("UI_SETTLEMENT_LAST_GROSS") % int(summary.get("today_gross_income", 0))
-
-
+	today_income_label.text = TextDB.get_text("UI_RUN_SETTLEMENT_TOTAL_SALES") % run_gross_income
 
 	if expense_label != null:
-
-		expense_label.text = TextDB.get_text("UI_SETTLEMENT_LAST_EXPENSE") % int(summary.get("today_expense", 0))
-
-
+		expense_label.text = TextDB.get_text("UI_RUN_SETTLEMENT_TOTAL_EXPENSE") % run_expense
 
 	if net_income_label != null:
+		net_income_label.text = TextDB.get_text("UI_RUN_SETTLEMENT_NET_PROFIT") % run_net_income
+		net_income_label.add_theme_font_size_override("font_size", 20)
 
-		net_income_label.text = TextDB.get_text("UI_SETTLEMENT_LAST_NET") % int(summary.get("today_net_income", 0))
-
-
-
-	round_income_label.text = TextDB.get_text("UI_SETTLEMENT_RUN_NET") % int(summary.get("run_net_income", summary.get("run_income", 0)))
-
-	money_label.text = TextDB.get_text("UI_SETTLEMENT_CURRENT_MONEY") % int(summary.get("current_money", 0))
-
-
+	round_income_label.text = TextDB.get_text("UI_RUN_SETTLEMENT_FINAL_CASH") % current_money
+	money_label.text = TextDB.get_text("UI_RUN_SETTLEMENT_EARNED_HINT")
 
 	cooked_stock_label.visible = false
 
 	raw_stock_label.visible = true
-
-	raw_stock_label.text = TextDB.get_text("UI_SETTLEMENT_RAW_STOCK") % str(summary.get("raw_stock_text", TextDB.get_text("UI_ITEM_NONE")))
-
-
+	raw_stock_label.text = TextDB.get_text("UI_RUN_SETTLEMENT_CARRIED_STOCK") % str(summary.get("raw_stock_text", TextDB.get_text("UI_ITEM_NONE")))
 
 	var reputation_delta: int = int(summary.get("today_reputation_delta", 0))
-
 	var reputation_sign: String = ""
 
-
-
 	if reputation_delta >= 0:
-
 		reputation_sign = "+"
 
-
-
-	waste_label.text = TextDB.get_text("UI_SETTLEMENT_TODAY_REPUTATION") % [reputation_sign, reputation_delta]
-
-	profit_label.text = TextDB.get_text("UI_SETTLEMENT_CURRENT_REPUTATION") % int(summary.get("shop_reputation", 50))
-
-
+	waste_label.text = TextDB.get_text("UI_RUN_SETTLEMENT_FINAL_DAY_REPUTATION") % [reputation_sign, reputation_delta]
+	profit_label.text = TextDB.get_text("UI_RUN_SETTLEMENT_CURRENT_REPUTATION") % int(summary.get("shop_reputation", 50))
 
 	retry_button.text = TextDB.get_text("UI_SETTLEMENT_CONFIRM")
-
 	back_home_button.text = TextDB.get_text("UI_SETTLEMENT_BACK_HOME")
 
-
-
 	_setup_stall_echo(summary)
-
 	_setup_cat_leftover_food(summary)
-
 	_setup_night_activity(false)
-
 	_setup_layout_positions()
 
+
+func _prepare_final_run_summary_from_day_summary() -> void:
+	var day_summary: Dictionary = RunSetupData.get_day_summary()
+
+	if day_summary.is_empty():
+		push_warning("Final day run summary requested, but the day summary is empty.")
+
+	var run_summary: Dictionary = day_summary.duplicate(true)
+	var integer_fields: Array[String] = [
+		"total_days",
+		"today_gross_income",
+		"today_expense",
+		"today_net_income",
+		"run_gross_income",
+		"run_expense",
+		"run_net_income",
+		"current_money",
+		"today_reputation_delta"
+	]
+
+	run_summary["total_days"] = int(run_summary.get("total_days", RunSetupData.total_days_in_run))
+
+	for field_name in integer_fields:
+		run_summary[field_name] = int(run_summary.get(field_name, 0))
+
+	run_summary["shop_reputation"] = int(run_summary.get("shop_reputation", RunSetupData.shop_reputation))
+	run_summary["cooked_stock_text"] = str(run_summary.get("cooked_stock_text", ""))
+	run_summary["raw_stock_text"] = str(run_summary.get("raw_stock_text", TextDB.get_text("UI_ITEM_NONE")))
+	run_summary["cooked_stock_data"] = run_summary.get("cooked_stock_data", {})
+	run_summary["raw_stock_data"] = run_summary.get("raw_stock_data", {})
+	run_summary["staple_stock_data"] = run_summary.get("staple_stock_data", {})
+	run_summary["today_echo_lines"] = run_summary.get("today_echo_lines", [])
+	run_summary["cooked_stock_discarded"] = true
+
+	RunSetupData.set_run_summary(run_summary)
 
 
 func _setup_stall_echo(summary: Dictionary) -> void:
@@ -1661,46 +1679,34 @@ func update_night_queue_preview() -> void:
 
 
 func _on_retry_button_pressed() -> void:
-
 	print("Confirm button pressed. mode=", RunSetupData.get_settlement_view_mode(), " night_finished=", night_finished)
-
-
 
 	get_tree().paused = false
 
-
-
 	if RunSetupData.get_settlement_view_mode() == "day":
+		var is_final_day: bool = RunSetupData.current_day_in_run >= RunSetupData.total_days_in_run
 
-		if not night_finished:
-
-			print("Cannot continue: night is not finished yet.")
-
+		if is_final_day:
+			print("Final day settlement confirmed. Entering run summary.")
+			_prepare_final_run_summary_from_day_summary()
+			clear_leftover_food_for_next_day()
+			get_tree().change_scene_to_file("res://scenes/settlement/settlement_result.tscn")
 			return
 
-
+		if not night_finished:
+			print("Cannot continue: night is not finished yet.")
+			return
 
 		clear_leftover_food_for_next_day()
 
-
-
 		RunSetupData.current_day_in_run += 1
-
 		get_tree().change_scene_to_file("res://scenes/gameplay/main.tscn")
-
 		return
-
-
 
 	clear_leftover_food_for_next_day()
 
-
-
 	RunSetupData.reset_run_setup()
-
 	get_tree().change_scene_to_file("res://scenes/menus/home_menu.tscn")
-
-
 
 func _on_back_home_button_pressed() -> void:
 

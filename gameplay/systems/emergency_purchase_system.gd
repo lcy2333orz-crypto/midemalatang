@@ -38,7 +38,7 @@ func get_total_shortage() -> Dictionary:
 		if CustomerOrderState.is_served(customer):
 			continue
 
-		var remaining_ingredients: Dictionary = manager.get_pending_order_remaining_ingredients(customer)
+		var remaining_ingredients: Dictionary = manager.order_system.get_pending_order_remaining_ingredients(customer)
 
 		for item_id in remaining_ingredients.keys():
 			var item_key: String = str(item_id)
@@ -49,8 +49,8 @@ func get_total_shortage() -> Dictionary:
 
 			total_ingredient_need[item_key] = int(total_ingredient_need.get(item_key, 0)) + amount
 
-		if manager.customer_has_main_food(customer):
-			var main_food_id: String = manager.get_customer_main_food_stock_id(customer)
+		if manager.order_system.customer_has_main_food(customer):
+			var main_food_id: String = manager.order_system.get_customer_main_food_stock_id(customer)
 
 			if main_food_id != "" and main_food_id != "none":
 				if CustomerOrderState.needs_main_food(customer) and not CustomerOrderState.is_main_food_ready(customer):
@@ -106,7 +106,7 @@ func get_customer_shortage(customer: Node) -> Dictionary:
 	if CustomerOrderState.is_served(customer):
 		return shortage
 
-	var remaining_ingredients: Dictionary = manager.get_pending_order_remaining_ingredients(customer)
+	var remaining_ingredients: Dictionary = manager.order_system.get_pending_order_remaining_ingredients(customer)
 
 	for item_id in remaining_ingredients.keys():
 		var item_key: String = str(item_id)
@@ -123,8 +123,8 @@ func get_customer_shortage(customer: Node) -> Dictionary:
 		if missing_amount > 0:
 			shortage[item_key] = missing_amount
 
-	if manager.customer_has_main_food(customer):
-		var main_food_id: String = manager.get_customer_main_food_stock_id(customer)
+	if manager.order_system.customer_has_main_food(customer):
+		var main_food_id: String = manager.order_system.get_customer_main_food_stock_id(customer)
 
 		if main_food_id != "" and main_food_id != "none":
 			if CustomerOrderState.needs_main_food(customer) and not CustomerOrderState.is_main_food_ready(customer):
@@ -182,7 +182,7 @@ func purchase_for_waiting_shortages() -> bool:
 	print("Emergency purchase total shortage: ", total_shortage)
 	print("Emergency purchase total cost: ", cost)
 
-	if not manager.spend_money(cost):
+	if not manager.economy_system.spend_money(cost):
 		print("Emergency purchase failed.")
 		return false
 
@@ -235,17 +235,17 @@ func reserve_stock_after_purchase(customer: Node) -> bool:
 
 			if not original_ingredients.is_empty():
 				if not CustomerOrderState.needs_ingredients(customer):
-					var fulfillment_status: String = manager.get_order_fulfillment_status(original_ingredients)
+					var fulfillment_status: String = manager.inventory_system.get_order_fulfillment_status(original_ingredients)
 
 					if fulfillment_status == "unfulfillable":
 						print("Still cannot fulfill ingredients after emergency purchase.")
-						print("Remaining ingredient shortage: ", manager.get_order_shortage(original_ingredients))
+						print("Remaining ingredient shortage: ", manager.inventory_system.get_order_shortage(original_ingredients))
 						CustomerOrderState.set_needs_emergency_purchase(customer, true)
 						return false
 
 					manager.order_system.prepare_stock_for_waiting_order(customer, fulfillment_status)
 
-	if manager.customer_has_main_food(customer):
+	if manager.order_system.customer_has_main_food(customer):
 		if not CustomerOrderState.is_main_food_ready(customer):
 			CustomerOrderState.set_needs_main_food(customer, true)
 

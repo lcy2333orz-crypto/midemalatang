@@ -8,6 +8,8 @@
 
 - 文本字典：`data/text_db.json` 是唯一展示文本来源；`data/card_db.json` 只保留卡牌池、文本 key 和 modifier 配置。
 
+- 结算：最终日会先显示日结页，确认后进入完整轮结页；轮结页展示文案已迁入 `data/text_db.json`，轮结 summary 会在切换前写入缓存。
+
 - 操作：玩家可以用方向键或 WASD 移动；大锅面板打开时，Esc 等同于点击“盖上锅盖”。
 
 - 大锅：锅内支持多个独立批次。只要剩余容量足够，已有批次在煮时仍可以继续加入食材并启动新批次。
@@ -20,7 +22,7 @@
 
 
 
-当前项目仍处在原型和重构并行阶段：`scenes/gameplay/game_manager.gd` 仍是主要兼容协调器，但营业日、顾客队列、等待订单、库存核心逻辑、补货、应急采购、烹饪、订单/配送、声望和结算摘要等逻辑已经开始拆入 `gameplay/systems/`。
+当前项目仍处在原型和重构并行阶段：`scenes/gameplay/game_manager.gd` 现在主要负责启动、节点引用、每帧调度、结算场景切换和少量外部兼容入口；真实玩法逻辑继续集中到 `gameplay/systems/` 与 `gameplay/models/`。
 
 
 
@@ -28,7 +30,7 @@
 
 
 
-`scenes/gameplay/game_manager.gd` 现在主要作为兼容 facade 使用：外部站点、UI 和顾客脚本仍可调用旧方法名，但真实玩法逻辑正在集中到 `gameplay/systems/`：
+`scenes/gameplay/game_manager.gd` 现在主要作为启动/调度 facade 使用。站点交互、HUD 刷新、经济数据、夜间队列和 run 配置/日事件已经有独立入口，新增玩法逻辑不要继续堆回 `GameManager`：
 
 
 
@@ -52,6 +54,14 @@
 
 - `StationLayoutSystem`：经营场景站点按 `RunSetupData.station_layout` 放置。
 
+- `EconomySystem`：资金、今日/本轮收入支出、利润摘要和运行时资金缓存同步。
+
+- `GameplayHudSystem`：HUD 刷新、库存展示、金钱/声望显示和等待订单卡片刷新。
+
+- `StationInteractionSystem`：柜台、锅、出餐口、仓库、应急采购、礼物盒、主食篮和漏勺的站点交互分发与提示文本。
+
+- `NightQueueBuilder`：根据当天特殊顾客结果生成夜间结算队列。
+
 - `CustomerOrderState`：集中封装顾客订单、库存预留、付款、离开、队列快照和特殊顾客状态访问；现在优先调用 `customer.gd` 明确方法，动态字段只作兼容 fallback。
 
 - `RunEchoState`：承接特殊顾客礼物、打开记录和每日小摊回响统计；`RunSetupData` 保留原字段和方法作为 facade。
@@ -60,13 +70,17 @@
 
 - `RunRuntimeState`：承接 run 资金、累计收入/支出和当前库存缓存；`RunSetupData` 保留原字段与 getter/setter 作为 facade。
 
+- `RunConfigState`：承接关卡天数、默认站点布局、基础食材/主食、供应商价格、包规格、应急倍率和起始资金。
+
+- `RunDayEventState`：承接每日特殊顾客计划、夜间活动、明日事件、晨间信息和当日 modifier 查询。
+
 - `CartPotPanelController`、`SupplierOrderPanelController`、`DayGiftPanelController`、`MorningInfoPanelController`：脚本化 UI controller，负责大锅、补货、礼物和晨间提示面板节点构建和刷新；晨间提示、礼物面板和补货面板已有 `.tscn` 场景化样板。
 
 - `SettlementWidgetsController`：结算页猫粮/剩菜 widget 的脚本化构建入口，结算主页面继续负责流程和布局。
 
 
 
-下一步重点不是继续把新玩法塞进 `GameManager`，而是把更多脚本化 UI controller 沉淀成独立 Control 场景、继续拆 `RunSetupData` 的配置/每日事件生成职责，并补 Godot CLI smoke test。
+下一步重点不是继续把新玩法塞进 `GameManager`，而是把更多脚本化 UI controller 沉淀成独立 Control 场景、把关卡/顾客/事件配置数据化，并补 Godot CLI smoke test。
 
 
 
@@ -92,7 +106,7 @@
 
 - 经济与声望：资金、今日收入、轮次收入、支出、声望变化。
 
-- 结算系统：日结、轮结、剩余库存展示、进入下一天或返回主页。
+- 结算系统：日结、最终日确认后进入轮结、剩余库存展示、进入下一天或返回主页。
 
 - 夜间系统：特殊顾客回响、卡牌选择、当前效果记录。
 
@@ -112,7 +126,7 @@
 
   - `progress_data.gd`: 长期进度，例如二号锅、订单面板等级。
 
-  - `run_setup_data.gd`: 当前 run 状态 facade，例如关卡、天数、资金、库存、特殊顾客、回响、结算缓存。
+  - `run_setup_data.gd`: 当前 run 状态 facade，例如关卡、天数、资金、库存、特殊顾客、回响、结算缓存、配置和每日事件入口。
 
   - `text_db.gd`: 读取 `data/text_db.json`，提供 UI 文案和物品名。
 
@@ -136,9 +150,9 @@
 
 - `scenes/settlement/`: 日结/轮结页面、喂猫区域、可拖拽剩菜按钮和局部 widget controller。
 
-- `gameplay/systems/`: 正在拆分出的玩法系统。`InventorySystem`、`SupplierSystem`、`EmergencyPurchaseSystem`、`CookingSystem`、`OrderSystem`、`PendingOrderSystem`、`ReputationSystem`、`DayEventSystem`、`StationLayoutSystem` 已经承接主要真实逻辑；`GameManager` 保留旧方法名作为兼容入口。
+- `gameplay/systems/`: 正在拆分出的玩法系统。`InventorySystem`、`SupplierSystem`、`EmergencyPurchaseSystem`、`CookingSystem`、`OrderSystem`、`PendingOrderSystem`、`ReputationSystem`、`DayEventSystem`、`StationLayoutSystem`、`EconomySystem`、`GameplayHudSystem`、`StationInteractionSystem` 和 `NightQueueBuilder` 已经承接主要真实逻辑；`GameManager` 只保留必要兼容入口。
 
-- `gameplay/models/`: 玩法常量和工具，例如物品 id、订单结果常量、库存工具、顾客订单状态访问 helper、run 回响状态 helper、run 结算状态 helper、run 运行时状态 helper。
+- `gameplay/models/`: 玩法常量和工具，例如物品 id、订单结果常量、库存工具、顾客订单状态访问 helper、run 回响状态 helper、run 结算状态 helper、run 运行时状态 helper、run 配置状态 helper 和 run 每日事件状态 helper。
 
 
 
@@ -358,9 +372,9 @@ rg "res://(game_manager|main|customer|player|title_menu|home_menu|stage_select|s
 
 - 待处理订单卡片：改 `scenes/ui/pending_order_card.gd` 和 `pending_order_card.tscn`。
 
-- 日结/轮结页面、夜间抽卡、喂猫流程：改 `scenes/settlement/settlement_result.gd`；猫粮/剩菜 widget 构建优先改 `scenes/settlement/settlement_widgets_controller.gd`。
+- 日结/轮结页面、夜间抽卡、喂猫流程：改 `scenes/settlement/settlement_result.gd`；轮结正式文案写入 `data/text_db.json`，猫粮/剩菜 widget 构建优先改 `scenes/settlement/settlement_widgets_controller.gd`。
 
-- 日结/轮结 summary 构建：改 `gameplay/systems/settlement_builder.gd`；它接收明确输入字典，不直接读取 `GameManager` 的收入/库存字段。
+- 日结/轮结 summary 构建：改 `gameplay/systems/settlement_builder.gd`；收入资金来自 `EconomySystem`，库存文本来自 `InventorySystem`，最终仍以明确 input dictionary 构建 summary。
 
 
 

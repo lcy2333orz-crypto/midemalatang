@@ -76,7 +76,7 @@ func evaluate_order_before_checkout(customer: Node) -> Dictionary:
 		return result
 
 	var ingredients: Dictionary = customer.get_ingredients()
-	var fulfillment_status: String = manager.get_order_fulfillment_status(ingredients)
+	var fulfillment_status: String = manager.inventory_system.get_order_fulfillment_status(ingredients)
 	var has_main_food: bool = customer.get_main_food_id() != "none"
 
 	var needs_main_food_cooking: bool = has_main_food
@@ -90,7 +90,7 @@ func evaluate_order_before_checkout(customer: Node) -> Dictionary:
 	result["needs_ingredient_cooking"] = needs_ingredient_cooking
 	result["needs_emergency_purchase"] = needs_emergency_purchase
 	result["fulfillment_status"] = fulfillment_status
-	result["shortage"] = manager.get_order_shortage(ingredients)
+	result["shortage"] = manager.inventory_system.get_order_shortage(ingredients)
 
 	return result
 
@@ -106,10 +106,10 @@ func get_counter_customer_stock_preview(customer: Node) -> Dictionary:
 		return {}
 
 	return {
-		"cooked_text": manager.get_cooked_stock_text(),
-		"raw_text": manager.get_raw_stock_text(),
-		"shortage": manager.get_order_shortage(customer.get_ingredients()),
-		"adjusted_order": manager.get_adjusted_order(customer.get_ingredients())
+		"cooked_text": manager.inventory_system.get_cooked_stock_text(),
+		"raw_text": manager.inventory_system.get_raw_stock_text(),
+		"shortage": manager.inventory_system.get_order_shortage(customer.get_ingredients()),
+		"adjusted_order": get_adjusted_order(customer.get_ingredients())
 	}
 
 
@@ -148,7 +148,7 @@ func confirm_checkout(customer: Node, quoted_price: int = -1) -> Dictionary:
 
 	CustomerOrderState.mark_payment_completed(customer, final_price, true_price)
 
-	manager.add_money(final_price)
+	manager.economy_system.add_money(final_price)
 
 	var game_ui = manager.get_tree().get_first_node_in_group("game_ui")
 	if game_ui:
@@ -179,13 +179,13 @@ func route_after_payment(customer: Node, evaluation: Dictionary) -> String:
 
 		if not needs_waiting:
 			customer.mark_order_served()
-			manager.handle_customer_order_completed(customer)
+			manager.reputation_system.record_served(customer)
 
 			var instant_exit_point: Node = manager.get_tree().get_first_node_in_group("exit_point") as Node
 			if instant_exit_point:
 				customer.go_to_exit(instant_exit_point.global_position)
 
-			manager.release_counter_customer(customer)
+			manager.customer_queue_system.release_counter_customer(customer)
 
 			print("Customer paid and took food immediately.")
 			return "instant_leave"
@@ -233,7 +233,7 @@ func _route_waiting_customer(customer: Node, needs_main_food_cooking: bool, need
 
 	manager.pending_order_system.add(customer)
 
-	manager.release_counter_customer(customer)
+	manager.customer_queue_system.release_counter_customer(customer)
 
 
 func prepare_stock_for_waiting_order(customer: Node, fulfillment_status: String) -> void:
@@ -245,7 +245,7 @@ func prepare_stock_for_waiting_order(customer: Node, fulfillment_status: String)
 	var remaining_to_cook: Dictionary = {}
 
 	if fulfillment_status == "instant":
-		manager.deduct_cooked_stock(ingredients)
+		manager.inventory_system.deduct_cooked_stock(ingredients)
 
 		CustomerOrderState.set_reserved_cooked_ingredients(customer, ingredients)
 		CustomerOrderState.set_ingredients_to_cook(customer, {})
@@ -301,6 +301,21 @@ func get_customer_ingredients_to_cook(customer: Node) -> Dictionary:
 	return CustomerOrderState.get_ingredients_to_cook(customer)
 
 
+func get_customer_main_food_stock_id(customer: Node) -> String:
+	if customer == null or not is_instance_valid(customer):
+		return "none"
+
+	if not customer.has_method("get_main_food_id"):
+		return "none"
+
+	return str(customer.get_main_food_id())
+
+
+func customer_has_main_food(customer: Node) -> bool:
+	var main_food_id: String = get_customer_main_food_stock_id(customer)
+	return main_food_id != "none" and main_food_id != ""
+
+
 func reserve_main_food_stock_for_customer(customer: Node) -> bool:
 	if customer == null or not is_instance_valid(customer):
 		return false
@@ -308,11 +323,11 @@ func reserve_main_food_stock_for_customer(customer: Node) -> bool:
 	if CustomerOrderState.was_main_food_deducted_at_checkout(customer):
 		return true
 
-	if not manager.customer_has_main_food(customer):
+	if not customer_has_main_food(customer):
 		CustomerOrderState.set_main_food_reservation(customer, "none", true)
 		return true
 
-	var main_food_id: String = manager.get_customer_main_food_stock_id(customer)
+	var main_food_id: String = get_customer_main_food_stock_id(customer)
 
 	if int(manager.staple_stock.get(main_food_id, 0)) <= 0:
 		print("Main food stock is not enough: ", main_food_id)
@@ -330,6 +345,25 @@ func reserve_main_food_stock_for_customer(customer: Node) -> bool:
 	return true
 
 
+func can_make_ingredient(ingredient_name: String, amount: int) -> bool:
+	var cooked_amount: int = max(int(manager.cooked_stock.get(ingredient_name, 0)), 0)
+	var raw_amount: int = max(int(manager.raw_stock.get(ingredient_name, 0)), 0)
+	return cooked_amount + raw_amount >= amount
+
+
+func get_adjusted_order(ingredients: Dictionary) -> Dictionary:
+	var adjusted_order: Dictionary = {}
+
+	for ingredient_name in ingredients.keys():
+		var item_key: String = str(ingredient_name)
+		var amount: int = int(ingredients.get(item_key, 0))
+
+		if can_make_ingredient(item_key, amount):
+			adjusted_order[item_key] = amount
+
+	return adjusted_order
+
+
 func handle_stock_shortage_for_customer(customer: Node) -> Dictionary:
 	var result: Dictionary = {
 		"has_alternative": false,
@@ -341,7 +375,7 @@ func handle_stock_shortage_for_customer(customer: Node) -> Dictionary:
 		result["should_leave"] = true
 		return result
 
-	var adjusted_order: Dictionary = manager.get_adjusted_order(customer.get_ingredients())
+	var adjusted_order: Dictionary = get_adjusted_order(customer.get_ingredients())
 	if adjusted_order.size() > 0:
 		result["has_alternative"] = true
 		result["adjusted_order"] = adjusted_order
@@ -383,7 +417,7 @@ func reject_customer_before_checkout(customer: Node) -> void:
 	if exit_point:
 		customer.go_to_exit(exit_point.global_position)
 
-	manager.release_counter_customer(customer)
+	manager.customer_queue_system.release_counter_customer(customer)
 
 	print("Customer leaves before checkout.")
 
@@ -406,7 +440,7 @@ func interact_with_delivery_point() -> void:
 	var completed_customer: Node = null
 
 	if manager.cooking_system.held_staple_food_id != "":
-		var staple_customer: Node = manager.hand_over_held_staple_to_waiting_customer()
+		var staple_customer: Node = manager.cooking_system.hand_over_held_staple_to_waiting_customer()
 
 		if staple_customer == null:
 			print(TextDB.get_text("LOG_ORDER_NO_CUSTOMER_WAITING_STAPLE"))
@@ -436,7 +470,7 @@ func interact_with_delivery_point() -> void:
 			completed_customer = customer
 			break
 
-		if manager.try_fulfill_cart_ingredients_for_customer(customer):
+		if manager.cooking_system.try_fulfill_cart_ingredients_for_customer(customer):
 			changed_anything = true
 
 			if customer.can_be_delivered() or is_pending_customer_fully_submitted(customer):
@@ -470,8 +504,8 @@ func complete_delivery(customer: Node) -> bool:
 	CustomerOrderState.clear_waiting_flags(customer)
 
 	customer.mark_order_served()
-	manager.handle_customer_order_completed(customer)
-	manager.remove_customer_from_pending(customer)
+	manager.reputation_system.record_served(customer)
+	manager.customer_queue_system.remove_customer_from_pending(customer)
 
 	var exit_point = manager.get_tree().get_first_node_in_group("exit_point")
 	if exit_point:
@@ -501,7 +535,7 @@ func get_pending_order_display_text(customer: Node) -> String:
 
 	if manager.order_panel_upgrade_level == 2:
 		if status_id == "cooking":
-			var cooker_slot_index: int = manager.get_customer_cooker_slot_index(customer)
+			var cooker_slot_index: int = manager.cooking_system.get_customer_cooker_slot_index(customer)
 			if cooker_slot_index != -1:
 				return TextDB.get_text("UI_PENDING_ORDER_STATUS_WITH_POT") % [status_text, cooker_slot_index + 1, base_text]
 		return TextDB.get_text("UI_PENDING_ORDER_STATUS") % [status_text, base_text]
@@ -509,7 +543,7 @@ func get_pending_order_display_text(customer: Node) -> String:
 	var extra_target_text: String = get_pending_order_delivery_target_text(customer)
 
 	if status_id == "cooking":
-		var cooker_slot_index_2: int = manager.get_customer_cooker_slot_index(customer)
+		var cooker_slot_index_2: int = manager.cooking_system.get_customer_cooker_slot_index(customer)
 		if cooker_slot_index_2 != -1:
 			if extra_target_text != "":
 				return TextDB.get_text("UI_PENDING_ORDER_STATUS_WITH_POT_TARGET") % [status_text, cooker_slot_index_2 + 1, extra_target_text, base_text]
@@ -525,7 +559,7 @@ func get_pending_order_remaining_main_food_text(customer: Node) -> String:
 	if customer == null or not is_instance_valid(customer):
 		return ""
 
-	if not manager.customer_has_main_food(customer):
+	if not customer_has_main_food(customer):
 		return ""
 
 	if not CustomerOrderState.needs_main_food(customer):
@@ -565,7 +599,27 @@ func get_pending_order_remaining_ingredients_text(customer: Node) -> String:
 	if remaining_ingredients.is_empty():
 		return ""
 
-	return manager.get_items_text(remaining_ingredients)
+	return get_items_text(remaining_ingredients)
+
+
+func get_items_text(items: Dictionary) -> String:
+	var parts: Array[String] = []
+
+	for item_id in items.keys():
+		var amount: int = int(items.get(item_id, 0))
+
+		if amount <= 0:
+			continue
+
+		parts.append("%s x%d" % [
+			TextDB.get_item_name(str(item_id)),
+			amount
+		])
+
+	if parts.is_empty():
+		return TextDB.get_text("UI_ITEM_NONE")
+
+	return TextDB.get_text("UI_LIST_JOIN_COMMA").join(parts)
 
 
 func get_pending_order_card_status_text(customer: Node) -> String:
@@ -627,7 +681,7 @@ func get_pending_order_status_id(customer: Node) -> String:
 	if customer.can_be_delivered():
 		return "ready_delivery"
 
-	if manager.is_customer_in_any_cooker(customer):
+	if manager.cooking_system.is_customer_in_any_cooker(customer):
 		return "cooking"
 
 	return "waiting_cook"

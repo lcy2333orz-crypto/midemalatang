@@ -42,13 +42,13 @@ func debug_validate() -> Array[String]:
 
 func interact_with_gift_box() -> void:
 	if day_gift_panel_controller != null and day_gift_panel_controller.is_open():
-		print("ç¤¼ç‰©é€‰æ‹©é¢æ¿å·²ç»æ‰“å¼€ã€‚")
+		print("Gift choice panel is already open.")
 		return
 
 	var unopened_gifts: Array = RunSetupData.get_unopened_pending_gifts()
 
 	if unopened_gifts.is_empty():
-		print("ç¤¼ç‰©ç›’æ˜¯ç©ºçš„ã€‚å½“å‰æ²¡æœ‰æœªæ‰“å¼€çš„ç‰¹æ®Šå®¢äººç¤¼ç‰©ã€‚")
+		print("The gift box is empty. No unopened special customer gifts are available.")
 		return
 
 	var gift_data: Dictionary = unopened_gifts[0]
@@ -57,12 +57,12 @@ func interact_with_gift_box() -> void:
 
 func open_day_gift_choice_panel(gift_data: Dictionary) -> void:
 	if gift_data.is_empty():
-		print("ä¸èƒ½æ‰“å¼€ç©ºç¤¼ç‰©ã€‚")
+		print("Cannot open an empty gift.")
 		return
 
 	var gift_id: String = str(gift_data.get("gift_id", ""))
 	if gift_id == "":
-		print("ç¤¼ç‰©æ²¡æœ‰ gift_idï¼Œä¸èƒ½æ‰“å¼€ã€‚")
+		print("Gift has no gift_id and cannot be opened.")
 		return
 
 	day_gift_current_gift_id = gift_id
@@ -77,8 +77,8 @@ func open_day_gift_choice_panel(gift_data: Dictionary) -> void:
 	day_gift_panel_controller.open(gift_data, day_gift_current_options)
 	day_gift_layer = day_gift_panel_controller.layer
 
-	print("æ‰“å¼€ç™½å¤©ç¤¼ç‰©ï¼š", gift_data)
-	print("ç™½å¤©ç¤¼ç‰©é€‰é¡¹ï¼š", day_gift_current_options)
+	print("Opening daytime gift: ", gift_data)
+	print("Daytime gift options: ", day_gift_current_options)
 
 
 func close_day_gift_choice_panel() -> void:
@@ -130,25 +130,25 @@ func _build_day_gift_option(option_id: String, name_key: String, description_key
 
 func _on_day_gift_option_pressed(option_index: int) -> void:
 	if day_gift_current_gift_id == "":
-		print("æ²¡æœ‰æ­£åœ¨æ‰“å¼€çš„ç¤¼ç‰©ã€‚")
+		print("No gift is currently being opened.")
 		return
 
 	if option_index < 0 or option_index >= day_gift_current_options.size():
-		print("ç¤¼ç‰©é€‰é¡¹ç¼–å·æ— æ•ˆï¼š", option_index)
+		print("Invalid gift option index: ", option_index)
 		return
 
 	var chosen_card: Dictionary = day_gift_current_options[option_index]
 	var gift_data: Dictionary = RunSetupData.get_unopened_gift_by_id(day_gift_current_gift_id)
 
 	if gift_data.is_empty():
-		print("è¿™ä¸ªç¤¼ç‰©å·²ç»è¢«æ‰“å¼€ï¼Œæˆ–è€…æ‰¾ä¸åˆ°ã€‚")
+		print("This gift has already been opened or could not be found.")
 		close_day_gift_choice_panel()
 		return
 
 	apply_day_gift_choice(gift_data, chosen_card)
 	RunSetupData.mark_gift_opened(day_gift_current_gift_id, chosen_card)
 
-	print("ç™½å¤©æ‰“å¼€ç¤¼ç‰©ï¼Œé€‰æ‹©ï¼š", chosen_card)
+	print("Daytime gift selected: ", chosen_card)
 
 	close_day_gift_choice_panel()
 
@@ -165,16 +165,21 @@ func apply_day_gift_choice(gift_data: Dictionary, chosen_card: Dictionary) -> vo
 		var money_delta: int = int(chosen_card.get("money_delta", 0))
 
 		if money_delta >= 0:
-			manager.add_money(money_delta)
+			manager.economy_system.add_money(money_delta)
 		else:
 			var cost: int = abs(money_delta)
-			if not manager.spend_money(cost):
-				print("å³æ—¶é‡‘é’±æƒ©ç½šæ— æ³•å®Œå…¨æ”¯ä»˜ã€‚éœ€è¦ï¼š", cost, " å½“å‰ï¼š", manager.money)
+			if not manager.economy_system.spend_money(cost):
+				print(
+					"Instant money penalty could not be fully paid. Needed: ",
+					cost,
+					" Current: ",
+					manager.economy_system.money
+				)
 
 	elif effect_type == "instant_reputation":
 		var reputation_delta: int = int(chosen_card.get("reputation_delta", 0))
 		if reputation_delta != 0:
-			manager.change_reputation(reputation_delta, "day gift")
+			manager.reputation_system.change(reputation_delta, "day gift")
 
 	elif effect_type == "instant_stock":
 		var item_id: String = str(chosen_card.get("stock_item_id", ""))
@@ -183,7 +188,12 @@ func apply_day_gift_choice(gift_data: Dictionary, chosen_card: Dictionary) -> vo
 		if item_id != "" and amount > 0:
 			manager.inventory_system.add_stock(item_id, amount)
 
-			print("ç¤¼ç‰©èŽ·å¾—åº“å­˜ï¼š", manager.get_ingredient_display_name(item_id), " x", amount)
+			print(
+				"Gift granted stock: ",
+				TextDB.get_item_name(item_id),
+				" x",
+				amount
+			)
 
 	else:
 		RunSetupData.active_effects.append({
@@ -195,7 +205,7 @@ func apply_day_gift_choice(gift_data: Dictionary, chosen_card: Dictionary) -> vo
 			"from_gift_id": gift_id
 		})
 
-	print("å½“å‰å·²èŽ·å¾—æ•ˆæžœåˆ—è¡¨ï¼š", RunSetupData.active_effects)
+	print("Current active effects: ", RunSetupData.active_effects)
 
 
 func get_day_gift_option_button_text(option_data: Dictionary) -> String:
@@ -245,12 +255,47 @@ func show_pending_morning_info_if_any() -> void:
 	if lines.is_empty():
 		return
 
-	print("=== æ˜¨æ™šå°çŒ«èŽ·å¾—çš„ä¿¡æ¯ ===")
+	print("=== Last night cat information ===")
 
 	for line in lines:
 		print(line)
 
 	_create_morning_info_layer(lines)
+
+
+func get_active_effect_records() -> Array:
+	var result: Array = []
+
+	var active_effects_value = RunSetupData.get("active_effects")
+	if typeof(active_effects_value) == TYPE_ARRAY:
+		for effect_data in active_effects_value:
+			if typeof(effect_data) == TYPE_DICTIONARY:
+				result.append(effect_data)
+
+	var acquired_effects_value = RunSetupData.get("acquired_effects")
+	if typeof(acquired_effects_value) == TYPE_ARRAY:
+		for effect_data in acquired_effects_value:
+			if typeof(effect_data) == TYPE_DICTIONARY:
+				result.append(effect_data)
+
+	return result
+
+
+func has_effect(effect_id: String) -> bool:
+	if effect_id == "":
+		return false
+
+	for effect_data in get_active_effect_records():
+		var record_effect_id: String = str(effect_data.get("effect_id", ""))
+		var record_id: String = str(effect_data.get("id", ""))
+
+		if record_effect_id == effect_id:
+			return true
+
+		if record_id == effect_id:
+			return true
+
+	return false
 
 
 func _create_morning_info_layer(lines: Array[String]) -> void:

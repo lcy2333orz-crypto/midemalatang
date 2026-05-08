@@ -12,7 +12,10 @@ const ReputationSystemScript = preload("res://gameplay/systems/reputation_system
 const SettlementBuilderScript = preload("res://gameplay/systems/settlement_builder.gd")
 const DayEventSystemScript = preload("res://gameplay/systems/day_event_system.gd")
 const StationLayoutSystemScript = preload("res://gameplay/systems/station_layout_system.gd")
-const StockUtils = preload("res://gameplay/models/stock_utils.gd")
+const EconomySystemScript = preload("res://gameplay/systems/economy_system.gd")
+const GameplayHudSystemScript = preload("res://gameplay/systems/gameplay_hud_system.gd")
+const StationInteractionSystemScript = preload("res://gameplay/systems/station_interaction_system.gd")
+const NightQueueBuilderScript = preload("res://gameplay/systems/night_queue_builder.gd")
 const CustomerOrderState = preload("res://gameplay/models/customer_order_state.gd")
 
 @export var customer_scene: PackedScene
@@ -29,6 +32,10 @@ var reputation_system: ReputationSystem
 var settlement_builder: SettlementBuilder
 var day_event_system: DayEventSystem
 var station_layout_system: StationLayoutSystem
+var economy_system: EconomySystem
+var gameplay_hud_system: GameplayHudSystem
+var station_interaction_system: StationInteractionSystem
+var night_queue_builder: NightQueueBuilder
 
 var queued_customers: Array = []
 var pending_customers: Array = []
@@ -48,7 +55,7 @@ var is_round_closing: bool = false
 var is_cleanup_phase: bool = false
 var has_round_finished: bool = false
 
-var day_duration_seconds: float = 50.0
+var day_duration_seconds: float = 5.0
 var day_time_left: float = 90.0
 var auto_close_triggered: bool = false
 
@@ -155,6 +162,10 @@ func initialize_systems() -> void:
 	settlement_builder = SettlementBuilderScript.new()
 	day_event_system = DayEventSystemScript.new()
 	station_layout_system = StationLayoutSystemScript.new()
+	economy_system = EconomySystemScript.new()
+	gameplay_hud_system = GameplayHudSystemScript.new()
+	station_interaction_system = StationInteractionSystemScript.new()
+	night_queue_builder = NightQueueBuilderScript.new()
 
 	for system in [
 		business_day_system,
@@ -168,7 +179,11 @@ func initialize_systems() -> void:
 		reputation_system,
 		settlement_builder,
 		day_event_system,
-		station_layout_system
+		station_layout_system,
+		economy_system,
+		gameplay_hud_system,
+		station_interaction_system,
+		night_queue_builder
 	]:
 		system.bind(self)
 
@@ -198,7 +213,11 @@ func get_system_debug_report() -> Array[String]:
 		reputation_system,
 		settlement_builder,
 		day_event_system,
-		station_layout_system
+		station_layout_system,
+		economy_system,
+		gameplay_hud_system,
+		station_interaction_system,
+		night_queue_builder
 	]:
 		if system == null:
 			report.append("A gameplay system failed to initialize.")
@@ -295,30 +314,7 @@ func _process(delta: float) -> void:
 	if is_round_closing and not has_round_finished and not is_cleanup_phase:
 		try_finish_day()
 
-	var game_ui = get_tree().get_first_node_in_group("game_ui")
-	if game_ui == null:
-		return
-
-	game_ui.update_business_state(
-		day_time_left,
-		is_open_for_business,
-		is_round_closing,
-		has_round_finished,
-		is_cleanup_phase
-	)
-
-	game_ui.hide_patience()
-
-	var order_cards: Array = []
-	for customer in pending_order_system.get_all():
-		if customer != null and is_instance_valid(customer):
-			if not CustomerOrderState.is_served(customer):
-				order_cards.append(get_pending_order_card_data(customer))
-
-	if order_cards.is_empty():
-		game_ui.hide_pending_orders()
-	else:
-		game_ui.show_pending_orders(order_cards)
+	gameplay_hud_system.update()
 
 func update_day_timer(delta: float) -> void:
 	business_day_system.update_day_timer(delta)
@@ -352,15 +348,7 @@ func start_round() -> void:
 	initialize_staple_ladle_slots()
 	apply_station_layout_from_run_setup()
 
-	var money_state: Dictionary = RunSetupData.get_money_state()
-	money = int(money_state.get("run_money", 0))
-	round_income = int(money_state.get("run_total_income", 0))
-	round_gross_income = int(money_state.get("run_gross_income", 0))
-	round_expense = int(money_state.get("run_total_expense", 0))
-
-	today_income = 0
-	today_gross_income = 0
-	today_expense = 0
+	economy_system.load_run_state()
 
 	is_open_for_business = false
 	is_round_closing = false
@@ -380,7 +368,7 @@ func start_round() -> void:
 
 	RunSetupData.setup_daily_special_customer_plan()
 
-	print("=== å½“å‰å¤©å¼€å§‹ ===")
+	print("=== Current day started ===")
 	print("Day: ", RunSetupData.current_day_in_run, "/", RunSetupData.total_days_in_run)
 	print("Selected stage id: ", RunSetupData.selected_stage_id)
 	print("Selected difficulty days: ", RunSetupData.selected_difficulty_days)
@@ -389,21 +377,7 @@ func start_round() -> void:
 	print("Starting / current money: ", money)
 	print_stocks()
 
-	var game_ui = get_tree().get_first_node_in_group("game_ui")
-
-	if game_ui:
-		game_ui.update_money(money)
-		game_ui.hide_order()
-		game_ui.hide_stock()
-		game_ui.hide_patience()
-		game_ui.hide_pending_orders()
-		game_ui.update_business_state(
-			day_time_left,
-			is_open_for_business,
-			is_round_closing,
-			has_round_finished,
-			is_cleanup_phase
-		)
+	gameplay_hud_system.reset_for_new_day()
 
 	queued_customers.clear()
 	pending_order_system.clear()
@@ -411,87 +385,14 @@ func start_round() -> void:
 	if spawn_timer != null and is_instance_valid(spawn_timer):
 		spawn_timer.stop()
 
-	print("å½“å‰æœªå¼€ä¸šï¼Œä¸ç”Ÿæˆæ™®é€šé¡¾å®¢ã€‚")
+	print("Not opened yet. Normal customers will not spawn.")
 
 	show_pending_morning_info_if_any()
 	debug_validate_runtime()
 
-# External compatibility wrappers: station/UI/customer scripts still enter gameplay
-# through GameManager while systems own the real state and behavior.
-func open_supplier_order_panel() -> void:
-	supplier_system.open_panel()
-
-func close_supplier_order_panel() -> void:
-	supplier_system.close_panel()
-
-func _on_supplier_order_button_pressed(item_id: String, amount: int = 1) -> void:
-	supplier_system.place_order(item_id, amount)
-
-
-func open_cart_pot_panel() -> void:
-	cooking_system.open_cart_pot_panel()
-
-func show_storage_stock_only() -> void:
-	var game_ui = get_tree().get_first_node_in_group("game_ui")
-
-	if game_ui == null:
-		print("Cannot show storage stock. No game_ui found.")
-		return
-
-	var cooked_text: String = get_cooked_stock_text()
-	var raw_and_staple_text: String = "%s
-%s" % [
-		get_raw_stock_text(),
-		TextDB.get_text("UI_STAPLE_STOCK_LINE") % get_staple_stock_text()
-	]
-
-	game_ui.show_stock(
-		cooked_text,
-		raw_and_staple_text
-	)
-
-	print("Show storage stock only.")
-	print("Cooked stock text: ", cooked_text)
-	print("Raw / staple stock text: ", raw_and_staple_text)
-func interact_with_gift_box() -> void:
-	day_event_system.interact_with_gift_box()
-
-func open_day_gift_choice_panel(gift_data: Dictionary) -> void:
-	day_event_system.open_day_gift_choice_panel(gift_data)
-
-
-func close_day_gift_choice_panel() -> void:
-	day_event_system.close_day_gift_choice_panel()
-
-func _on_day_gift_option_pressed(option_index: int) -> void:
-	day_event_system._on_day_gift_option_pressed(option_index)
-
-
-func get_day_gift_option_button_text(option_data: Dictionary) -> String:
-	return day_event_system.get_day_gift_option_button_text(option_data)
-
 func get_ingredient_display_name(item_id: String) -> String:
 	return TextDB.get_item_name(item_id)
 
-
-func get_items_text(items: Dictionary) -> String:
-	var parts: Array[String] = []
-
-	for item_id in items.keys():
-		var amount: int = int(items.get(item_id, 0))
-
-		if amount <= 0:
-			continue
-
-		parts.append("%s x%d" % [
-			get_ingredient_display_name(str(item_id)),
-			amount
-		])
-
-	if parts.is_empty():
-		return TextDB.get_text("UI_ITEM_NONE")
-
-	return TextDB.get_text("UI_LIST_JOIN_COMMA").join(parts)
 
 func get_modified_spawn_timer_wait_time() -> float:
 	var multiplier: float = RunSetupData.get_current_day_multiplier(
@@ -623,9 +524,7 @@ func route_customer_after_payment(customer: Node, evaluation: Dictionary) -> Str
 	return order_system.route_after_payment(customer, evaluation)
 
 func refresh_money_and_reputation_ui() -> void:
-	var game_ui = get_tree().get_first_node_in_group("game_ui")
-	if game_ui:
-		game_ui.update_money(money)
+	gameplay_hud_system.refresh_money_and_reputation_ui()
 
 func change_shop_reputation(delta: int, reason: String = "") -> void:
 	reputation_system.change_shop_reputation(delta, reason)
@@ -638,50 +537,6 @@ func interact_with_delivery_point() -> void:
 
 func complete_delivery_for_customer(customer: Node) -> bool:
 	return order_system.complete_delivery(customer)
-
-func build_night_queue_from_today_results() -> Array:
-	var queue: Array = [
-		{
-			"type": "insight",
-			"name": TextDB.get_text("UI_NIGHT_CHOICE_INSIGHT"),
-			"result": "neutral"
-		}
-	]
-
-	for entry in RunSetupData.today_special_customer_results:
-		var gift_id: String = str(entry.get("gift_id", ""))
-
-		if gift_id != "" and RunSetupData.is_gift_opened(gift_id):
-			print("Skip opened special echo at night: ", gift_id)
-			continue
-
-		var result_text: String = str(entry.get("result", "neutral"))
-		var entry_name: String = str(entry.get("name", TextDB.get_text("UI_FALLBACK_SPECIAL_CUSTOMER")))
-
-		if result_text == "good":
-			queue.append({
-				"type": "good",
-				"name": entry_name,
-				"result": "good",
-				"gift_id": gift_id
-			})
-		elif result_text == "bad":
-			queue.append({
-				"type": "bad",
-				"name": entry_name,
-				"result": "bad",
-				"gift_id": gift_id
-			})
-
-	return queue
-func handle_stock_shortage_for_customer(customer: Node) -> Dictionary:
-	return order_system.handle_stock_shortage_for_customer(customer)
-
-func apply_adjusted_order_to_customer(customer: Node, adjusted_order: Dictionary) -> void:
-	order_system.apply_adjusted_order_to_customer(customer, adjusted_order)
-
-func reject_customer_before_checkout(customer: Node) -> void:
-	order_system.reject_customer_before_checkout(customer)
 
 func get_customer_group(customer: Node) -> String:
 	return reputation_system.get_customer_group(customer)
@@ -702,22 +557,8 @@ func get_first_customer_needing_emergency_purchase() -> Node:
 func get_first_uncooked_pending_customer() -> Node:
 	return pending_order_system.get_first_uncooked()
 
-func get_cart_ingredients_needed_from_pot(customer: Node) -> Dictionary:
-	return cooking_system.get_cart_ingredients_needed_from_pot(customer)
-
-func get_cart_ingredient_shortage_for_customer(customer: Node) -> Dictionary:
-	return cooking_system.get_cart_ingredient_shortage_for_customer(customer)
-
-
-func try_fulfill_cart_ingredients_for_customer(customer: Node) -> bool:
-	return cooking_system.try_fulfill_cart_ingredients_for_customer(customer)
-
-
 func refresh_cart_ingredients_for_pending_customers() -> void:
 	cooking_system.refresh_cart_ingredients_for_pending_customers()
-
-func hand_over_held_staple_to_waiting_customer() -> Node:
-	return cooking_system.hand_over_held_staple_to_waiting_customer()
 
 func get_first_deliverable_pending_customer() -> Node:
 	return order_system.get_first_deliverable_pending_customer()
@@ -770,54 +611,11 @@ func remove_customer_from_cooker_slots(customer: Node) -> void:
 	cooking_system.remove_customer_from_cooker_slots(customer)
 
 func start_cooking_pending_order() -> void:
-	open_cart_pot_panel()
+	cooking_system.open_cart_pot_panel()
 
 
 func start_shop_order_bound_cooking_pending_order() -> void:
 	cooking_system.start_shop_order_bound_cooking_pending_order()
-
-func can_fulfill_from_cooked(ingredients: Dictionary) -> bool:
-	return inventory_system.can_fulfill_from_cooked(ingredients)
-
-func can_fulfill_from_combined_stock(ingredients: Dictionary) -> bool:
-	return inventory_system.can_fulfill_from_combined_stock(ingredients)
-
-func get_order_fulfillment_status(ingredients: Dictionary) -> String:
-	return inventory_system.get_order_fulfillment_status(ingredients)
-
-func deduct_cooked_stock(ingredients: Dictionary) -> void:
-	inventory_system.deduct_cooked_stock(ingredients)
-
-func consume_raw_stock_for_order(ingredients: Dictionary) -> void:
-	inventory_system.consume_raw_stock_for_order(ingredients)
-
-func add_cooked_stock_for_order(ingredients: Dictionary) -> void:
-	inventory_system.add_cooked_stock_for_order(ingredients)
-
-func get_cooked_stock_text() -> String:
-	return inventory_system.get_cooked_stock_text()
-
-func get_raw_stock_text() -> String:
-	return inventory_system.get_raw_stock_text()
-
-func get_staple_stock_text() -> String:
-	return inventory_system.get_staple_stock_text()
-
-func get_customer_main_food_stock_id(customer: Node) -> String:
-	if customer == null or not is_instance_valid(customer):
-		return "none"
-
-	if not customer.has_method("get_main_food_id"):
-		return "none"
-
-	return str(customer.get_main_food_id())
-
-
-func customer_has_main_food(customer: Node) -> bool:
-	var main_food_id: String = get_customer_main_food_stock_id(customer)
-
-	return main_food_id != "none" and main_food_id != ""
-
 
 func reserve_main_food_stock_for_customer(customer: Node) -> bool:
 	return order_system.reserve_main_food_stock_for_customer(customer)
@@ -828,22 +626,6 @@ func get_zero_food_stock() -> Dictionary:
 		"potato_slice": 0,
 		"tofu_puff": 0
 	}
-
-func can_make_ingredient(ingredient_name: String, amount: int) -> bool:
-	var cooked_amount: int = max(cooked_stock.get(ingredient_name, 0), 0)
-	var raw_amount: int = max(raw_stock.get(ingredient_name, 0), 0)
-	return cooked_amount + raw_amount >= amount
-
-func get_adjusted_order(ingredients: Dictionary) -> Dictionary:
-	var adjusted_order: Dictionary = {}
-
-	for ingredient_name in ingredients.keys():
-		var amount: int = ingredients[ingredient_name]
-
-		if can_make_ingredient(ingredient_name, amount):
-			adjusted_order[ingredient_name] = amount
-
-	return adjusted_order
 
 func get_total_pending_emergency_shortage() -> Dictionary:
 	return emergency_purchase_system.get_total_shortage()
@@ -886,70 +668,11 @@ func get_pending_order_remaining_ingredients_text(customer: Node) -> String:
 func get_pending_order_card_status_text(customer: Node) -> String:
 	return order_system.get_pending_order_card_status_text(customer)
 
-func get_pending_order_card_data(customer: Node) -> Dictionary:
-	return order_system.get_pending_order_card_data(customer)
-
 func get_pending_order_status_id(customer: Node) -> String:
 	return order_system.get_pending_order_status_id(customer)
 
 func get_pending_order_delivery_target_text(_customer: Node) -> String:
 	return order_system.get_pending_order_delivery_target_text(_customer)
-
-func add_money(amount: int) -> void:
-	if amount <= 0:
-		return
-
-	money += amount
-
-	today_gross_income += amount
-	round_gross_income += amount
-
-	today_income += amount
-	round_income += amount
-	RunSetupData.set_money_state(money, round_income, round_gross_income, round_expense)
-
-	var game_ui = get_tree().get_first_node_in_group("game_ui")
-
-	if game_ui:
-		game_ui.update_money(money)
-
-	print("Money earned: ", amount)
-	print("Current money: ", money)
-
-func get_active_effect_records() -> Array:
-	var result: Array = []
-
-	var active_effects_value = RunSetupData.get("active_effects")
-	if typeof(active_effects_value) == TYPE_ARRAY:
-		for effect_data in active_effects_value:
-			if typeof(effect_data) == TYPE_DICTIONARY:
-				result.append(effect_data)
-
-	var acquired_effects_value = RunSetupData.get("acquired_effects")
-	if typeof(acquired_effects_value) == TYPE_ARRAY:
-		for effect_data in acquired_effects_value:
-			if typeof(effect_data) == TYPE_DICTIONARY:
-				result.append(effect_data)
-
-	return result
-
-
-func has_effect(effect_id: String) -> bool:
-	if effect_id == "":
-		return false
-
-	for effect_data in get_active_effect_records():
-		var record_effect_id: String = str(effect_data.get("effect_id", ""))
-		var record_id: String = str(effect_data.get("id", ""))
-
-		if record_effect_id == effect_id:
-			return true
-
-		if record_id == effect_id:
-			return true
-
-	return false
-
 
 func get_effective_cart_pot_batch_duration() -> float:
 	return cooking_system.get_effective_cart_pot_batch_duration()
@@ -961,62 +684,8 @@ func get_effective_staple_ladle_duration() -> float:
 func change_reputation(delta: int, reason: String = "") -> void:
 	reputation_system.change(delta, reason)
 
-func spend_money(amount: int) -> bool:
-	if amount <= 0:
-		return true
-
-	if money < amount:
-		print("Not enough money. Need: ", amount, " Current: ", money)
-		return false
-
-	money -= amount
-
-	today_expense += amount
-	round_expense += amount
-
-	today_income -= amount
-	round_income -= amount
-	RunSetupData.set_money_state(money, round_income, round_gross_income, round_expense)
-
-	var game_ui = get_tree().get_first_node_in_group("game_ui")
-
-	if game_ui:
-		game_ui.update_money(money)
-
-	print("Money spent: ", amount)
-	print("Current money: ", money)
-
-	return true
-
-func get_today_income() -> int:
-	return today_income
-
-func get_run_income() -> int:
-	return round_income
-
-func get_waste_value() -> int:
-	var waste: int = 0
-
-	for ingredient_name in raw_stock.keys():
-		waste += raw_stock[ingredient_name]
-
-	for ingredient_name in cooked_stock.keys():
-		waste += cooked_stock[ingredient_name]
-
-	return waste
-
-func get_round_profit() -> int:
-	return round_income - get_waste_value()
-
 func print_round_summary() -> void:
-	print("=== æœ¬è½®ç»“ç®— ===")
-	print("Today income: ", today_income)
-	print("Round income: ", round_income)
-	print("Waste value: ", get_waste_value())
-	print("Round profit: ", get_round_profit())
-	print("Current money: ", money)
-	print("Remaining cooked stock: ", cooked_stock)
-	print("Remaining raw stock: ", raw_stock)
+	economy_system.print_round_summary()
 
 func try_finish_day() -> void:
 	business_day_system.try_finish_day()
@@ -1105,11 +774,12 @@ func finish_day() -> void:
 	var remaining_staple_stock: Dictionary = staple_stock.duplicate(true)
 	var discarded_staple_food: Dictionary = clear_staple_ladle_and_held_food_at_day_end()
 
-	# ç†Ÿé£Ÿä¸éš”å¤œï¼šæ—¥ç»“æ˜¾ç¤ºå‰©ä½™ç†Ÿé£Ÿï¼Œä½†ä¸‹ä¸€å¤©ä¸ç»§æ‰¿ç†Ÿé£Ÿã€‚
+	# Cooked food does not carry over overnight.
+	# The day settlement shows remaining cooked food, but the next day starts with zero cooked stock.
 	RunSetupData.set_money_state(money, round_income, round_gross_income, round_expense)
 	RunSetupData.set_stock_state(remaining_raw_stock, get_zero_food_stock(), remaining_staple_stock)
 
-	RunSetupData.generated_night_queue = build_night_queue_from_today_results()
+	RunSetupData.generated_night_queue = night_queue_builder.build_from_today_results()
 
 	var day_summary: Dictionary = settlement_builder.build_day_summary(_build_settlement_summary_input(
 		remaining_cooked_stock,
@@ -1120,11 +790,7 @@ func finish_day() -> void:
 
 	RunSetupData.set_day_summary(day_summary)
 
-	if RunSetupData.current_day_in_run >= RunSetupData.total_days_in_run:
-		finish_run()
-		return
-
-	print("=== ç¬¬ %d å¤©ç»“æŸ ===" % RunSetupData.current_day_in_run)
+	print("=== Day %d ended ===" % RunSetupData.current_day_in_run)
 	print("Today gross income: ", today_gross_income)
 	print("Today expense: ", today_expense)
 	print("Today net income: ", today_income)
@@ -1158,7 +824,7 @@ func finish_run() -> void:
 
 	RunSetupData.set_run_summary(run_summary)
 
-	print("=== æœ¬è½®ç»“ç®— ===")
+	print("=== Run Summary ===")
 	print("Today gross income: ", today_gross_income)
 	print("Today expense: ", today_expense)
 	print("Today net income: ", today_income)
@@ -1182,22 +848,15 @@ func _build_settlement_summary_input(
 	remaining_staple_stock: Dictionary,
 	discarded_staple_food: Dictionary
 ) -> Dictionary:
-	return {
-		"today_gross_income": today_gross_income,
-		"today_expense": today_expense,
-		"today_net_income": today_income,
-		"run_gross_income": round_gross_income,
-		"run_expense": round_expense,
-		"run_net_income": round_income,
-		"current_money": money,
-		"cooked_stock_text": get_cooked_stock_text(),
-		"raw_stock_text": "%s
+	var input: Dictionary = economy_system.get_summary_input_fields()
+	input["cooked_stock_text"] = inventory_system.get_cooked_stock_text()
+	input["raw_stock_text"] = "%s
 %s" % [
-			get_raw_stock_text(),
-			TextDB.get_text("UI_STAPLE_STOCK_LINE") % get_staple_stock_text()
-		],
-		"cooked_stock_data": remaining_cooked_stock,
-		"raw_stock_data": remaining_raw_stock,
-		"staple_stock_data": remaining_staple_stock,
-		"discarded_staple_food": discarded_staple_food
-	}
+		inventory_system.get_raw_stock_text(),
+		TextDB.get_text("UI_STAPLE_STOCK_LINE") % inventory_system.get_staple_stock_text()
+	]
+	input["cooked_stock_data"] = remaining_cooked_stock
+	input["raw_stock_data"] = remaining_raw_stock
+	input["staple_stock_data"] = remaining_staple_stock
+	input["discarded_staple_food"] = discarded_staple_food
+	return input

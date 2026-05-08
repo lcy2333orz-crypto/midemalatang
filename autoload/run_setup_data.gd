@@ -4,6 +4,8 @@ const ItemIds = preload("res://gameplay/models/item_ids.gd")
 const RunEchoStateScript = preload("res://gameplay/models/run_echo_state.gd")
 const RunSettlementStateScript = preload("res://gameplay/models/run_settlement_state.gd")
 const RunRuntimeStateScript = preload("res://gameplay/models/run_runtime_state.gd")
+const RunConfigStateScript = preload("res://gameplay/models/run_config_state.gd")
+const RunDayEventStateScript = preload("res://gameplay/models/run_day_event_state.gd")
 
 var selected_stage_id: String = ""
 var selected_difficulty_days: int = 7
@@ -111,12 +113,16 @@ var current_day_modifiers: Dictionary = {}
 var echo_state: RunEchoState
 var settlement_state: RunSettlementState
 var runtime_state: RunRuntimeState
+var config_state: RunConfigState
+var day_event_state: RunDayEventState
 
 
 func _ready() -> void:
 	_ensure_echo_state()
 	_ensure_settlement_state()
 	_ensure_runtime_state()
+	_ensure_config_state()
+	_ensure_day_event_state()
 
 
 func _ensure_echo_state() -> void:
@@ -132,6 +138,18 @@ func _ensure_settlement_state() -> void:
 func _ensure_runtime_state() -> void:
 	if runtime_state == null:
 		runtime_state = RunRuntimeStateScript.new()
+
+
+func _ensure_config_state() -> void:
+	if config_state == null:
+		config_state = RunConfigStateScript.new()
+		config_state.bind(self)
+
+
+func _ensure_day_event_state() -> void:
+	if day_event_state == null:
+		day_event_state = RunDayEventStateScript.new()
+		day_event_state.bind(self)
 
 
 func _sync_echo_fields_from_state() -> void:
@@ -158,10 +176,16 @@ func debug_validate() -> Array[String]:
 	_sync_echo_state_from_fields()
 	_sync_settlement_state_from_fields()
 	_sync_runtime_state_from_fields()
+	_ensure_config_state()
+	_ensure_day_event_state()
 	var warnings: Array[String] = echo_state.debug_validate()
 	for warning in settlement_state.debug_validate():
 		warnings.append(str(warning))
 	for warning in runtime_state.debug_validate():
+		warnings.append(str(warning))
+	for warning in config_state.debug_validate():
+		warnings.append(str(warning))
+	for warning in day_event_state.debug_validate():
 		warnings.append(str(warning))
 	return warnings
 
@@ -309,37 +333,18 @@ func reset_run_setup() -> void:
 
 
 func setup_stage_run(stage_id: String, difficulty_days: int = 7) -> void:
-	reset_run_setup()
-
-	selected_stage_id = stage_id
-	selected_difficulty_days = difficulty_days
-	current_day_in_run = 1
-	total_days_in_run = difficulty_days
-
-	_apply_default_station_layout()
+	_ensure_config_state()
+	config_state.setup_stage_run(stage_id, difficulty_days)
 
 
 func _apply_default_station_layout() -> void:
-	station_layout["counter"] = "slot_a"
-	station_layout["cooker_1"] = "slot_b"
-	station_layout["delivery"] = "slot_c"
-	station_layout["storage"] = "slot_e"
-
-	if ProgressData.has_second_cooker:
-		station_layout["cooker_2"] = "slot_d"
-		station_layout["emergency_shop"] = "slot_f"
-	else:
-		station_layout["cooker_2"] = ""
-		station_layout["emergency_shop"] = "slot_f"
+	_ensure_config_state()
+	config_state.apply_default_station_layout()
 
 
 func setup_daily_special_customer_plan() -> void:
-	current_day_special_spawn_plan = [
-		{
-			"type": "mouse",
-			"name": TextDB.get_text("UI_SPECIAL_CUSTOMER_MOUSE")
-		}
-	]
+	_ensure_day_event_state()
+	day_event_state.setup_daily_special_customer_plan()
 
 func add_pending_gift(source_type: String, source_name: String, result: String) -> Dictionary:
 	_sync_echo_state_from_fields()
@@ -427,123 +432,13 @@ func get_today_stall_echo_lines() -> Array[String]:
 	return echo_state.get_today_stall_echo_lines()
 
 func generate_night_background_activity(has_next_day: bool = true) -> Dictionary:
-	var options: Array = []
+	_ensure_day_event_state()
+	return day_event_state.generate_night_background_activity(has_next_day)
 
-	if has_next_day:
-		options = [
-			_make_night_activity("reading_notes", "UI_NIGHT_ACTIVITY_READING_NOTES", "UI_MORNING_TITLE_READING_NOTES", "UI_MORNING_TEXT_READING_NOTES"),
-			_make_night_activity("chatting_neighbor", "UI_NIGHT_ACTIVITY_CHATTING_NEIGHBOR", "UI_MORNING_TITLE_CHATTING_NEIGHBOR", "UI_MORNING_TEXT_CHATTING_NEIGHBOR"),
-			_make_night_activity("checking_notice", "UI_NIGHT_ACTIVITY_CHECKING_NOTICE", "UI_MORNING_TITLE_CHECKING_NOTICE", "UI_MORNING_TEXT_CHECKING_NOTICE"),
-			_make_night_activity("sorting_ingredients", "UI_NIGHT_ACTIVITY_SORTING_INGREDIENTS", "UI_MORNING_TITLE_SORTING_INGREDIENTS", "UI_MORNING_TEXT_SORTING_INGREDIENTS"),
-			_make_night_activity("resting_cart", "UI_NIGHT_ACTIVITY_RESTING_CART", "UI_MORNING_TITLE_RESTING_CART", "UI_MORNING_TEXT_RESTING_CART")
-		]
-	else:
-		options = [
-			_make_night_activity("final_rest", "UI_NIGHT_ACTIVITY_FINAL_REST", "", "")
-		]
-
-	var chosen: Dictionary = options[randi() % options.size()]
-	current_night_activity = chosen.duplicate(true)
-
-	if has_next_day:
-		pending_tomorrow_event = generate_tomorrow_business_event_for_activity(str(chosen.get("id", "")))
-
-		pending_morning_info = {
-			"title": str(chosen.get("morning_title", "")),
-			"text": str(chosen.get("morning_text", "")),
-			"source_activity_id": str(chosen.get("id", "")),
-			"event": pending_tomorrow_event.duplicate(true)
-		}
-	else:
-		pending_tomorrow_event = {}
-		pending_morning_info = {}
-
-	return current_night_activity.duplicate(true)
-
-
-func _make_night_activity(activity_id: String, activity_key: String, morning_title_key: String, morning_text_key: String) -> Dictionary:
-	var morning_title: String = ""
-	var morning_text: String = ""
-
-	if morning_title_key != "":
-		morning_title = TextDB.get_text(morning_title_key)
-
-	if morning_text_key != "":
-		morning_text = TextDB.get_text(morning_text_key)
-
-	return {
-		"id": activity_id,
-		"activity_text": TextDB.get_text(activity_key),
-		"morning_title": morning_title,
-		"morning_text": morning_text
-	}
 
 func generate_tomorrow_business_event_for_activity(activity_id: String) -> Dictionary:
-	match activity_id:
-		"chatting_neighbor":
-			return make_tomorrow_business_event(
-				"street_gets_busy",
-				TextDB.get_text("UI_EVENT_STREET_BUSY"),
-				TextDB.get_text("UI_EVENT_STREET_BUSY_TEXT"),
-				"mixed",
-				{"customer_spawn_interval_multiplier": 0.85}
-			)
-
-		"checking_notice":
-			return make_tomorrow_business_event(
-				"street_gets_busy",
-				TextDB.get_text("UI_EVENT_STREET_BUSY"),
-				TextDB.get_text("UI_EVENT_STREET_BUSY_NOTICE_TEXT"),
-				"mixed",
-				{"customer_spawn_interval_multiplier": 0.85}
-			)
-
-		"resting_cart":
-			return make_tomorrow_business_event(
-				"slow_easy_day",
-				TextDB.get_text("UI_EVENT_SLOW_DAY"),
-				TextDB.get_text("UI_EVENT_SLOW_DAY_TEXT"),
-				"positive",
-				{"customer_patience_multiplier": 1.25}
-			)
-
-		"sorting_ingredients":
-			return make_tomorrow_business_event(
-				"extra_raw_prep",
-				TextDB.get_text("UI_EVENT_EXTRA_RAW_PREP"),
-				TextDB.get_text("UI_EVENT_EXTRA_RAW_PREP_TEXT"),
-				"positive",
-				{"random_raw_stock_bonus": 2}
-			)
-
-		"reading_notes":
-			var options: Array = [
-				make_tomorrow_business_event(
-					"market_friend",
-					TextDB.get_text("UI_EVENT_MARKET_FRIEND"),
-					TextDB.get_text("UI_EVENT_MARKET_FRIEND_TEXT"),
-					"positive",
-					{"emergency_shop_price_multiplier": 0.75}
-				),
-				make_tomorrow_business_event(
-					"slow_easy_day",
-					TextDB.get_text("UI_EVENT_SLOW_DAY"),
-					TextDB.get_text("UI_EVENT_SLOW_DAY_TEXT"),
-					"positive",
-					{"customer_patience_multiplier": 1.25}
-				)
-			]
-
-			return options[randi() % options.size()]
-
-		_:
-			return make_tomorrow_business_event(
-				"slow_easy_day",
-				TextDB.get_text("UI_EVENT_SLOW_DAY"),
-				TextDB.get_text("UI_EVENT_SLOW_DAY_TEXT"),
-				"positive",
-				{"customer_patience_multiplier": 1.15}
-			)
+	_ensure_day_event_state()
+	return day_event_state.generate_tomorrow_business_event_for_activity(activity_id)
 
 func make_tomorrow_business_event(
 	event_id: String,
@@ -552,228 +447,90 @@ func make_tomorrow_business_event(
 	tone: String,
 	modifiers: Dictionary
 ) -> Dictionary:
-	return {
-		"id": event_id,
-		"title": title,
-		"text": text,
-		"tone": tone,
-		"modifiers": modifiers.duplicate(true)
-	}
+	_ensure_day_event_state()
+	return day_event_state.make_tomorrow_business_event(event_id, title, text, tone, modifiers)
 
 func activate_pending_tomorrow_event() -> Dictionary:
-	if pending_tomorrow_event.is_empty():
-		current_day_business_event = {}
-		current_day_modifiers = {}
-		return {}
-
-	current_day_business_event = pending_tomorrow_event.duplicate(true)
-
-	var modifiers = current_day_business_event.get("modifiers", {})
-
-	if typeof(modifiers) == TYPE_DICTIONARY:
-		current_day_modifiers = modifiers.duplicate(true)
-	else:
-		current_day_modifiers = {}
-
-	pending_tomorrow_event = {}
-
-	return current_day_business_event.duplicate(true)
+	_ensure_day_event_state()
+	return day_event_state.activate_pending_tomorrow_event()
 
 func get_current_day_multiplier(modifier_id: String, default_value: float = 1.0) -> float:
-	var value: float = default_value
-
-	if not current_day_modifiers.is_empty() and current_day_modifiers.has(modifier_id):
-		value *= float(current_day_modifiers.get(modifier_id, 1.0))
-
-	var effect_manager: Node = get_node_or_null("/root/EffectManager")
-	if effect_manager != null and effect_manager.has_method("get_multiplier"):
-		value = effect_manager.get_multiplier(modifier_id, value)
-
-	return value
+	_ensure_day_event_state()
+	return day_event_state.get_current_day_multiplier(modifier_id, default_value)
 
 
 func get_current_day_additive(modifier_id: String, default_value: float = 0.0) -> float:
-	var value: float = default_value
-
-	if not current_day_modifiers.is_empty() and current_day_modifiers.has(modifier_id):
-		value += float(current_day_modifiers.get(modifier_id, 0.0))
-
-	var effect_manager: Node = get_node_or_null("/root/EffectManager")
-	if effect_manager != null and effect_manager.has_method("get_additive"):
-		value = effect_manager.get_additive(modifier_id, value)
-
-	return value
+	_ensure_day_event_state()
+	return day_event_state.get_current_day_additive(modifier_id, default_value)
 
 func get_current_night_activity_text() -> String:
-	if current_night_activity.is_empty():
-		return ""
-
-	return str(current_night_activity.get("activity_text", ""))
+	_ensure_day_event_state()
+	return day_event_state.get_current_night_activity_text()
 
 func has_pending_morning_info() -> bool:
-	if pending_morning_info.is_empty():
-		return false
-
-	return str(pending_morning_info.get("text", "")) != ""
+	_ensure_day_event_state()
+	return day_event_state.has_pending_morning_info()
 
 func consume_pending_morning_info_lines() -> Array[String]:
-	var lines: Array[String] = []
-
-	if not has_pending_morning_info():
-		return lines
-
-	var title: String = str(pending_morning_info.get("title", TextDB.get_text("UI_MORNING_INFO_DEFAULT_TITLE")))
-	var text: String = str(pending_morning_info.get("text", ""))
-	var event = pending_morning_info.get("event", {})
-
-	lines.append(title)
-
-	if text != "":
-		lines.append(text)
-
-	if typeof(event) == TYPE_DICTIONARY and not event.is_empty():
-		var event_title: String = str(event.get("title", TextDB.get_text("UI_TOMORROW_EVENT_DEFAULT_TITLE")))
-		var event_text: String = str(event.get("text", ""))
-
-		if event_text != "":
-			lines.append("")
-			lines.append(TextDB.get_text("UI_MORNING_EVENT_LINE") % [event_title, event_text])
-
-	pending_morning_info = {}
-
-	return lines
+	_ensure_day_event_state()
+	return day_event_state.consume_pending_morning_info_lines()
 
 func get_basic_ingredient_ids() -> Array[String]:
-	var result: Array[String] = []
-
-	for item_id in basic_ingredient_ids:
-		result.append(item_id)
-
-	return result
+	_ensure_config_state()
+	return config_state.get_basic_ingredient_ids()
 
 
 func get_staple_item_ids() -> Array[String]:
-	var result: Array[String] = []
-
-	for item_id in staple_item_ids:
-		result.append(item_id)
-
-	return result
+	_ensure_config_state()
+	return config_state.get_staple_item_ids()
 
 
 func get_supplier_order_item_ids() -> Array[String]:
-	var result: Array[String] = []
-
-	for item_id in basic_ingredient_ids:
-		result.append(item_id)
-
-	for item_id in staple_item_ids:
-		result.append(item_id)
-
-	return result
+	_ensure_config_state()
+	return config_state.get_supplier_order_item_ids()
 
 
 func get_supplier_package_options() -> Array:
-	var result: Array = []
-
-	for package_data in supplier_package_options:
-		if typeof(package_data) == TYPE_DICTIONARY:
-			result.append(package_data.duplicate(true))
-
-	return result
+	_ensure_config_state()
+	return config_state.get_supplier_package_options()
 
 
 func is_staple_item(item_id: String) -> bool:
-	return staple_item_ids.has(item_id)
+	_ensure_config_state()
+	return config_state.is_staple_item(item_id)
 
 
 func get_supplier_delivery_seconds() -> float:
-	return max(supplier_delivery_seconds, 0.1)
+	_ensure_config_state()
+	return config_state.get_supplier_delivery_seconds()
 
 
 func get_supplier_base_price(item_id: String) -> float:
-	if not supplier_base_prices.has(item_id):
-		return 1.0
-
-	return max(float(supplier_base_prices.get(item_id, 1.0)), 0.1)
+	_ensure_config_state()
+	return config_state.get_supplier_base_price(item_id)
 
 
 func get_supplier_order_price(item_id: String, amount: int = 1) -> int:
-	if amount <= 0:
-		return 0
-
-	var base_price: float = get_supplier_base_price(item_id)
-
-	var multiplier: float = get_current_day_multiplier(
-		"supplier_order_price_multiplier",
-		1.0
-	)
-
-	var total: int = int(ceil(float(amount) * base_price * multiplier))
-
-	return max(total, 1)
+	_ensure_config_state()
+	return config_state.get_supplier_order_price(item_id, amount)
 
 
 func get_supplier_order_price_for_items(items: Dictionary) -> int:
-	var total: int = 0
-
-	for item_id in items.keys():
-		var amount: int = int(items.get(item_id, 0))
-
-		if amount <= 0:
-			continue
-
-		total += get_supplier_order_price(str(item_id), amount)
-
-	return total
+	_ensure_config_state()
+	return config_state.get_supplier_order_price_for_items(items)
 
 
 func get_neighbor_emergency_price(item_id: String, amount: int = 1) -> int:
-	if amount <= 0:
-		return 0
-
-	var base_price: float = get_supplier_base_price(item_id)
-	var emergency_multiplier: float = neighbor_emergency_price_multiplier
-
-	var day_multiplier: float = get_current_day_multiplier(
-		"emergency_shop_price_multiplier",
-		1.0
-	)
-
-	var raw_total: float = float(amount) * base_price * emergency_multiplier * day_multiplier
-	var total: int = int(ceil(raw_total))
-
-	return max(total, 1)
+	_ensure_config_state()
+	return config_state.get_neighbor_emergency_price(item_id, amount)
 
 
 func get_neighbor_emergency_price_for_shortage(shortage: Dictionary) -> int:
-	var total: int = 0
-
-	for item_id in shortage.keys():
-		var amount: int = int(shortage.get(item_id, 0))
-
-		if amount <= 0:
-			continue
-
-		total += get_neighbor_emergency_price(str(item_id), amount)
-
-	return total
+	_ensure_config_state()
+	return config_state.get_neighbor_emergency_price_for_shortage(shortage)
 
 
 
 func ensure_starting_money_for_new_run() -> void:
-	_sync_runtime_state_from_fields()
-
-	if current_day_in_run != 1:
-		return
-
-	if run_money > 0:
-		return
-
-	if run_total_income != 0:
-		return
-
-	run_money = starting_money
-	_sync_runtime_state_from_fields()
-
-	print("Starting money granted: ", starting_money)
+	_ensure_config_state()
+	config_state.ensure_starting_money_for_new_run()

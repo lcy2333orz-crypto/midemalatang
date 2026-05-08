@@ -72,7 +72,7 @@ func refresh_queue_positions() -> void:
 
 
 func start_initial_customer_wave() -> void:
-	if not manager.can_spawn_customers_now():
+	if not manager.business_day_system.can_spawn_customers_now():
 		return
 
 	print("start spawning customers after opening...")
@@ -84,7 +84,7 @@ func start_initial_customer_wave() -> void:
 
 
 func spawn_customer() -> void:
-	if not manager.can_spawn_customers_now():
+	if not manager.business_day_system.can_spawn_customers_now():
 		print("Current state does not allow customer spawning.")
 		return
 
@@ -171,20 +171,23 @@ func notify_customer_leaving(customer: Node) -> void:
 			paid_price = CustomerOrderState.get_paid_price(customer)
 
 	if paid_price > 0:
-		manager.money = max(manager.money - paid_price, 0)
-		manager.round_income -= paid_price
-		manager.today_income -= paid_price
-		RunSetupData.set_money_state(manager.money, manager.round_income, manager.round_gross_income, manager.round_expense)
+		manager.economy_system.money = max(manager.economy_system.money - paid_price, 0)
+		manager.economy_system.round_income -= paid_price
+		manager.economy_system.today_income -= paid_price
+		RunSetupData.set_money_state(
+			manager.economy_system.money,
+			manager.economy_system.round_income,
+			manager.economy_system.round_gross_income,
+			manager.economy_system.round_expense
+		)
+		manager.economy_system._sync_manager_fields()
 		print("Refund applied because customer left after payment: ", paid_price)
 
-	var game_ui = manager.get_tree().get_first_node_in_group("game_ui")
-
-	if game_ui:
-		game_ui.update_money(manager.money)
+	manager.gameplay_hud_system.refresh_money_and_reputation_ui()
 
 	remove_customer_from_queue(customer)
 	remove_customer_from_pending(customer)
-	manager.remove_customer_from_cooker_slots(customer)
+	manager.cooking_system.remove_customer_from_cooker_slots(customer)
 
 	manager.start_spawn_timer_if_needed()
 
@@ -194,13 +197,13 @@ func on_customer_exited(customer: Node) -> void:
 
 	remove_customer_from_queue(customer)
 	remove_customer_from_pending(customer)
-	manager.remove_customer_from_cooker_slots(customer)
+	manager.cooking_system.remove_customer_from_cooker_slots(customer)
 
 	manager.start_spawn_timer_if_needed()
 
 
 func on_spawn_timer_timeout() -> void:
-	if not manager.can_spawn_customers_now():
+	if not manager.business_day_system.can_spawn_customers_now():
 		return
 
 	if manager.queued_customers.size() < manager.max_queue_size:

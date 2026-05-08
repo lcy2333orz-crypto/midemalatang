@@ -508,10 +508,16 @@ func get_total_item_count() -> int:
 	return total
 
 func get_order_price() -> int:
-	var price: int = get_total_item_count()
+	var ingredient_count: int = get_total_item_count()
+	var price: int = 2
+
+	price += ingredient_count * 2
 
 	if has_main_food():
-		price += 1
+		price += 3
+
+	if ingredient_count >= 3:
+		price += 2
 
 	return price
 

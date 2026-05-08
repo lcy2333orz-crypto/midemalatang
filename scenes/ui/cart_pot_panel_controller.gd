@@ -312,7 +312,7 @@ func refresh() -> void:
 
 		])
 
-		lines.append(TextDB.get_text("UI_CART_POT_COOKED_STOCK") % manager.get_cooked_stock_text())
+		lines.append(TextDB.get_text("UI_CART_POT_COOKED_STOCK") % manager.inventory_system.get_cooked_stock_text())
 
 
 
@@ -336,7 +336,7 @@ func refresh() -> void:
 
 				if typeof(batch_items) == TYPE_DICTIONARY:
 
-					batch_text = manager.get_items_text(batch_items as Dictionary)
+					batch_text = manager.order_system.get_items_text(batch_items as Dictionary)
 
 
 
@@ -358,7 +358,7 @@ func refresh() -> void:
 
 		else:
 
-			lines.append(TextDB.get_text("UI_CART_POT_SELECTION") % manager.get_items_text(cooking_system.cart_pot_selection))
+			lines.append(TextDB.get_text("UI_CART_POT_SELECTION") % manager.order_system.get_items_text(cooking_system.cart_pot_selection))
 
 
 
@@ -380,7 +380,7 @@ func refresh() -> void:
 
 		var selected_amount: int = int(cooking_system.cart_pot_selection.get(item_key, 0))
 
-		var display_name: String = manager.get_ingredient_display_name(item_key)
+		var display_name: String = TextDB.get_item_name(item_key)
 
 
 

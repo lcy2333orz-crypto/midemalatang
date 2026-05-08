@@ -24,7 +24,10 @@ var hand_state_label: Label = null
 
 
 func _ready() -> void:
-	money_label.text = TextDB.get_text("UI_MONEY") % 0
+	money_label.text = TextDB.get_text("UI_MONEY") % [
+		0,
+		RunSetupData.shop_reputation
+	]
 	patience_label.text = TextDB.get_text("UI_PATIENCE_EMPTY")
 	business_state_label.text = TextDB.get_text("UI_DAY_STATE_NOT_OPEN") % 0
 

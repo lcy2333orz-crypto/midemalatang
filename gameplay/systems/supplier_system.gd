@@ -67,8 +67,8 @@ func can_use_ordering() -> bool:
 
 func open_panel() -> void:
 	if not can_use_ordering():
-		print("æ™®é€šä¾›è´§å•†åªåœ¨å¼€ä¸šå‰æŽ¥å•ã€‚å¼€ä¸šåŽåªèƒ½åŽ» EmergencyShop æ‰¾éš”å£ä¸´æ—¶å€Ÿè´§ã€‚")
-		manager.show_storage_stock_only()
+		print("The regular supplier only accepts orders before opening. After opening, use EmergencyShop for emergency restock.")
+		manager.gameplay_hud_system.show_storage_stock_only()
 		return
 
 	panel_controller.open()
@@ -101,14 +101,14 @@ func get_pending_amount(item_id: String) -> int:
 
 func place_order(item_id: String, amount: int = 1) -> void:
 	if not can_use_ordering():
-		print("æ™®é€šä¾›è´§å•†åªåœ¨å¼€ä¸šå‰æŽ¥å•ã€‚")
+		print("The regular supplier only accepts orders before opening.")
 		refresh_panel()
 		return
 
 	var price: int = RunSetupData.get_supplier_order_price(item_id, amount)
 
-	if not manager.spend_money(price):
-		print("è®¢è´§å¤±è´¥ï¼Œèµ„é‡‘ä¸è¶³ã€‚")
+	if not manager.economy_system.spend_money(price):
+		print("Supplier order failed. Not enough money.")
 		refresh_panel()
 		return
 

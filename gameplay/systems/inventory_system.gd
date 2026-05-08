@@ -168,7 +168,7 @@ func get_staple_stock_text() -> String:
 
 	for item_id in RunSetupData.get_staple_item_ids():
 		parts.append("%s x%d" % [
-			manager.get_ingredient_display_name(item_id),
+			TextDB.get_item_name(item_id),
 			int(manager.staple_stock.get(item_id, 0))
 		])
 

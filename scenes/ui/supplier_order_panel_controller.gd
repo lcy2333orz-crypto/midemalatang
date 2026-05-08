@@ -95,8 +95,8 @@ func refresh() -> void:
 	if status_label != null:
 		var lines: Array[String] = []
 		lines.append(TextDB.get_text("UI_SUPPLIER_MONEY") % manager.money)
-		lines.append(TextDB.get_text("UI_SUPPLIER_RAW_STOCK") % manager.get_raw_stock_text())
-		lines.append(TextDB.get_text("UI_SUPPLIER_STAPLE_STOCK") % manager.get_staple_stock_text())
+		lines.append(TextDB.get_text("UI_SUPPLIER_RAW_STOCK") % manager.inventory_system.get_raw_stock_text())
+		lines.append(TextDB.get_text("UI_SUPPLIER_STAPLE_STOCK") % manager.inventory_system.get_staple_stock_text())
 
 		if supplier_system.supplier_orders.is_empty():
 			lines.append(TextDB.get_text("UI_SUPPLIER_PENDING_NONE"))
@@ -108,7 +108,7 @@ func refresh() -> void:
 				var order_items: Dictionary = order_data.get("items", {})
 				var time_left: float = float(order_data.get("time_left", 0.0))
 				lines.append(TextDB.get_text("UI_SUPPLIER_PENDING_LINE") % [
-					manager.get_items_text(order_items),
+					manager.order_system.get_items_text(order_items),
 					time_left
 				])
 		status_label.text = "\n".join(lines)
@@ -131,7 +131,7 @@ func refresh() -> void:
 			current_amount = int(manager.raw_stock.get(item_id, 0))
 
 		var pending_amount: int = supplier_system.get_pending_amount(item_id)
-		var display_name: String = manager.get_ingredient_display_name(item_id)
+		var display_name: String = TextDB.get_item_name(item_id)
 
 		if pending_amount > 0:
 			button.text = TextDB.get_text("UI_SUPPLIER_BUTTON_PENDING") % [
