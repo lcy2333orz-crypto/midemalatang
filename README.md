@@ -10,6 +10,10 @@
 
 - 结算：最终日会先显示日结页，确认后进入完整轮结页；轮结页展示文案已迁入 `data/text_db.json`，轮结 summary 会在切换前写入缓存。
 
+- 维护：新增 `tools/run_static_checks.ps1`、`tools/run_godot_checks.ps1` 和 `tools/smoke_test.gd`，用于静态检查、Godot headless 解析和最小经营流程 smoke 检查。
+
+- 校验：`CookingSystem`、`OrderSystem`、`PendingOrderSystem` 的 `debug_validate()` 已补充大锅容量、漏勺/炉位、等待订单剩余内容和配送完成条件等业务一致性检查。
+
 - 操作：玩家可以用方向键或 WASD 移动；大锅面板打开时，Esc 等同于点击“盖上锅盖”。
 
 - 大锅：锅内支持多个独立批次。只要剩余容量足够，已有批次在煮时仍可以继续加入食材并启动新批次。
@@ -80,7 +84,7 @@
 
 
 
-下一步重点不是继续把新玩法塞进 `GameManager`，而是把更多脚本化 UI controller 沉淀成独立 Control 场景、把关卡/顾客/事件配置数据化，并补 Godot CLI smoke test。
+下一步重点不是继续把新玩法塞进 `GameManager`，而是把更多脚本化 UI controller 沉淀成独立 Control 场景，并把关卡、顾客和事件配置进一步数据化。
 
 
 
@@ -186,7 +190,22 @@ run/main_scene="res://scenes/menus/title_menu.tscn"
 
 
 
-运行时可以关注 `GameManager.debug_validate_runtime()` 的输出。它会检查关键节点、autoload、库存字典、队列数组和 system 状态，并通过 `push_warning` / `push_error` 给出提示。`InventorySystem`、`SupplierSystem`、`EmergencyPurchaseSystem`、`CookingSystem`、`OrderSystem`、`PendingOrderSystem` 已经提供 system 级 `debug_validate()`，后续可继续补充更细的业务一致性校验。
+运行时可以关注 `GameManager.debug_validate_runtime()` 的输出。它会检查关键节点、autoload、库存字典、队列数组和 system 状态，并通过 `push_warning` / `push_error` 给出提示。`InventorySystem`、`SupplierSystem`、`EmergencyPurchaseSystem`、`CookingSystem`、`OrderSystem`、`PendingOrderSystem` 已经提供 system 级 `debug_validate()`；其中烹饪、订单和等待订单系统会额外检查容量、炉位、漏勺、剩余订单内容和可配送状态等业务一致性。
+
+本轮新增了可重复运行的维护检查：
+
+```powershell
+tools/run_static_checks.ps1
+```
+
+`run_static_checks.ps1` 会检查 Godot 不兼容的类型推断写法、空白错误、`data/text_db.json` 解析、结算页硬编码英文残留和 `TODO.md` 的完成记录残留。
+
+```powershell
+$env:GODOT_BIN="C:\Path\To\Godot.exe"
+tools/run_godot_checks.ps1
+```
+
+`run_godot_checks.ps1` 会优先使用 `GODOT_BIN`，再探测常见 Windows 安装路径；找到 Godot 后运行 headless 项目解析，并执行 `res://tools/smoke_test.gd`。如果本机没有 Godot CLI，脚本会明确提示配置路径。
 
 
 
@@ -262,7 +281,7 @@ rg "res://(game_manager|main|customer|player|title_menu|home_menu|stage_select|s
 
 - 修改供应商基础价格、包裹数量、应急采购倍率：改 `autoload/run_setup_data.gd`。
 
-- 修改库存文本、履约判断、缺货计算、熟食/生食扣减、通用补货落库：优先改 `gameplay/systems/inventory_system.gd`。`GameManager` 中保留同名 wrapper 作为兼容入口。
+- 修改库存文本、履约判断、缺货计算、熟食/生食扣减、零熟食模板、库存打印和通用补货落库：优先改 `gameplay/systems/inventory_system.gd`；`GameManager` 只保留必要库存字段镜像。
 
 
 
@@ -286,7 +305,7 @@ rg "res://(game_manager|main|customer|player|title_menu|home_menu|stage_select|s
 
 - 修改营业时间、开店、打烊、收摊清理、进入日结条件：改 `gameplay/systems/business_day_system.gd`。
 
-- `GameManager` 中保留同名 wrapper，外部站点仍可调用 `open_business()`、`close_business()` 等方法。
+- `GameManager` 保留营业开关薄入口，外部站点仍可调用 `open_business()`、`close_business()` 等方法；清场和忙碌炉位判断由 `BusinessDaySystem` 持有。
 
 
 
@@ -305,8 +324,6 @@ rg "res://(game_manager|main|customer|player|title_menu|home_menu|stage_select|s
   - `interact_with_delivery_point()`
 
   - `complete_delivery_for_customer()`
-
-  - `get_pending_order_card_data()`
 
 - 等待订单列表由 `gameplay/systems/pending_order_system.gd` 持有，`GameManager.pending_customers` 仅作为兼容引用保留。
 

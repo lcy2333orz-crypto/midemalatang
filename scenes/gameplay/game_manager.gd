@@ -16,7 +16,6 @@ const EconomySystemScript = preload("res://gameplay/systems/economy_system.gd")
 const GameplayHudSystemScript = preload("res://gameplay/systems/gameplay_hud_system.gd")
 const StationInteractionSystemScript = preload("res://gameplay/systems/station_interaction_system.gd")
 const NightQueueBuilderScript = preload("res://gameplay/systems/night_queue_builder.gd")
-const CustomerOrderState = preload("res://gameplay/models/customer_order_state.gd")
 
 @export var customer_scene: PackedScene
 
@@ -86,19 +85,19 @@ var has_opened_for_business_today: bool = false
 
 var max_queue_size: int = 3
 
-# å¤šé”…ç³»ç»Ÿ
+# 多锅系统
 var total_cooker_slots: int = 2
 var unlocked_cooker_slots: int = 1
 var cooker_duration: float = 3.0
 
-# è®¢å•æŒ‚ä»¶å‡çº§å±‚çº§
-# 0 = åŸºç¡€æŒ‚ä»¶ï¼ˆä¸»é£Ÿ/é£Ÿæ/è€å¿ƒï¼‰
-# 1 = æ˜¾ç¤ºçŠ¶æ€
-# 2 = æ˜¾ç¤ºçŠ¶æ€ + é”…ä½
-# 3 = æ˜¾ç¤ºçŠ¶æ€ + é”…ä½ + é€é¤ç›®æ ‡ï¼ˆå…ˆç•™æŽ¥å£ï¼‰
+# 订单挂件升级层级
+# 0 = 基础挂件（主食/食材/耐心）
+# 1 = 显示状态
+# 2 = 显示状态 + 锅位
+# 3 = 显示状态 + 锅位 + 送餐目标（先留接口）
 var order_panel_upgrade_level: int = 0
 
-# å…¶ä»–å‡çº§ / å±€å†…å±è”½
+# 其他升级 / 局内屏蔽
 var has_second_cooker: bool = false
 var order_panel_blocked_for_this_run: bool = false
 
@@ -375,7 +374,7 @@ func start_round() -> void:
 	print("Station layout from RunSetupData: ", RunSetupData.station_layout)
 	print("Current day business event: ", RunSetupData.current_day_business_event)
 	print("Starting / current money: ", money)
-	print_stocks()
+	inventory_system.print_stocks()
 
 	gameplay_hud_system.reset_for_new_day()
 
@@ -393,35 +392,6 @@ func start_round() -> void:
 func get_ingredient_display_name(item_id: String) -> String:
 	return TextDB.get_item_name(item_id)
 
-
-func get_modified_spawn_timer_wait_time() -> float:
-	var multiplier: float = RunSetupData.get_current_day_multiplier(
-		"customer_spawn_interval_multiplier",
-		1.0
-	)
-
-	return max(base_spawn_timer_wait_time * multiplier, 0.2)
-
-func start_spawn_timer_if_needed() -> void:
-	if not can_spawn_customers_now():
-		return
-
-	if queued_customers.size() >= max_queue_size:
-		return
-
-	if spawn_timer == null:
-		return
-
-	if not is_instance_valid(spawn_timer):
-		return
-
-	if not spawn_timer.is_inside_tree():
-		return
-
-	spawn_timer.wait_time = get_modified_spawn_timer_wait_time()
-	spawn_timer.start()
-
-	print("Spawn timer started. wait_time=", spawn_timer.wait_time)
 
 func show_pending_morning_info_if_any() -> void:
 	day_event_system.show_pending_morning_info_if_any()
@@ -548,7 +518,7 @@ func get_reputation_delta_for_customer(customer: Node, event_name: String) -> in
 	return reputation_system.get_delta(customer, event_name)
 
 func resolve_price_reaction(_customer: Node, _quoted_price: int, _true_price: int) -> String:
-	# å…ˆç•™æŽ¥å£ï¼šä»¥åŽåœ¨è¿™é‡ŒæŽ¥â€œå¤šæ”¶è´¹ / å°‘æ”¶è´¹ / é¡¾å®¢æ€§æ ¼ / å¡ç‰ŒBuffâ€
+	# Ã¥â€¦Ë†Ã§â€¢â„¢Ã¦Å½Â¥Ã¥ÂÂ£Ã¯Â¼Å¡Ã¤Â»Â¥Ã¥ÂÅ½Ã¥Å“Â¨Ã¨Â¿â„¢Ã©â€¡Å’Ã¦Å½Â¥Ã¢â‚¬Å“Ã¥Â¤Å¡Ã¦â€Â¶Ã¨Â´Â¹ / Ã¥Â°â€˜Ã¦â€Â¶Ã¨Â´Â¹ / Ã©Â¡Â¾Ã¥Â®Â¢Ã¦â‚¬Â§Ã¦Â Â¼ / Ã¥ÂÂ¡Ã§â€°Å’BuffÃ¢â‚¬Â
 	return "accept"
 
 func get_first_customer_needing_emergency_purchase() -> Node:
@@ -581,11 +551,6 @@ func _on_customer_exited(customer: Node) -> void:
 func _on_spawn_timer_timeout() -> void:
 	customer_queue_system.on_spawn_timer_timeout()
 
-func print_stocks() -> void:
-	print("Cooked stock: ", cooked_stock)
-	print("Raw stock: ", raw_stock)
-	print("Staple stock: ", staple_stock)
-
 func add_pending_customer(customer: Node) -> void:
 	remove_customer_from_queue(customer)
 
@@ -598,18 +563,6 @@ func add_pending_customer(customer: Node) -> void:
 func has_pending_customer() -> bool:
 	return pending_order_system.has_pending()
 
-func is_customer_in_any_cooker(customer: Node) -> bool:
-	return cooking_system.is_customer_in_any_cooker(customer)
-
-func find_free_cooker_slot_index() -> int:
-	return cooking_system.find_free_cooker_slot_index()
-
-func get_customer_cooker_slot_index(customer: Node) -> int:
-	return cooking_system.get_customer_cooker_slot_index(customer)
-
-func remove_customer_from_cooker_slots(customer: Node) -> void:
-	cooking_system.remove_customer_from_cooker_slots(customer)
-
 func start_cooking_pending_order() -> void:
 	cooking_system.open_cart_pot_panel()
 
@@ -619,13 +572,6 @@ func start_shop_order_bound_cooking_pending_order() -> void:
 
 func reserve_main_food_stock_for_customer(customer: Node) -> bool:
 	return order_system.reserve_main_food_stock_for_customer(customer)
-
-func get_zero_food_stock() -> Dictionary:
-	return {
-		"spinach": 0,
-		"potato_slice": 0,
-		"tofu_puff": 0
-	}
 
 func get_total_pending_emergency_shortage() -> Dictionary:
 	return emergency_purchase_system.get_total_shortage()
@@ -694,53 +640,9 @@ func can_enter_cleanup_phase() -> bool:
 	return business_day_system.can_enter_cleanup_phase()
 
 func has_active_customers_or_orders() -> bool:
-	for customer in queued_customers:
-		if _customer_blocks_cart_cleanup(customer):
-			return true
-
-	for customer in pending_order_system.get_all():
-		if _customer_blocks_cart_cleanup(customer):
-			return true
-
-	if characters_node != null and is_instance_valid(characters_node):
-		for child in characters_node.get_children():
-			if _customer_blocks_cart_cleanup(child):
-				return true
-
-	var customer_nodes: Array = get_tree().get_nodes_in_group("customers")
-
-	for customer in customer_nodes:
-		if _customer_blocks_cart_cleanup(customer):
-			return true
-
-	return false
-
-func _customer_blocks_cart_cleanup(customer: Node) -> bool:
-	if customer == null:
-		return false
-
-	if not is_instance_valid(customer):
-		return false
-
-	if not customer.is_in_group("customers"):
-		return false
-
-	if customer.has_method("blocks_cart_cleanup"):
-		return bool(customer.blocks_cart_cleanup())
-
-	# å…œåº•é€»è¾‘ï¼š
-	# å¦‚æžœæŸä¸ªé¡¾å®¢è„šæœ¬è¿˜æ²¡æœ‰ blocks_cart_cleanup()ï¼Œ
-	# è‡³å°‘ä¸è¦è®©å·²ç»æœåŠ¡å®Œæˆæˆ–å·²ç»å› è€å¿ƒç¦»å¼€çš„é¡¾å®¢é˜»æ­¢æ”¶æ‘Šã€‚
-	if CustomerOrderState.is_served(customer):
-		return false
-
-	if CustomerOrderState.is_leaving_due_to_patience(customer):
-		return false
-
-	return true
-
+	return business_day_system.has_active_customers_or_orders()
 func has_busy_cooker() -> bool:
-	return cooking_system.has_busy_cooking()
+	return business_day_system.has_busy_cooker()
 
 
 func enter_cleanup_phase() -> void:
@@ -753,15 +655,7 @@ func finish_day_from_cleanup() -> void:
 	business_day_system.finish_day_from_cleanup()
 
 func can_finish_day_now() -> bool:
-	if has_busy_cooker():
-		return false
-
-	var customers = get_tree().get_nodes_in_group("customers")
-	for customer in customers:
-		if customer != null and is_instance_valid(customer):
-			return false
-
-	return true
+	return business_day_system.can_finish_day_now()
 
 func clear_staple_ladle_and_held_food_at_day_end() -> Dictionary:
 	return cooking_system.clear_day_end_state()
@@ -777,7 +671,7 @@ func finish_day() -> void:
 	# Cooked food does not carry over overnight.
 	# The day settlement shows remaining cooked food, but the next day starts with zero cooked stock.
 	RunSetupData.set_money_state(money, round_income, round_gross_income, round_expense)
-	RunSetupData.set_stock_state(remaining_raw_stock, get_zero_food_stock(), remaining_staple_stock)
+	RunSetupData.set_stock_state(remaining_raw_stock, inventory_system.get_zero_food_stock(), remaining_staple_stock)
 
 	RunSetupData.generated_night_queue = night_queue_builder.build_from_today_results()
 
@@ -813,7 +707,7 @@ func finish_run() -> void:
 	var remaining_staple_stock: Dictionary = staple_stock.duplicate(true)
 
 	RunSetupData.set_money_state(money, round_income, round_gross_income, round_expense)
-	RunSetupData.set_stock_state(remaining_raw_stock, get_zero_food_stock(), remaining_staple_stock)
+	RunSetupData.set_stock_state(remaining_raw_stock, inventory_system.get_zero_food_stock(), remaining_staple_stock)
 
 	var run_summary: Dictionary = settlement_builder.build_run_summary(_build_settlement_summary_input(
 		remaining_cooked_stock,

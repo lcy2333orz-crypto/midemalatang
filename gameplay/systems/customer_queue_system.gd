@@ -83,6 +83,37 @@ func start_initial_customer_wave() -> void:
 		spawn_customer()
 
 
+func get_modified_spawn_timer_wait_time() -> float:
+	var multiplier: float = RunSetupData.get_current_day_multiplier(
+		"customer_spawn_interval_multiplier",
+		1.0
+	)
+
+	return max(manager.base_spawn_timer_wait_time * multiplier, 0.2)
+
+
+func start_spawn_timer_if_needed() -> void:
+	if not manager.business_day_system.can_spawn_customers_now():
+		return
+
+	if manager.queued_customers.size() >= manager.max_queue_size:
+		return
+
+	if manager.spawn_timer == null:
+		return
+
+	if not is_instance_valid(manager.spawn_timer):
+		return
+
+	if not manager.spawn_timer.is_inside_tree():
+		return
+
+	manager.spawn_timer.wait_time = get_modified_spawn_timer_wait_time()
+	manager.spawn_timer.start()
+
+	print("Spawn timer started. wait_time=", manager.spawn_timer.wait_time)
+
+
 func spawn_customer() -> void:
 	if not manager.business_day_system.can_spawn_customers_now():
 		print("Current state does not allow customer spawning.")
@@ -160,7 +191,7 @@ func remove_customer_from_pending(customer: Node) -> void:
 
 func release_counter_customer(customer: Node) -> void:
 	remove_customer_from_queue(customer)
-	manager.start_spawn_timer_if_needed()
+	start_spawn_timer_if_needed()
 
 
 func notify_customer_leaving(customer: Node) -> void:
@@ -189,7 +220,7 @@ func notify_customer_leaving(customer: Node) -> void:
 	remove_customer_from_pending(customer)
 	manager.cooking_system.remove_customer_from_cooker_slots(customer)
 
-	manager.start_spawn_timer_if_needed()
+	start_spawn_timer_if_needed()
 
 
 func on_customer_exited(customer: Node) -> void:
@@ -199,7 +230,7 @@ func on_customer_exited(customer: Node) -> void:
 	remove_customer_from_pending(customer)
 	manager.cooking_system.remove_customer_from_cooker_slots(customer)
 
-	manager.start_spawn_timer_if_needed()
+	start_spawn_timer_if_needed()
 
 
 func on_spawn_timer_timeout() -> void:

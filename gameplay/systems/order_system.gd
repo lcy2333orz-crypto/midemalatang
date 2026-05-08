@@ -32,7 +32,59 @@ func debug_validate() -> Array[String]:
 		if CustomerOrderState.needs_emergency_purchase(customer) and customer.has_method("can_be_delivered") and customer.can_be_delivered():
 			warnings.append("OrderSystem: customer is both marked for emergency purchase and deliverable.")
 
+		_append_pending_customer_business_warnings(warnings, customer)
+
 	return warnings
+
+
+func _append_pending_customer_business_warnings(warnings: Array[String], customer: Node) -> void:
+	if not CustomerOrderState.is_checked_out(customer):
+		warnings.append("OrderSystem: pending customer has not completed checkout.")
+
+	if not bool(customer.get("is_waiting_after_checkout")) and not CustomerOrderState.is_served(customer):
+		warnings.append("OrderSystem: pending customer is not marked as waiting after checkout.")
+
+	if manager.queued_customers.has(customer):
+		warnings.append("OrderSystem: customer is both queued and pending.")
+
+	var remaining_main_food: String = get_pending_order_remaining_main_food_text(customer)
+	var remaining_ingredients: Dictionary = get_pending_order_remaining_ingredients(customer)
+	var fully_submitted: bool = remaining_main_food == "" and remaining_ingredients.is_empty()
+	var can_deliver: bool = false
+
+	if customer.has_method("can_be_delivered"):
+		can_deliver = bool(customer.can_be_delivered())
+
+	if can_deliver and CustomerOrderState.needs_emergency_purchase(customer):
+		warnings.append("OrderSystem: deliverable customer still needs emergency purchase.")
+
+	if fully_submitted and not can_deliver:
+		warnings.append("OrderSystem: pending customer has no remaining items but is not deliverable.")
+
+	if can_deliver and not fully_submitted:
+		warnings.append("OrderSystem: deliverable customer still has remaining order text.")
+
+	var reserved_cooked: Dictionary = CustomerOrderState.get_reserved_cooked_ingredients(customer)
+	_append_positive_amount_dictionary_warnings(warnings, reserved_cooked, "reserved_cooked_ingredients")
+
+	var ingredients_to_cook: Dictionary = CustomerOrderState.get_ingredients_to_cook(customer)
+	_append_positive_amount_dictionary_warnings(warnings, ingredients_to_cook, "ingredients_to_cook")
+
+	if CustomerOrderState.is_main_food_ready(customer) and CustomerOrderState.needs_main_food(customer):
+		warnings.append("OrderSystem: main food is ready but needs_main_food is still true.")
+
+	if CustomerOrderState.is_ingredients_ready(customer) and CustomerOrderState.needs_ingredients(customer):
+		warnings.append("OrderSystem: ingredients are ready but needs_ingredients is still true.")
+
+
+func _append_positive_amount_dictionary_warnings(warnings: Array[String], source: Dictionary, field_name: String) -> void:
+	for item_id in source.keys():
+		var amount = source.get(item_id, 0)
+		if typeof(amount) != TYPE_INT:
+			warnings.append("OrderSystem: %s[%s] is not an int." % [field_name, str(item_id)])
+			continue
+		if int(amount) < 0:
+			warnings.append("OrderSystem: %s[%s] is negative." % [field_name, str(item_id)])
 
 
 func begin_checkout(customer: Node) -> bool:

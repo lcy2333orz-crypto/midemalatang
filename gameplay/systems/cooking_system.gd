@@ -112,7 +112,108 @@ func debug_validate() -> Array[String]:
 
 
 
+	_append_cart_pot_business_warnings(warnings)
+	_append_staple_ladle_business_warnings(warnings)
+	_append_cooker_slot_business_warnings(warnings)
+
 	return warnings
+
+
+func _append_cart_pot_business_warnings(warnings: Array[String]) -> void:
+	if cart_pot_capacity <= 0:
+		warnings.append("CookingSystem: cart_pot_capacity must be positive.")
+
+	var used_capacity: int = get_cart_pot_total_capacity_with_selection()
+	if used_capacity > cart_pot_capacity:
+		warnings.append("CookingSystem: cart pot capacity is overfilled: %d/%d." % [used_capacity, cart_pot_capacity])
+
+	for item_id in cart_pot_selection.keys():
+		var item_key: String = str(item_id)
+		var amount: int = int(cart_pot_selection.get(item_key, 0))
+		if amount <= 0:
+			warnings.append("CookingSystem: cart_pot_selection contains a non-positive amount for %s." % item_key)
+		if amount > int(manager.raw_stock.get(item_key, 0)):
+			warnings.append("CookingSystem: cart_pot_selection exceeds raw stock for %s." % item_key)
+
+	for batch in cart_pot_cooking_batches:
+		if typeof(batch) != TYPE_DICTIONARY:
+			continue
+
+		var items = batch.get("items", {})
+		if typeof(items) != TYPE_DICTIONARY:
+			continue
+
+		var item_dict: Dictionary = items as Dictionary
+		if item_dict.is_empty():
+			warnings.append("CookingSystem: cart pot batch has no items.")
+
+		for item_id in item_dict.keys():
+			var amount: int = int(item_dict.get(item_id, 0))
+			if amount <= 0:
+				warnings.append("CookingSystem: cart pot batch contains a non-positive amount for %s." % str(item_id))
+
+
+func _append_staple_ladle_business_warnings(warnings: Array[String]) -> void:
+	if held_raw_staple_food_id != "" and not RunSetupData.is_staple_item(held_raw_staple_food_id):
+		warnings.append("CookingSystem: held_raw_staple_food_id is not a configured staple item.")
+
+	if held_staple_food_id != "" and not RunSetupData.is_staple_item(held_staple_food_id):
+		warnings.append("CookingSystem: held_staple_food_id is not a configured staple item.")
+
+	if held_raw_staple_food_id != "" and held_staple_food_id != "":
+		warnings.append("CookingSystem: raw and cooked staple are both held.")
+
+	for i in range(staple_ladle_slots.size()):
+		var slot: Dictionary = staple_ladle_slots[i] as Dictionary
+		var state: String = str(slot.get("state", "empty"))
+		var main_food_id: String = str(slot.get("main_food_id", ""))
+		var time_left: float = float(slot.get("time_left", 0.0))
+
+		if not ["empty", "cooking", "ready"].has(state):
+			warnings.append("CookingSystem: staple ladle %d has an unknown state: %s." % [i, state])
+
+		if state == "empty":
+			if main_food_id != "":
+				warnings.append("CookingSystem: empty staple ladle %d still has a main_food_id." % i)
+			if time_left != 0.0:
+				warnings.append("CookingSystem: empty staple ladle %d has non-zero time_left." % i)
+			continue
+
+		if main_food_id == "" or not RunSetupData.is_staple_item(main_food_id):
+			warnings.append("CookingSystem: staple ladle %d has an invalid main_food_id." % i)
+
+		if state == "cooking" and time_left <= 0.0:
+			warnings.append("CookingSystem: cooking staple ladle %d has non-positive time_left." % i)
+
+		if state == "ready" and time_left != 0.0:
+			warnings.append("CookingSystem: ready staple ladle %d has non-zero time_left." % i)
+
+
+func _append_cooker_slot_business_warnings(warnings: Array[String]) -> void:
+	if manager.unlocked_cooker_slots < 0:
+		warnings.append("CookingSystem: unlocked_cooker_slots is negative.")
+
+	if manager.unlocked_cooker_slots > cooker_slots.size():
+		warnings.append("CookingSystem: unlocked_cooker_slots exceeds cooker_slots size.")
+
+	for i in range(cooker_slots.size()):
+		var slot: Dictionary = cooker_slots[i] as Dictionary
+		var is_busy: bool = bool(slot.get("is_busy", false))
+		var customer = slot.get("customer", null)
+		var time_left: float = float(slot.get("time_left", 0.0))
+
+		if is_busy:
+			if customer == null or not is_instance_valid(customer):
+				warnings.append("CookingSystem: busy cooker slot %d has no valid customer." % i)
+			if time_left <= 0.0:
+				warnings.append("CookingSystem: busy cooker slot %d has non-positive time_left." % i)
+			if i >= manager.unlocked_cooker_slots:
+				warnings.append("CookingSystem: locked cooker slot %d is busy." % i)
+		else:
+			if customer != null and is_instance_valid(customer):
+				warnings.append("CookingSystem: idle cooker slot %d still has a customer." % i)
+			if time_left != 0.0:
+				warnings.append("CookingSystem: idle cooker slot %d has non-zero time_left." % i)
 
 
 
@@ -194,7 +295,7 @@ func update_cooker_slots(delta: float) -> void:
 
 			print("This cooked food belongs to this customer and is not added to public cooked_stock.")
 
-			manager.print_stocks()
+			manager.inventory_system.print_stocks()
 
 
 
@@ -1044,7 +1145,7 @@ func finish_cart_pot_batch_cooking(batch_index: int) -> void:
 
 	refresh_cart_pot_panel()
 
-	manager.print_stocks()
+	manager.inventory_system.print_stocks()
 
 
 
@@ -1916,7 +2017,7 @@ func try_fulfill_cart_ingredients_for_customer(customer: Node) -> bool:
 
 
 
-	manager.deduct_cooked_stock(ingredients_to_submit)
+	manager.inventory_system.deduct_cooked_stock(ingredients_to_submit)
 
 
 
@@ -1946,7 +2047,7 @@ func try_fulfill_cart_ingredients_for_customer(customer: Node) -> bool:
 
 	print(TextDB.get_text("LOG_CART_INGREDIENTS_SUBMITTED") % [str(ingredients_to_submit)])
 
-	manager.print_stocks()
+	manager.inventory_system.print_stocks()
 
 
 

@@ -70,6 +70,28 @@ func get_stock_total(stock: Dictionary) -> int:
 	return StockUtils.get_total(stock)
 
 
+func get_zero_food_stock() -> Dictionary:
+	var zero_stock: Dictionary = {}
+
+	for item_id in RunSetupData.get_basic_ingredient_ids():
+		zero_stock[str(item_id)] = 0
+
+	if zero_stock.is_empty():
+		zero_stock = {
+			"spinach": 0,
+			"potato_slice": 0,
+			"tofu_puff": 0
+		}
+
+	return zero_stock
+
+
+func print_stocks() -> void:
+	print("Cooked stock: ", manager.cooked_stock)
+	print("Raw stock: ", manager.raw_stock)
+	print("Staple stock: ", manager.staple_stock)
+
+
 func can_fulfill_from_cooked(ingredients: Dictionary) -> bool:
 	for ingredient_name in ingredients.keys():
 		var amount: int = int(ingredients[ingredient_name])

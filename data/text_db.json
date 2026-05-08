@@ -313,10 +313,14 @@
 	"LOG_CART_COOKED_INGREDIENTS_SHORTAGE": "锅中熟配菜不足，需要继续煮。缺口：%s",
 	"LOG_CART_INGREDIENTS_SUBMITTED": "已从大锅提交配菜给顾客：%s",
 	"LOG_HAND_OVER_STAPLE": "交出手中主食：%s",
+	"UI_CAT_REACTION_CLEAN_LEFTOVERS": "小猫把剩下的熟食收拾掉了。",
 	"LOG_HAND_STAPLE_NO_MATCHING_CUSTOMER": "手里有主食，但没有等待这种主食的顾客：%s",
 	"LOG_ORDER_NO_CUSTOMER_WAITING_STAPLE": "没有等待这个主食的顾客。",
 	"LOG_ORDER_STAPLE_SUBMITTED_PARTIAL": "已提交主食。订单还没完成，订单卡会继续显示剩余内容。",
-	"LOG_ORDER_INGREDIENTS_SUBMITTED_PARTIAL": "已提交当前能交的配菜。订单还没完成，订单卡会继续显示剩余内容。"
+	"LOG_ORDER_INGREDIENTS_SUBMITTED_PARTIAL": "已提交当前能交的配菜。订单还没完成，订单卡会继续显示剩余内容。",
+	"LOG_SMOKE_START": "开始运行最小经营流程 smoke 检查。",
+	"LOG_SMOKE_STEP_OK": "Smoke 步骤通过：%s",
+	"LOG_SMOKE_DONE": "Smoke 检查通过。"
   },
   "en": {
 	"UI_MONEY": "Money: %d\nReputation: %d",
@@ -635,6 +639,9 @@
 	"LOG_HAND_STAPLE_NO_MATCHING_CUSTOMER": "Holding staple, but no customer is waiting for this staple: %s",
 	"LOG_ORDER_NO_CUSTOMER_WAITING_STAPLE": "No customer is waiting for this staple.",
 	"LOG_ORDER_STAPLE_SUBMITTED_PARTIAL": "Staple submitted. Order is not complete yet; the order card will keep showing remaining items.",
-	"LOG_ORDER_INGREDIENTS_SUBMITTED_PARTIAL": "Submitted currently available toppings. Order is not complete yet; the order card will keep showing remaining items."
+	"LOG_ORDER_INGREDIENTS_SUBMITTED_PARTIAL": "Submitted currently available toppings. Order is not complete yet; the order card will keep showing remaining items.",
+	"LOG_SMOKE_START": "Starting minimal gameplay smoke check.",
+	"LOG_SMOKE_STEP_OK": "Smoke step passed: %s",
+	"LOG_SMOKE_DONE": "Smoke check passed."
   }
 }

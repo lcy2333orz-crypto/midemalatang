@@ -1,6 +1,8 @@
 ﻿class_name BusinessDaySystem
 extends RefCounted
 
+const CustomerOrderState = preload("res://gameplay/models/customer_order_state.gd")
+
 var manager = null
 
 
@@ -111,10 +113,10 @@ func can_enter_cleanup_phase() -> bool:
 	if not manager.is_round_closing:
 		return false
 
-	if manager.has_active_customers_or_orders():
+	if has_active_customers_or_orders():
 		return false
 
-	if manager.has_busy_cooker():
+	if has_busy_cooker():
 		return false
 
 	return true
@@ -156,3 +158,64 @@ func finish_day_from_cleanup() -> void:
 
 	print("=== Cleanup complete. Enter day settlement. ===")
 	manager.finish_day()
+
+
+func has_active_customers_or_orders() -> bool:
+	for customer in manager.queued_customers:
+		if _customer_blocks_cart_cleanup(customer):
+			return true
+
+	for customer in manager.pending_order_system.get_all():
+		if _customer_blocks_cart_cleanup(customer):
+			return true
+
+	if manager.characters_node != null and is_instance_valid(manager.characters_node):
+		for child in manager.characters_node.get_children():
+			if _customer_blocks_cart_cleanup(child):
+				return true
+
+	var customer_nodes: Array = manager.get_tree().get_nodes_in_group("customers")
+
+	for customer in customer_nodes:
+		if _customer_blocks_cart_cleanup(customer):
+			return true
+
+	return false
+
+
+func has_busy_cooker() -> bool:
+	return manager.cooking_system.has_busy_cooking()
+
+
+func can_finish_day_now() -> bool:
+	if has_busy_cooker():
+		return false
+
+	var customers: Array = manager.get_tree().get_nodes_in_group("customers")
+	for customer in customers:
+		if customer != null and is_instance_valid(customer):
+			return false
+
+	return true
+
+
+func _customer_blocks_cart_cleanup(customer: Node) -> bool:
+	if customer == null:
+		return false
+
+	if not is_instance_valid(customer):
+		return false
+
+	if not customer.is_in_group("customers"):
+		return false
+
+	if customer.has_method("blocks_cart_cleanup"):
+		return bool(customer.blocks_cart_cleanup())
+
+	if CustomerOrderState.is_served(customer):
+		return false
+
+	if CustomerOrderState.is_leaving_due_to_patience(customer):
+		return false
+
+	return true

@@ -1246,7 +1246,7 @@ func clear_leftover_food_for_next_day() -> void:
 
 	if _has_leftover_food_for_cat():
 
-		print("剩余熟食被小猫收拾掉了：", leftover_cooked_stock_for_cat)
+		"UI_CAT_REACTION_CLEAN_LEFTOVERS": "小猫把剩下的熟食收拾掉了。"
 
 
 

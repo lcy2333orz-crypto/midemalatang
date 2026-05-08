@@ -28,7 +28,38 @@ func debug_validate() -> Array[String]:
 		if CustomerOrderState.is_served(customer):
 			warnings.append("PendingOrderSystem: served customer is still pending.")
 
+		_append_customer_membership_warnings(warnings, customer)
+
 	return warnings
+
+
+func _append_customer_membership_warnings(warnings: Array[String], customer: Node) -> void:
+	if manager == null or not is_instance_valid(manager):
+		warnings.append("PendingOrderSystem: manager is not valid.")
+		return
+
+	if manager.queued_customers.has(customer):
+		warnings.append("PendingOrderSystem: customer is both queued and pending.")
+
+	if CustomerOrderState.is_leaving_due_to_patience(customer):
+		warnings.append("PendingOrderSystem: leaving customer is still pending.")
+
+	if not CustomerOrderState.is_checked_out(customer):
+		warnings.append("PendingOrderSystem: pending customer has not checked out.")
+
+	if customer.has_method("can_be_delivered"):
+		if bool(customer.can_be_delivered()) and CustomerOrderState.needs_emergency_purchase(customer):
+			warnings.append("PendingOrderSystem: customer is deliverable while marked for emergency purchase.")
+
+	if manager.order_system == null:
+		return
+
+	var remaining_main_food: String = manager.order_system.get_pending_order_remaining_main_food_text(customer)
+	var remaining_ingredients: Dictionary = manager.order_system.get_pending_order_remaining_ingredients(customer)
+
+	if remaining_main_food == "" and remaining_ingredients.is_empty():
+		if customer.has_method("can_be_delivered") and not bool(customer.can_be_delivered()):
+			warnings.append("PendingOrderSystem: no remaining pending content but customer is not deliverable.")
 
 
 func clear() -> void:
@@ -92,7 +123,7 @@ func get_first_uncooked() -> Node:
 		if customer.has_method("can_be_delivered") and customer.can_be_delivered():
 			continue
 
-		if manager != null and is_instance_valid(manager) and manager.is_customer_in_any_cooker(customer):
+		if manager != null and is_instance_valid(manager) and manager.cooking_system.is_customer_in_any_cooker(customer):
 			continue
 
 		return customer

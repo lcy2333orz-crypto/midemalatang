@@ -2,14 +2,6 @@
 
 这个文件只记录仍然要做、尚未完成的事项；当前状态说明请看 `README.md`。
 
-## 高优先级维护
-
-- 补 Godot CLI 验证流程：记录本机 Godot 可执行文件路径，增加可重复运行的启动/解析检查。
-- 建立最小 smoke test 或 debug command：覆盖启动、选关、开店、点单、收银、烹饪、配送、补货、应急采购、打烊、日结、下一天、最终轮结。
-- 继续减少 `GameManager` 兼容入口：只保留外部场景确实需要的薄 facade，新增玩法逻辑必须放进 `gameplay/systems/` 或 `gameplay/models/`。
-- 给 `CookingSystem`、`OrderSystem`、`PendingOrderSystem` 增加更具体的业务一致性 `debug_validate()`，例如大锅容量、漏勺状态、等待订单剩余内容和配送完成条件。
-- 继续收敛正式展示文案：新增 UI、状态、日志可见文本优先写入 `data/text_db.json`。
-
 ## 架构拆分
 
 - 把更多脚本化 UI controller 固化为独立 `.tscn` 场景，优先处理大锅面板和结算页剩余流程 UI。
