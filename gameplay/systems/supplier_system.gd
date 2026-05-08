@@ -105,6 +105,11 @@ func place_order(item_id: String, amount: int = 1) -> void:
 		refresh_panel()
 		return
 
+	if is_item_blocked_by_tutorial(item_id):
+		print("Tutorial supplier noodle order blocked. Use EmergencyShop after the noodle customer appears.")
+		refresh_panel()
+		return
+
 	var price: int = RunSetupData.get_supplier_order_price(item_id, amount)
 
 	if not manager.economy_system.spend_money(price):
@@ -128,6 +133,10 @@ func place_order(item_id: String, amount: int = 1) -> void:
 	print("Supplier order cost: ", price)
 
 	refresh_panel()
+
+
+func is_item_blocked_by_tutorial(item_id: String) -> bool:
+	return RunSetupData.is_tutorial_day() and item_id == "noodle"
 
 
 func update(delta: float) -> void:

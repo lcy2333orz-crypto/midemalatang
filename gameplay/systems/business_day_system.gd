@@ -30,11 +30,16 @@ func update_day_timer(delta: float) -> void:
 	if manager.is_round_closing:
 		return
 
+	if manager.gameplay_hud_system != null and manager.gameplay_hud_system.is_tutorial_timer_paused():
+		return
+
 	manager.day_time_left = max(manager.day_time_left - delta, 0.0)
 
 	if manager.day_time_left <= 0.0 and not manager.auto_close_triggered:
 		manager.auto_close_triggered = true
 		print("=== Business time is over. Auto closing. ===")
+		if manager.gameplay_hud_system != null:
+			manager.gameplay_hud_system.notify_auto_closed_by_timer()
 
 		if manager.is_open_for_business:
 			close_business()

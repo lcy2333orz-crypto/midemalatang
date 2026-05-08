@@ -5,6 +5,7 @@ const CustomerOrderState = preload("res://gameplay/models/customer_order_state.g
 
 var manager = null
 var spawn_policy: Dictionary = {}
+var tutorial_normal_customer_spawn_count: int = 0
 
 
 func bind(game_manager: Node) -> void:
@@ -35,6 +36,10 @@ func debug_validate() -> Array[String]:
 
 func set_spawn_policy(policy: Dictionary) -> void:
 	spawn_policy = policy.duplicate(true)
+
+
+func clear_day_state() -> void:
+	tutorial_normal_customer_spawn_count = 0
 
 
 func get_active_queue_snapshot() -> Array:
@@ -135,11 +140,47 @@ func spawn_customer() -> void:
 	print("customer initial pos: ", customer_instance.global_position)
 
 	apply_special_customer_plan_to_customer(customer_instance)
+	apply_tutorial_order_to_normal_customer(customer_instance)
 
 	manager.queued_customers.append(customer_instance)
 	refresh_queue_positions()
 
 	customer_instance.tree_exited.connect(Callable(manager, "_on_customer_exited").bind(customer_instance))
+
+
+func apply_tutorial_order_to_normal_customer(customer: Node) -> void:
+	if customer == null or not is_instance_valid(customer):
+		return
+
+	if not RunSetupData.is_tutorial_day():
+		return
+
+	if CustomerOrderState.is_special_customer(customer):
+		return
+
+	if not customer.has_method("apply_forced_order"):
+		return
+
+	tutorial_normal_customer_spawn_count += 1
+
+	if tutorial_normal_customer_spawn_count == 1:
+		customer.apply_forced_order("glass_noodle", {
+			"spinach": 1,
+			"potato_slice": 1
+		})
+		print("Applied tutorial forced order to normal customer 1.")
+		return
+
+	if tutorial_normal_customer_spawn_count == 2:
+		customer.apply_forced_order("noodle", {
+			"tofu_puff": 1
+		})
+		print("Applied tutorial forced order to normal customer 2.")
+		return
+
+	if customer.has_method("get_main_food_id") and str(customer.get_main_food_id()) == "noodle":
+		customer.apply_forced_order("glass_noodle", customer.get_ingredients())
+		print("Replaced noodle order after tutorial customer 2.")
 
 
 func apply_special_customer_plan_to_customer(customer: Node) -> void:

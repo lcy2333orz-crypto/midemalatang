@@ -110,6 +110,7 @@ func begin_checkout(customer: Node) -> bool:
 	print("Customer order revealed: ", customer.get_order_name())
 	print("Main food: ", customer.get_main_food())
 	print("Ingredients: ", customer.get_ingredients_text())
+	manager.gameplay_hud_system.notify_order_revealed(customer)
 	return true
 
 
@@ -210,6 +211,7 @@ func confirm_checkout(customer: Node, quoted_price: int = -1) -> Dictionary:
 	result["success"] = true
 	result["route"] = route_result
 	result["message"] = "Checkout completed."
+	manager.gameplay_hud_system.notify_checkout_completed(customer)
 
 	return result
 
@@ -565,6 +567,7 @@ func complete_delivery(customer: Node) -> bool:
 
 	print("Delivered order to customer.")
 	_refresh_cart_pot_panel_if_open()
+	manager.gameplay_hud_system.notify_order_delivered(customer)
 
 	return true
 

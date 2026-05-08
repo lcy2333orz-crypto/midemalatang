@@ -496,6 +496,13 @@ func can_be_delivered() -> bool:
 func set_ingredients(new_ingredients: Dictionary) -> void:
 	ingredients = new_ingredients
 
+
+func apply_forced_order(forced_main_food_id: String, forced_ingredients: Dictionary) -> void:
+	main_food_id = forced_main_food_id
+	ingredients = forced_ingredients.duplicate(true)
+	needs_waiting = has_main_food()
+
+
 func has_any_ingredients() -> bool:
 	return ingredients.size() > 0
 

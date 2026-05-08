@@ -54,7 +54,7 @@ var is_round_closing: bool = false
 var is_cleanup_phase: bool = false
 var has_round_finished: bool = false
 
-var day_duration_seconds: float = 5.0
+var day_duration_seconds: float =50.0
 var day_time_left: float = 90.0
 var auto_close_triggered: bool = false
 
@@ -356,6 +356,7 @@ func start_round() -> void:
 
 	has_opened_for_business_today = false
 	supplier_system.clear_day_state()
+	customer_queue_system.clear_day_state()
 
 	day_time_left = day_duration_seconds
 	auto_close_triggered = false

@@ -337,6 +337,10 @@ func setup_stage_run(stage_id: String, difficulty_days: int = 7) -> void:
 	config_state.setup_stage_run(stage_id, difficulty_days)
 
 
+func is_tutorial_day() -> bool:
+	return selected_stage_id == "stage_1" and current_day_in_run == 1
+
+
 func _apply_default_station_layout() -> void:
 	_ensure_config_state()
 	config_state.apply_default_station_layout()

@@ -72,6 +72,8 @@ var stall_echo_label: Label = null
 
 var night_activity_label: Label = null
 
+var night_tutorial_label: Label = null
+
 
 
 var expense_label: Label = null
@@ -153,6 +155,8 @@ func _ready() -> void:
 	_create_stall_echo_label()
 
 	_create_night_activity_label()
+
+	_create_night_tutorial_label()
 
 	_create_accounting_extra_labels()
 
@@ -551,6 +555,37 @@ func _create_night_activity_label() -> void:
 	add_child(night_activity_label)
 
 
+func _create_night_tutorial_label() -> void:
+
+	night_tutorial_label = Label.new()
+
+	night_tutorial_label.name = "NightTutorialLabel"
+
+	night_tutorial_label.text = ""
+
+	night_tutorial_label.size = Vector2(620, 42)
+
+	night_tutorial_label.z_index = 31
+
+	night_tutorial_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+	night_tutorial_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+
+	night_tutorial_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+
+	night_tutorial_label.add_theme_font_size_override("font_size", 15)
+
+	night_tutorial_label.add_theme_color_override("font_color", Color(1.0, 0.95, 0.75))
+
+	night_tutorial_label.add_theme_color_override("font_outline_color", Color(0.05, 0.04, 0.03, 0.95))
+
+	night_tutorial_label.add_theme_constant_override("outline_size", 3)
+
+	night_tutorial_label.visible = false
+
+	add_child(night_tutorial_label)
+
+
 
 func _create_accounting_extra_labels() -> void:
 
@@ -681,6 +716,14 @@ func _setup_layout_positions() -> void:
 	night_queue_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	night_queue_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+
+
+
+	if night_tutorial_label != null:
+
+		night_tutorial_label.position = Vector2(center_x - 310, 195)
+
+		night_tutorial_label.size = Vector2(620, 42)
 
 
 
@@ -1370,6 +1413,12 @@ func show_current_choice() -> void:
 
 	night_queue_label.visible = true
 
+	if night_tutorial_label != null:
+
+		night_tutorial_label.visible = RunSetupData.is_tutorial_day()
+
+		night_tutorial_label.text = TextDB.get_text("UI_TUTORIAL_NIGHT_CHOICE")
+
 	card_container.visible = true
 
 	retry_button.visible = false
@@ -1558,6 +1607,10 @@ func finish_night() -> void:
 
 	night_queue_label.visible = false
 
+	if night_tutorial_label != null:
+
+		night_tutorial_label.visible = false
+
 	card_container.visible = false
 
 
@@ -1601,6 +1654,10 @@ func _show_final_confirm_state() -> void:
 
 
 	night_queue_label.visible = false
+
+	if night_tutorial_label != null:
+
+		night_tutorial_label.visible = false
 
 	card_container.visible = false
 

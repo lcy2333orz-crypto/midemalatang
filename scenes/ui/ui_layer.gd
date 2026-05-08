@@ -21,6 +21,7 @@ var pending_order_card_scene: PackedScene = preload("res://scenes/ui/pending_ord
 
 var interaction_prompt_label: Label = null
 var hand_state_label: Label = null
+var tutorial_hint_label: Label = null
 
 
 func _ready() -> void:
@@ -46,6 +47,7 @@ func _ready() -> void:
 	hide_pending_orders()
 	hide_interaction_prompt()
 	hide_hand_state()
+	hide_tutorial_hint()
 
 
 func _ensure_interaction_widgets() -> void:
@@ -70,6 +72,20 @@ func _ensure_interaction_widgets() -> void:
 		hand_state_label.z_index = 300
 		hand_state_label.add_theme_font_size_override("font_size", 15)
 		add_child(hand_state_label)
+
+	if tutorial_hint_label == null:
+		tutorial_hint_label = Label.new()
+		tutorial_hint_label.name = "TutorialHintLabel"
+		tutorial_hint_label.position = Vector2(220, 494)
+		tutorial_hint_label.size = Vector2(600, 34)
+		tutorial_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		tutorial_hint_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		tutorial_hint_label.z_index = 300
+		tutorial_hint_label.add_theme_font_size_override("font_size", 16)
+		tutorial_hint_label.add_theme_color_override("font_color", Color(1.0, 0.95, 0.75))
+		tutorial_hint_label.add_theme_color_override("font_outline_color", Color(0.05, 0.04, 0.03, 0.95))
+		tutorial_hint_label.add_theme_constant_override("outline_size", 3)
+		add_child(tutorial_hint_label)
 
 
 func update_money(value: int) -> void:
@@ -163,6 +179,21 @@ func hide_hand_state() -> void:
 	hand_state_label.visible = false
 	hand_state_label.text = ""
 
+func show_tutorial_hint(hint_text: String) -> void:
+	_ensure_interaction_widgets()
+
+	if hint_text.strip_edges() == "":
+		hide_tutorial_hint()
+		return
+
+	tutorial_hint_label.visible = true
+	tutorial_hint_label.text = hint_text
+
+
+func hide_tutorial_hint() -> void:
+	_ensure_interaction_widgets()
+	tutorial_hint_label.visible = false
+	tutorial_hint_label.text = ""
 
 func show_pending_orders(order_cards: Array) -> void:
 	_clear_pending_order_cards()
