@@ -150,21 +150,21 @@ func refresh_delivery_positions() -> void:
 
 func get_delivery_wait_position(index: int) -> Vector2:
 	var delivery_spot: Node2D = manager.get_tree().get_first_node_in_group("delivery_spot") as Node2D
-	var base_position: Vector2 = Vector2(680, 220)
+	var base_position: Vector2 = Vector2(680, 135)
 
 	if delivery_spot != null and is_instance_valid(delivery_spot):
-		base_position = delivery_spot.global_position
+		base_position = Vector2(delivery_spot.global_position.x, 135)
 
 	var offsets: Array[Vector2] = [
-		Vector2(0, 72),
-		Vector2(-62, 72),
-		Vector2(62, 72),
-		Vector2(-124, 72),
-		Vector2(124, 72),
-		Vector2(0, 132)
+		Vector2(0, 0),
+		Vector2(-62, 0),
+		Vector2(62, 0),
+		Vector2(-124, 0),
+		Vector2(124, 0),
+		Vector2(0, -48)
 	]
 
 	if index < offsets.size():
 		return base_position + offsets[index]
 
-	return base_position + Vector2((index - offsets.size() + 1) * 42, 132)
+	return base_position + Vector2((index - offsets.size() + 1) * 42, -48)

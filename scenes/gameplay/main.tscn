@@ -67,22 +67,22 @@ size = Vector2(64, 52)
 [node name="Spawns" type="Node2D" parent="." unique_id=902001230]
 
 [node name="PlayerSpawn" type="Marker2D" parent="Spawns" unique_id=341334920]
-position = Vector2(250, 305)
+position = Vector2(250, 335)
 
 [node name="CustomerSpawn" type="Marker2D" parent="Spawns" unique_id=1112229354]
-position = Vector2(40, 292)
+position = Vector2(40, 135)
 
 [node name="QueueSpot1" type="Marker2D" parent="Spawns" unique_id=335344092]
-position = Vector2(280, 292)
+position = Vector2(280, 135)
 
 [node name="QueueSpot2" type="Marker2D" parent="Spawns" unique_id=2103792036]
-position = Vector2(200, 292)
+position = Vector2(200, 135)
 
 [node name="QueueSpot3" type="Marker2D" parent="Spawns" unique_id=1534848966]
-position = Vector2(120, 292)
+position = Vector2(120, 135)
 
 [node name="ExitPoint" type="Marker2D" parent="Spawns" unique_id=1300883298 groups=["exit_point"]]
-position = Vector2(820, 220)
+position = Vector2(900, 135)
 
 [node name="Stations" type="Node2D" parent="." unique_id=389743625]
 
@@ -467,19 +467,19 @@ one_shot = true
 [node name="LayoutSlots" type="Node2D" parent="." unique_id=806798287]
 
 [node name="SlotA" type="Marker2D" parent="LayoutSlots" unique_id=1077234080]
-position = Vector2(220, 190)
+position = Vector2(220, 240)
 
 [node name="SlotB" type="Marker2D" parent="LayoutSlots" unique_id=2033913141]
-position = Vector2(450, 190)
+position = Vector2(450, 240)
 
 [node name="SlotC" type="Marker2D" parent="LayoutSlots" unique_id=344607718]
-position = Vector2(660, 190)
+position = Vector2(660, 240)
 
 [node name="SlotD" type="Marker2D" parent="LayoutSlots" unique_id=1316249324]
-position = Vector2(540, 190)
+position = Vector2(540, 240)
 
 [node name="SlotE" type="Marker2D" parent="LayoutSlots" unique_id=819792884]
 position = Vector2(220, 420)
 
 [node name="SlotF" type="Marker2D" parent="LayoutSlots" unique_id=1389469593]
-position = Vector2(830, 190)
+position = Vector2(830, 240)
