@@ -73,13 +73,16 @@ position = Vector2(250, 335)
 position = Vector2(40, 135)
 
 [node name="QueueSpot1" type="Marker2D" parent="Spawns" unique_id=335344092]
-position = Vector2(280, 135)
+position = Vector2(280, 145)
 
 [node name="QueueSpot2" type="Marker2D" parent="Spawns" unique_id=2103792036]
-position = Vector2(200, 135)
+position = Vector2(280, 95)
 
 [node name="QueueSpot3" type="Marker2D" parent="Spawns" unique_id=1534848966]
-position = Vector2(120, 135)
+position = Vector2(280, 45)
+
+[node name="DeliveryWaitSpot" type="Marker2D" parent="Spawns" groups=["delivery_wait_spot"]]
+position = Vector2(740, 135)
 
 [node name="ExitPoint" type="Marker2D" parent="Spawns" unique_id=1300883298 groups=["exit_point"]]
 position = Vector2(900, 135)

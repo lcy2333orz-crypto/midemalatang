@@ -149,22 +149,36 @@ func refresh_delivery_positions() -> void:
 
 
 func get_delivery_wait_position(index: int) -> Vector2:
-	var delivery_spot: Node2D = manager.get_tree().get_first_node_in_group("delivery_spot") as Node2D
-	var base_position: Vector2 = Vector2(680, 135)
+	var base_position: Vector2 = Vector2(740, 135)
 
-	if delivery_spot != null and is_instance_valid(delivery_spot):
-		base_position = Vector2(delivery_spot.global_position.x, 135)
+	if manager == null or not is_instance_valid(manager):
+		return get_delivery_wait_position_from_base(base_position, index)
 
+	if not manager.is_inside_tree():
+		return get_delivery_wait_position_from_base(base_position, index)
+
+	var delivery_wait_spot: Node2D = manager.get_tree().get_first_node_in_group("delivery_wait_spot") as Node2D
+	if delivery_wait_spot != null and is_instance_valid(delivery_wait_spot):
+		base_position = delivery_wait_spot.global_position
+	else:
+		var delivery_spot: Node2D = manager.get_tree().get_first_node_in_group("delivery_spot") as Node2D
+		if delivery_spot != null and is_instance_valid(delivery_spot):
+			base_position = delivery_spot.global_position + Vector2(60, -85)
+
+	return get_delivery_wait_position_from_base(base_position, index)
+
+
+func get_delivery_wait_position_from_base(base_position: Vector2, index: int) -> Vector2:
 	var offsets: Array[Vector2] = [
 		Vector2(0, 0),
-		Vector2(-62, 0),
-		Vector2(62, 0),
-		Vector2(-124, 0),
-		Vector2(124, 0),
-		Vector2(0, -48)
+		Vector2(0, 46),
+		Vector2(0, 92),
+		Vector2(54, 0),
+		Vector2(54, 46),
+		Vector2(54, 92)
 	]
 
 	if index < offsets.size():
 		return base_position + offsets[index]
 
-	return base_position + Vector2((index - offsets.size() + 1) * 42, -48)
+	return base_position + Vector2(54 * int(index / offsets.size()), 46 * int(index % offsets.size()))

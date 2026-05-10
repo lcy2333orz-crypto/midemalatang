@@ -279,12 +279,6 @@ func _route_waiting_customer(customer: Node, needs_main_food_cooking: bool, need
 
 	customer.start_waiting_for_food(needs_main_food_cooking, needs_ingredient_cooking)
 
-	var delivery_spot: Node = manager.get_tree().get_first_node_in_group("delivery_spot") as Node
-	if delivery_spot:
-		customer.go_to_delivery(delivery_spot.global_position)
-	else:
-		print("No delivery spot found.")
-
 	manager.pending_order_system.add(customer)
 
 	manager.customer_queue_system.release_counter_customer(customer)
