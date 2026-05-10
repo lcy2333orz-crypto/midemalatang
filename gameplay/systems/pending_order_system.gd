@@ -72,12 +72,14 @@ func add(customer: Node) -> void:
 
 	if not pending_customers.has(customer):
 		pending_customers.append(customer)
+		refresh_delivery_positions()
 
 
 func remove(customer: Node) -> void:
 	var idx: int = pending_customers.find(customer)
 	if idx != -1:
 		pending_customers.remove_at(idx)
+		refresh_delivery_positions()
 
 
 func has(customer: Node) -> bool:
@@ -129,3 +131,40 @@ func get_first_uncooked() -> Node:
 		return customer
 
 	return null
+
+
+func refresh_delivery_positions() -> void:
+	var active_index: int = 0
+
+	for customer in pending_customers:
+		if customer == null or not is_instance_valid(customer):
+			continue
+
+		if CustomerOrderState.is_served(customer):
+			continue
+
+		if customer.has_method("go_to_delivery"):
+			customer.go_to_delivery(get_delivery_wait_position(active_index))
+			active_index += 1
+
+
+func get_delivery_wait_position(index: int) -> Vector2:
+	var delivery_spot: Node2D = manager.get_tree().get_first_node_in_group("delivery_spot") as Node2D
+	var base_position: Vector2 = Vector2(680, 220)
+
+	if delivery_spot != null and is_instance_valid(delivery_spot):
+		base_position = delivery_spot.global_position
+
+	var offsets: Array[Vector2] = [
+		Vector2(0, 72),
+		Vector2(-62, 72),
+		Vector2(62, 72),
+		Vector2(-124, 72),
+		Vector2(124, 72),
+		Vector2(0, 132)
+	]
+
+	if index < offsets.size():
+		return base_position + offsets[index]
+
+	return base_position + Vector2((index - offsets.size() + 1) * 42, 132)

@@ -74,6 +74,7 @@ func open() -> void:
 			button.mouse_filter = Control.MOUSE_FILTER_STOP
 			button.set_meta("item_id", item_id)
 			button.set_meta("amount", amount)
+			button.set_meta("package_id", package_id)
 			button.set_meta("package_name", package_name)
 			button.pressed.connect(supplier_system.place_order.bind(item_id, amount))
 			options_root.add_child(button)
@@ -99,6 +100,7 @@ func refresh() -> void:
 		lines.append(TextDB.get_text("UI_SUPPLIER_STAPLE_STOCK") % manager.inventory_system.get_staple_stock_text())
 		if RunSetupData.is_tutorial_day():
 			lines.append(TextDB.get_text("UI_SUPPLIER_NOODLE_TUTORIAL_LOCKED"))
+			lines.append(get_tutorial_supplier_status_text())
 
 		if supplier_system.supplier_orders.is_empty():
 			lines.append(TextDB.get_text("UI_SUPPLIER_PENDING_NONE"))
@@ -121,6 +123,7 @@ func refresh() -> void:
 
 		var item_id: String = str(button.get_meta("item_id", ""))
 		var amount: int = int(button.get_meta("amount", 1))
+		var package_id: String = str(button.get_meta("package_id", ""))
 		var package_name: String = str(button.get_meta("package_name", TextDB.get_text("UI_SUPPLIER_PACKAGE_FALLBACK")))
 		if item_id == "":
 			continue
@@ -134,12 +137,12 @@ func refresh() -> void:
 
 		var pending_amount: int = supplier_system.get_pending_amount(item_id)
 		var display_name: String = TextDB.get_item_name(item_id)
-		var blocked_by_tutorial: bool = supplier_system.has_method("is_item_blocked_by_tutorial") and supplier_system.is_item_blocked_by_tutorial(item_id)
+		var blocked_by_tutorial: bool = supplier_system.has_method("is_order_blocked_by_tutorial") and supplier_system.is_order_blocked_by_tutorial(item_id, amount)
 
 		if blocked_by_tutorial:
 			button.text = TextDB.get_text("UI_SUPPLIER_BUTTON_TUTORIAL_LOCKED") % [
 				display_name,
-				TextDB.get_text("UI_SUPPLIER_NOODLE_TUTORIAL_LOCKED_SHORT")
+				get_tutorial_button_lock_text(item_id, package_id)
 			]
 		elif pending_amount > 0:
 			button.text = TextDB.get_text("UI_SUPPLIER_BUTTON_PENDING") % [
@@ -160,6 +163,30 @@ func refresh() -> void:
 			]
 
 		button.disabled = blocked_by_tutorial or manager.money < price or not supplier_system.can_use_ordering()
+
+
+func get_tutorial_supplier_status_text() -> String:
+	if supplier_system.are_tutorial_required_supplies_delivered():
+		return TextDB.get_text("UI_SUPPLIER_TUTORIAL_SUPPLIES_DELIVERED")
+
+	if supplier_system.are_tutorial_required_supplies_ordered():
+		return TextDB.get_text("UI_SUPPLIER_TUTORIAL_SUPPLIES_ORDERED")
+
+	var missing_names: Array[String] = supplier_system.get_tutorial_missing_supply_names(false)
+	return TextDB.get_text("UI_SUPPLIER_TUTORIAL_BUY_EACH_BASKET") % ", ".join(missing_names)
+
+
+func get_tutorial_button_lock_text(item_id: String, package_id: String) -> String:
+	if item_id == "noodle":
+		return TextDB.get_text("UI_SUPPLIER_NOODLE_TUTORIAL_LOCKED_SHORT")
+
+	if package_id == "box":
+		return TextDB.get_text("UI_SUPPLIER_BOX_TUTORIAL_LOCKED_SHORT")
+
+	if supplier_system.has_tutorial_required_supply_ordered(item_id):
+		return TextDB.get_text("UI_SUPPLIER_REQUIRED_TUTORIAL_ORDERED_SHORT")
+
+	return TextDB.get_text("UI_SUPPLIER_TUTORIAL_LOCKED_SHORT")
 
 
 func close() -> void:

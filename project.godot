@@ -23,6 +23,12 @@ TextDB="*res://autoload/text_db.gd"
 GlobalRunMenu="*res://autoload/global_run_menu.gd"
 EffectManager="*res://autoload/effect_manager.gd"
 
+[display]
+
+window/size/viewport_width=960
+window/size/viewport_height=540
+window/stretch/mode="canvas_items"
+
 [input]
 
 ui_left={

@@ -568,6 +568,7 @@ func complete_delivery(customer: Node) -> bool:
 	print("Delivered order to customer.")
 	_refresh_cart_pot_panel_if_open()
 	manager.gameplay_hud_system.notify_order_delivered(customer)
+	manager.customer_queue_system.on_tutorial_order_delivered()
 
 	return true
 

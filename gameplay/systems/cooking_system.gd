@@ -2253,6 +2253,40 @@ func clear_day_end_state() -> Dictionary:
 
 
 
+func discard_held_staple_food() -> Dictionary:
+
+	var discarded: Dictionary = {
+
+		"held_raw": "",
+
+		"held": ""
+
+	}
+
+
+
+	if held_raw_staple_food_id != "":
+
+		discarded["held_raw"] = held_raw_staple_food_id
+
+		held_raw_staple_food_id = ""
+
+
+
+	if held_staple_food_id != "":
+
+		discarded["held"] = held_staple_food_id
+
+		held_staple_food_id = ""
+
+
+
+	return discarded
+
+
+
+
+
 func get_effective_cart_pot_batch_duration() -> float:
 
 	var duration: float = cart_pot_batch_duration

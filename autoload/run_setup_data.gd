@@ -341,6 +341,10 @@ func is_tutorial_day() -> bool:
 	return selected_stage_id == "stage_1" and current_day_in_run == 1
 
 
+func is_special_customer_tutorial_day() -> bool:
+	return selected_stage_id == "stage_1" and current_day_in_run == 2
+
+
 func _apply_default_station_layout() -> void:
 	_ensure_config_state()
 	config_state.apply_default_station_layout()

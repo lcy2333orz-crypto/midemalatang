@@ -70,16 +70,16 @@ size = Vector2(64, 52)
 position = Vector2(250, 305)
 
 [node name="CustomerSpawn" type="Marker2D" parent="Spawns" unique_id=1112229354]
-position = Vector2(100, 220)
+position = Vector2(40, 292)
 
 [node name="QueueSpot1" type="Marker2D" parent="Spawns" unique_id=335344092]
-position = Vector2(280, 220)
+position = Vector2(280, 292)
 
 [node name="QueueSpot2" type="Marker2D" parent="Spawns" unique_id=2103792036]
-position = Vector2(200, 220)
+position = Vector2(200, 292)
 
 [node name="QueueSpot3" type="Marker2D" parent="Spawns" unique_id=1534848966]
-position = Vector2(120, 220)
+position = Vector2(120, 292)
 
 [node name="ExitPoint" type="Marker2D" parent="Spawns" unique_id=1300883298 groups=["exit_point"]]
 position = Vector2(820, 220)
@@ -181,6 +181,30 @@ shape = SubResource("RectangleShape2D_storage_interaction")
 [node name="SolidBody" type="StaticBody2D" parent="Stations/StorageArea" unique_id=529847002]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/StorageArea/SolidBody" unique_id=83457629]
+shape = SubResource("RectangleShape2D_storage_solid")
+
+[node name="TrashBin" type="Node2D" parent="Stations"]
+position = Vector2(800, 380)
+
+[node name="Visual" type="Node2D" parent="Stations/TrashBin"]
+
+[node name="Polygon2D" type="Polygon2D" parent="Stations/TrashBin/Visual"]
+color = Color(0.22, 0.23, 0.24, 1)
+polygon = PackedVector2Array(-45, -35, 45, -35, 45, 35, -45, 35)
+
+[node name="InteractionArea" type="Area2D" parent="Stations/TrashBin"]
+collision_layer = 2
+script = ExtResource("1_0xm2m")
+station_name = "TrashBin"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/TrashBin/InteractionArea"]
+shape = SubResource("RectangleShape2D_storage_interaction")
+
+[node name="LabelPoint" type="Marker2D" parent="Stations/TrashBin"]
+
+[node name="SolidBody" type="StaticBody2D" parent="Stations/TrashBin"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/TrashBin/SolidBody"]
 shape = SubResource("RectangleShape2D_storage_solid")
 
 [node name="EmergencyShop" type="Node2D" parent="Stations" unique_id=514943712]

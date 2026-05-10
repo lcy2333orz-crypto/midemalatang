@@ -148,6 +148,9 @@ func _on_day_gift_option_pressed(option_index: int) -> void:
 	apply_day_gift_choice(gift_data, chosen_card)
 	RunSetupData.mark_gift_opened(day_gift_current_gift_id, chosen_card)
 
+	if manager.gameplay_hud_system != null:
+		manager.gameplay_hud_system.notify_special_customer_tutorial_echo_checked(day_gift_current_gift_id)
+
 	print("Daytime gift selected: ", chosen_card)
 
 	close_day_gift_choice_panel()

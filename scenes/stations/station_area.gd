@@ -9,6 +9,7 @@ const DEBUG_STATION_LABELS: Dictionary = {
 	"Cooker": "大锅",
 	"DeliveryPoint": "出餐口",
 	"StorageArea": "仓库",
+	"TrashBin": "UI_STATION_TRASH_BIN",
 	"EmergencyShop": "应急采购",
 	"GlassNoodleBasket": "粉丝篮",
 	"NoodleBasket": "面篮",
@@ -33,6 +34,9 @@ func _create_or_update_debug_station_label() -> void:
 	var label_text: String = str(DEBUG_STATION_LABELS.get(station_name, ""))
 	if label_text == "":
 		return
+
+	if label_text.begins_with("UI_"):
+		label_text = TextDB.get_text(label_text)
 
 	var label_parent: Node = _get_debug_station_label_parent()
 	if label_parent == null:
@@ -119,6 +123,8 @@ func get_interaction_priority() -> int:
 			return 70
 		"StorageArea":
 			return 65
+		"TrashBin":
+			return 66
 		"GiftBox":
 			return 50
 		_:

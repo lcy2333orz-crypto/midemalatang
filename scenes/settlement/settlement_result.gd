@@ -1289,7 +1289,7 @@ func clear_leftover_food_for_next_day() -> void:
 
 	if _has_leftover_food_for_cat():
 
-		"UI_CAT_REACTION_CLEAN_LEFTOVERS": "小猫把剩下的熟食收拾掉了。"
+		show_cat_reaction(TextDB.get_text("UI_CAT_REACTION_CLEAN_LEFTOVERS"))
 
 
 

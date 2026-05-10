@@ -81,6 +81,13 @@ func start_initial_customer_wave() -> void:
 		return
 
 	print("start spawning customers after opening...")
+
+	if RunSetupData.is_tutorial_day():
+		if manager.queued_customers.is_empty():
+			print("Tutorial day: spawning first customer only.")
+			spawn_customer()
+		return
+
 	for i in range(manager.max_queue_size):
 		if manager.queued_customers.size() >= manager.max_queue_size:
 			break
@@ -99,6 +106,10 @@ func get_modified_spawn_timer_wait_time() -> float:
 
 func start_spawn_timer_if_needed() -> void:
 	if not manager.business_day_system.can_spawn_customers_now():
+		return
+
+	if is_tutorial_intro_spawn_locked():
+		print("Tutorial day: spawn timer paused until first two orders are delivered.")
 		return
 
 	if manager.queued_customers.size() >= manager.max_queue_size:
@@ -278,5 +289,35 @@ func on_spawn_timer_timeout() -> void:
 	if not manager.business_day_system.can_spawn_customers_now():
 		return
 
+	if is_tutorial_intro_spawn_locked():
+		print("Tutorial day: spawn timer timeout ignored until first two orders are delivered.")
+		return
+
 	if manager.queued_customers.size() < manager.max_queue_size:
 		spawn_customer()
+
+
+func is_tutorial_intro_spawn_locked() -> bool:
+	return RunSetupData.is_tutorial_day() \
+	and manager.gameplay_hud_system != null \
+	and manager.gameplay_hud_system.tutorial_delivered_count < 2
+
+
+func on_tutorial_order_delivered() -> void:
+	if not RunSetupData.is_tutorial_day():
+		return
+
+	if manager.gameplay_hud_system == null:
+		return
+
+	var delivered_count: int = manager.gameplay_hud_system.tutorial_delivered_count
+
+	if delivered_count == 1:
+		if manager.business_day_system.can_spawn_customers_now() and manager.queued_customers.is_empty():
+			print("Tutorial day: first order delivered, spawning second customer.")
+			spawn_customer()
+		return
+
+	if delivered_count >= 2:
+		print("Tutorial day: first two orders delivered, normal spawning resumed.")
+		start_spawn_timer_if_needed()

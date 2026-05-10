@@ -105,8 +105,8 @@ func place_order(item_id: String, amount: int = 1) -> void:
 		refresh_panel()
 		return
 
-	if is_item_blocked_by_tutorial(item_id):
-		print("Tutorial supplier noodle order blocked. Use EmergencyShop after the noodle customer appears.")
+	if is_order_blocked_by_tutorial(item_id, amount):
+		print("Tutorial supplier order blocked: ", item_id, " amount=", amount)
 		refresh_panel()
 		return
 
@@ -137,6 +137,87 @@ func place_order(item_id: String, amount: int = 1) -> void:
 
 func is_item_blocked_by_tutorial(item_id: String) -> bool:
 	return RunSetupData.is_tutorial_day() and item_id == "noodle"
+
+
+func is_order_blocked_by_tutorial(item_id: String, amount: int) -> bool:
+	if not RunSetupData.is_tutorial_day():
+		return false
+
+	if is_item_blocked_by_tutorial(item_id):
+		return true
+
+	if amount != get_tutorial_required_supply_amount():
+		return true
+
+	if not get_tutorial_required_supply_item_ids().has(item_id):
+		return true
+
+	return has_tutorial_required_supply_ordered(item_id)
+
+
+func get_tutorial_required_supply_amount() -> int:
+	return 10
+
+
+func get_tutorial_required_supply_item_ids() -> Array[String]:
+	return [
+		"spinach",
+		"potato_slice",
+		"tofu_puff",
+		"glass_noodle"
+	]
+
+
+func has_tutorial_required_supply_ordered(item_id: String) -> bool:
+	return get_available_and_pending_amount(item_id) >= get_tutorial_required_supply_amount()
+
+
+func has_tutorial_required_supply_delivered(item_id: String) -> bool:
+	return get_current_stock_amount(item_id) >= get_tutorial_required_supply_amount()
+
+
+func are_tutorial_required_supplies_ordered() -> bool:
+	if not RunSetupData.is_tutorial_day():
+		return true
+
+	for item_id in get_tutorial_required_supply_item_ids():
+		if not has_tutorial_required_supply_ordered(item_id):
+			return false
+
+	return true
+
+
+func are_tutorial_required_supplies_delivered() -> bool:
+	if not RunSetupData.is_tutorial_day():
+		return true
+
+	for item_id in get_tutorial_required_supply_item_ids():
+		if not has_tutorial_required_supply_delivered(item_id):
+			return false
+
+	return true
+
+
+func get_tutorial_missing_supply_names(require_delivered: bool = false) -> Array[String]:
+	var missing_names: Array[String] = []
+
+	for item_id in get_tutorial_required_supply_item_ids():
+		var is_ready: bool = has_tutorial_required_supply_delivered(item_id) if require_delivered else has_tutorial_required_supply_ordered(item_id)
+		if not is_ready:
+			missing_names.append(TextDB.get_item_name(item_id))
+
+	return missing_names
+
+
+func get_current_stock_amount(item_id: String) -> int:
+	if RunSetupData.is_staple_item(item_id):
+		return int(manager.staple_stock.get(item_id, 0))
+
+	return int(manager.raw_stock.get(item_id, 0))
+
+
+func get_available_and_pending_amount(item_id: String) -> int:
+	return get_current_stock_amount(item_id) + get_pending_amount(item_id)
 
 
 func update(delta: float) -> void:

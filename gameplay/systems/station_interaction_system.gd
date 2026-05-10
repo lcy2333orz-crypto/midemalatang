@@ -27,6 +27,8 @@ func get_interaction_prompt(station_name: String) -> String:
 			return _get_delivery_prompt()
 		"StorageArea":
 			return TextDB.get_text("UI_PROMPT_STORAGE")
+		"TrashBin":
+			return _get_trash_bin_prompt()
 		"EmergencyShop":
 			return TextDB.get_text("UI_PROMPT_EMERGENCY_SHOP")
 		"GiftBox":
@@ -55,6 +57,8 @@ func interact(station_name: String) -> void:
 			manager.order_system.interact_with_delivery_point()
 		"StorageArea":
 			manager.supplier_system.open_panel()
+		"TrashBin":
+			_interact_trash_bin()
 		"EmergencyShop":
 			_interact_emergency_shop()
 		"GiftBox":
@@ -119,6 +123,16 @@ func _get_delivery_prompt() -> String:
 		return TextDB.get_text("UI_PROMPT_DELIVERY_STAPLE")
 
 	return TextDB.get_text("UI_PROMPT_DELIVERY")
+
+
+func _get_trash_bin_prompt() -> String:
+	if str(manager.cooking_system.held_raw_staple_food_id) != "":
+		return TextDB.get_text("UI_PROMPT_TRASH_BIN")
+
+	if str(manager.cooking_system.held_staple_food_id) != "":
+		return TextDB.get_text("UI_PROMPT_TRASH_BIN")
+
+	return TextDB.get_text("UI_PROMPT_TRASH_BIN_EMPTY")
 
 
 func _get_staple_basket_prompt(main_food_id: String) -> String:
@@ -205,4 +219,22 @@ func _interact_emergency_shop() -> void:
 
 	if manager.emergency_purchase_system.purchase_for_waiting_shortages():
 		customer.needs_emergency_purchase = false
+		if manager.gameplay_hud_system != null:
+			manager.gameplay_hud_system.notify_tutorial_emergency_purchase_completed(customer)
 		print("Emergency purchase completed for customer.")
+
+
+func _interact_trash_bin() -> void:
+	var discarded: Dictionary = manager.cooking_system.discard_held_staple_food()
+	var discarded_raw: String = str(discarded.get("held_raw", ""))
+	var discarded_cooked: String = str(discarded.get("held", ""))
+
+	if discarded_raw == "" and discarded_cooked == "":
+		print("Trash bin used, but the player is not holding staple food.")
+		return
+
+	if discarded_raw != "":
+		print("Discarded raw staple food: ", discarded_raw)
+
+	if discarded_cooked != "":
+		print("Discarded cooked staple food: ", discarded_cooked)

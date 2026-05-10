@@ -75,6 +75,9 @@ func record_special_result(customer: Node, result: String) -> void:
 
 	CustomerOrderState.set_special_result_recorded(customer, true)
 
+	if result == "good" and manager.gameplay_hud_system != null:
+		manager.gameplay_hud_system.notify_special_customer_tutorial_echo_left(gift_data)
+
 	print("Recorded special customer result: ", result_data)
 	print("Special customer left an echo: ", gift_data)
 

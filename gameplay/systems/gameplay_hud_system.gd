@@ -8,6 +8,8 @@ var tutorial_has_seen_storage: bool = false
 var tutorial_stage: String = "off"
 var tutorial_checkout_count: int = 0
 var tutorial_delivered_count: int = 0
+var special_tutorial_echo_left: bool = false
+var special_tutorial_echo_checked: bool = false
 
 const TUTORIAL_STAGE_OFF = "off"
 const TUTORIAL_STAGE_CHECK_STORAGE = "check_storage"
@@ -19,6 +21,10 @@ const TUTORIAL_STAGE_COOK_FIRST_ORDER_STAPLE = "cook_first_order_staple"
 const TUTORIAL_STAGE_TAKE_FIRST_STAPLE = "take_first_staple"
 const TUTORIAL_STAGE_DELIVER_FIRST_ORDER = "deliver_first_order"
 const TUTORIAL_STAGE_SECOND_CUSTOMER = "second_customer"
+const TUTORIAL_STAGE_COOK_SECOND_ORDER_POT = "cook_second_order_pot"
+const TUTORIAL_STAGE_COOK_SECOND_ORDER_STAPLE = "cook_second_order_staple"
+const TUTORIAL_STAGE_TAKE_SECOND_STAPLE = "take_second_staple"
+const TUTORIAL_STAGE_DELIVER_SECOND_ORDER = "deliver_second_order"
 const TUTORIAL_STAGE_TIMER_STARTED = "timer_started"
 const TUTORIAL_STAGE_FREE_PLAY = "free_play"
 const TUTORIAL_STAGE_AUTO_CLOSED_CLEANUP = "auto_closed_cleanup"
@@ -82,6 +88,8 @@ func reset_tutorial_state_for_new_day() -> void:
 	tutorial_has_seen_storage = false
 	tutorial_checkout_count = 0
 	tutorial_delivered_count = 0
+	special_tutorial_echo_left = false
+	special_tutorial_echo_checked = false
 
 	if RunSetupData.is_tutorial_day():
 		tutorial_stage = TUTORIAL_STAGE_CHECK_STORAGE
@@ -104,7 +112,7 @@ func notify_checkout_completed(_customer: Node) -> void:
 
 	if tutorial_checkout_count == 1:
 		advance_tutorial_stage(TUTORIAL_STAGE_COOK_FIRST_ORDER_POT)
-	elif tutorial_delivered_count < 2:
+	elif tutorial_checkout_count == 2 and tutorial_delivered_count < 2:
 		advance_tutorial_stage(TUTORIAL_STAGE_SECOND_CUSTOMER)
 
 
@@ -126,6 +134,8 @@ func notify_order_ready_for_delivery(_customer: Node) -> void:
 
 	if tutorial_delivered_count == 0:
 		advance_tutorial_stage(TUTORIAL_STAGE_DELIVER_FIRST_ORDER)
+	elif tutorial_delivered_count == 1:
+		advance_tutorial_stage(TUTORIAL_STAGE_DELIVER_SECOND_ORDER)
 
 
 func notify_auto_closed_by_timer() -> void:
@@ -133,6 +143,29 @@ func notify_auto_closed_by_timer() -> void:
 		return
 
 	advance_tutorial_stage(TUTORIAL_STAGE_AUTO_CLOSED_CLEANUP)
+
+
+func notify_tutorial_emergency_purchase_completed(_customer: Node) -> void:
+	if not RunSetupData.is_tutorial_day():
+		return
+
+	if tutorial_checkout_count >= 2 and tutorial_delivered_count == 1:
+		advance_tutorial_stage(TUTORIAL_STAGE_COOK_SECOND_ORDER_POT)
+
+
+func notify_special_customer_tutorial_echo_left(_gift_data: Dictionary) -> void:
+	if not RunSetupData.is_special_customer_tutorial_day():
+		return
+
+	special_tutorial_echo_left = true
+	special_tutorial_echo_checked = false
+
+
+func notify_special_customer_tutorial_echo_checked(_gift_id: String = "") -> void:
+	if not RunSetupData.is_special_customer_tutorial_day():
+		return
+
+	special_tutorial_echo_checked = true
 
 
 func is_tutorial_timer_paused() -> bool:
@@ -154,7 +187,7 @@ func advance_tutorial_stage_from_state() -> void:
 		var first_customer_for_pot: Node = get_first_tutorial_pending_customer()
 		if first_customer_for_pot != null and is_instance_valid(first_customer_for_pot):
 			if not CustomerOrderState.needs_ingredients(first_customer_for_pot) \
-			or manager.cooking_system.get_cart_ingredient_shortage_for_customer(first_customer_for_pot).is_empty():
+			or has_started_cart_pot_batch_for_customer(first_customer_for_pot):
 				advance_tutorial_stage(TUTORIAL_STAGE_COOK_FIRST_ORDER_STAPLE)
 
 	if tutorial_stage == TUTORIAL_STAGE_COOK_FIRST_ORDER_STAPLE:
@@ -165,9 +198,27 @@ func advance_tutorial_stage_from_state() -> void:
 		if manager.cooking_system.held_staple_food_id == "glass_noodle":
 			advance_tutorial_stage(TUTORIAL_STAGE_DELIVER_FIRST_ORDER)
 
+	if tutorial_stage == TUTORIAL_STAGE_COOK_SECOND_ORDER_POT:
+		var second_customer_for_pot: Node = get_first_tutorial_pending_customer()
+		if second_customer_for_pot != null and is_instance_valid(second_customer_for_pot):
+			if not CustomerOrderState.needs_ingredients(second_customer_for_pot) \
+			or has_started_cart_pot_batch_for_customer(second_customer_for_pot):
+				advance_tutorial_stage(TUTORIAL_STAGE_COOK_SECOND_ORDER_STAPLE)
+
+	if tutorial_stage == TUTORIAL_STAGE_COOK_SECOND_ORDER_STAPLE:
+		if is_tutorial_staple_ready_in_ladle("noodle"):
+			advance_tutorial_stage(TUTORIAL_STAGE_TAKE_SECOND_STAPLE)
+
+	if tutorial_stage == TUTORIAL_STAGE_TAKE_SECOND_STAPLE:
+		if manager.cooking_system.held_staple_food_id == "noodle":
+			advance_tutorial_stage(TUTORIAL_STAGE_DELIVER_SECOND_ORDER)
+
 	if tutorial_stage == TUTORIAL_STAGE_COOK_FIRST_ORDER_POT \
 	or tutorial_stage == TUTORIAL_STAGE_COOK_FIRST_ORDER_STAPLE \
-	or tutorial_stage == TUTORIAL_STAGE_TAKE_FIRST_STAPLE:
+	or tutorial_stage == TUTORIAL_STAGE_TAKE_FIRST_STAPLE \
+	or tutorial_stage == TUTORIAL_STAGE_COOK_SECOND_ORDER_POT \
+	or tutorial_stage == TUTORIAL_STAGE_COOK_SECOND_ORDER_STAPLE \
+	or tutorial_stage == TUTORIAL_STAGE_TAKE_SECOND_STAPLE:
 		var ready_customer: Node = manager.pending_order_system.get_first_deliverable()
 		if ready_customer != null and is_instance_valid(ready_customer):
 			notify_order_ready_for_delivery(ready_customer)
@@ -189,13 +240,48 @@ func get_first_tutorial_pending_customer() -> Node:
 	return null
 
 
+func has_started_cart_pot_batch_for_customer(customer: Node) -> bool:
+	if customer == null or not is_instance_valid(customer):
+		return false
+
+	var needed_ingredients: Dictionary = manager.cooking_system.get_cart_ingredients_needed_from_pot(customer)
+	if needed_ingredients.is_empty():
+		return true
+
+	var cooking_amounts: Dictionary = {}
+
+	for batch_data in manager.cooking_system.cart_pot_cooking_batches:
+		if typeof(batch_data) != TYPE_DICTIONARY:
+			continue
+
+		var batch: Dictionary = batch_data as Dictionary
+		var batch_items = batch.get("items", {})
+		if typeof(batch_items) != TYPE_DICTIONARY:
+			continue
+
+		for item_id in needed_ingredients.keys():
+			var item_key: String = str(item_id)
+			cooking_amounts[item_key] = int(cooking_amounts.get(item_key, 0)) + int(batch_items.get(item_key, 0))
+
+	for item_id in needed_ingredients.keys():
+		var item_key: String = str(item_id)
+		if int(cooking_amounts.get(item_key, 0)) < int(needed_ingredients.get(item_key, 0)):
+			return false
+
+	return true
+
+
 func is_first_tutorial_staple_ready_in_ladle() -> bool:
+	return is_tutorial_staple_ready_in_ladle("glass_noodle")
+
+
+func is_tutorial_staple_ready_in_ladle(main_food_id: String) -> bool:
 	for slot_data in manager.cooking_system.staple_ladle_slots:
 		if typeof(slot_data) != TYPE_DICTIONARY:
 			continue
 
 		var slot: Dictionary = slot_data as Dictionary
-		if str(slot.get("state", "")) == "ready" and str(slot.get("main_food_id", "")) == "glass_noodle":
+		if str(slot.get("state", "")) == "ready" and str(slot.get("main_food_id", "")) == main_food_id:
 			return true
 
 	return false
@@ -228,14 +314,22 @@ func _get_tutorial_stage_index(stage: String) -> int:
 			return 8
 		TUTORIAL_STAGE_SECOND_CUSTOMER:
 			return 9
-		TUTORIAL_STAGE_TIMER_STARTED:
+		TUTORIAL_STAGE_COOK_SECOND_ORDER_POT:
 			return 10
-		TUTORIAL_STAGE_FREE_PLAY:
+		TUTORIAL_STAGE_COOK_SECOND_ORDER_STAPLE:
 			return 11
-		TUTORIAL_STAGE_AUTO_CLOSED_CLEANUP:
+		TUTORIAL_STAGE_TAKE_SECOND_STAPLE:
 			return 12
-		TUTORIAL_STAGE_DAY_SETTLEMENT:
+		TUTORIAL_STAGE_DELIVER_SECOND_ORDER:
 			return 13
+		TUTORIAL_STAGE_TIMER_STARTED:
+			return 14
+		TUTORIAL_STAGE_FREE_PLAY:
+			return 15
+		TUTORIAL_STAGE_AUTO_CLOSED_CLEANUP:
+			return 16
+		TUTORIAL_STAGE_DAY_SETTLEMENT:
+			return 17
 		_:
 			return 0
 
@@ -307,9 +401,16 @@ func _refresh_tutorial_hint(game_ui: Node) -> void:
 
 
 func _get_tutorial_hint_text() -> String:
-	if not RunSetupData.is_tutorial_day():
-		return ""
+	if RunSetupData.is_tutorial_day():
+		return _get_first_day_tutorial_hint_text()
 
+	if RunSetupData.is_special_customer_tutorial_day():
+		return _get_special_customer_tutorial_hint_text()
+
+	return ""
+
+
+func _get_first_day_tutorial_hint_text() -> String:
 	if manager.has_round_finished:
 		return ""
 
@@ -326,7 +427,7 @@ func _get_tutorial_hint_text() -> String:
 		if tutorial_stage == TUTORIAL_STAGE_CHECK_STORAGE or not tutorial_has_seen_storage:
 			return TextDB.get_text("UI_TUTORIAL_CHECK_STORAGE")
 
-		return TextDB.get_text("UI_TUTORIAL_OPEN_BUSINESS")
+		return get_tutorial_pre_open_supply_hint()
 
 	if not manager.is_open_for_business:
 		return ""
@@ -345,6 +446,18 @@ func _get_tutorial_hint_text() -> String:
 
 	if tutorial_stage == TUTORIAL_STAGE_SECOND_CUSTOMER:
 		return TextDB.get_text("UI_TUTORIAL_SECOND_CUSTOMER_NOODLE")
+
+	if tutorial_stage == TUTORIAL_STAGE_COOK_SECOND_ORDER_POT:
+		return TextDB.get_text("UI_TUTORIAL_SECOND_ORDER_BIG_POT")
+
+	if tutorial_stage == TUTORIAL_STAGE_COOK_SECOND_ORDER_STAPLE:
+		return TextDB.get_text("UI_TUTORIAL_SECOND_ORDER_STAPLE")
+
+	if tutorial_stage == TUTORIAL_STAGE_TAKE_SECOND_STAPLE:
+		return TextDB.get_text("UI_TUTORIAL_TAKE_SECOND_STAPLE")
+
+	if tutorial_stage == TUTORIAL_STAGE_DELIVER_SECOND_ORDER:
+		return TextDB.get_text("UI_TUTORIAL_SECOND_READY_TO_DELIVER")
 
 	if tutorial_stage == TUTORIAL_STAGE_TIMER_STARTED:
 		return TextDB.get_text("UI_TUTORIAL_TIMER_STARTED")
@@ -377,3 +490,40 @@ func _get_tutorial_hint_text() -> String:
 		return TextDB.get_text("UI_TUTORIAL_PREPARE_ORDER")
 
 	return TextDB.get_text("UI_TUTORIAL_WAIT_CUSTOMER")
+
+
+func get_tutorial_pre_open_supply_hint() -> String:
+	if manager.supplier_system == null:
+		return TextDB.get_text("UI_TUTORIAL_OPEN_BUSINESS")
+
+	if manager.supplier_system.are_tutorial_required_supplies_delivered():
+		return TextDB.get_text("UI_TUTORIAL_SUPPLIES_DELIVERED_OPEN")
+
+	if manager.supplier_system.are_tutorial_required_supplies_ordered():
+		return TextDB.get_text("UI_TUTORIAL_SUPPLIES_ORDERED_WAIT_OR_OPEN")
+
+	var missing_names: Array[String] = manager.supplier_system.get_tutorial_missing_supply_names(false)
+	return TextDB.get_text("UI_TUTORIAL_BUY_SUPPLIES") % ", ".join(missing_names)
+
+
+func _get_special_customer_tutorial_hint_text() -> String:
+	if manager.has_round_finished:
+		return ""
+
+	if manager.is_cleanup_phase:
+		return ""
+
+	if special_tutorial_echo_left:
+		if special_tutorial_echo_checked:
+			return ""
+
+		if RunSetupData.has_unopened_pending_gifts():
+			return TextDB.get_text("UI_TUTORIAL_SPECIAL_CUSTOMER_ECHO")
+
+		special_tutorial_echo_checked = true
+		return ""
+
+	if manager.has_opened_for_business_today and manager.is_open_for_business:
+		return TextDB.get_text("UI_TUTORIAL_SPECIAL_CUSTOMER_CARE")
+
+	return ""
