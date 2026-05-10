@@ -1415,7 +1415,7 @@ func show_current_choice() -> void:
 
 	if night_tutorial_label != null:
 
-		night_tutorial_label.visible = RunSetupData.is_tutorial_day()
+		night_tutorial_label.visible = RunSetupData.is_tutorial_day_1()
 
 		night_tutorial_label.text = TextDB.get_text("UI_TUTORIAL_NIGHT_CHOICE")
 

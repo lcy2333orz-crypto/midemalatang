@@ -27,11 +27,17 @@ func debug_validate() -> Array[String]:
 	if typeof(owner.supplier_base_prices) != TYPE_DICTIONARY:
 		warnings.append("RunConfigState: supplier_base_prices is not a Dictionary.")
 
+	if typeof(owner.run_mode) != TYPE_STRING:
+		warnings.append("RunConfigState: run_mode is not a String.")
+	elif not [owner.RUN_MODE_TUTORIAL, owner.RUN_MODE_NORMAL].has(owner.run_mode):
+		warnings.append("RunConfigState: run_mode is invalid: %s." % owner.run_mode)
+
 	return warnings
 
 
-func setup_stage_run(stage_id: String, difficulty_days: int = 7) -> void:
+func setup_stage_run(stage_id: String, difficulty_days: int = 7, mode: String = "normal") -> void:
 	owner.reset_run_setup()
+	owner.set_run_mode(mode)
 	owner.selected_stage_id = stage_id
 	owner.selected_difficulty_days = difficulty_days
 	owner.current_day_in_run = 1

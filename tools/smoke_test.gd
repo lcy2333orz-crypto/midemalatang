@@ -12,6 +12,10 @@ func _run() -> void:
 
 	RunSetupData.reset_run_setup()
 	RunSetupData.setup_stage_run("stage_1", 2)
+	_run_normal_run_mode_checks()
+	if not failures.is_empty():
+		_finish()
+		return
 	_pass("stage setup")
 
 	var scene_resource = load("res://scenes/gameplay/main.tscn")
@@ -33,6 +37,10 @@ func _run() -> void:
 
 	if not manager.debug_validate_runtime():
 		_fail("startup", "GameManager runtime validation failed")
+		_finish()
+		return
+	if manager.supplier_system.is_order_blocked_by_tutorial("noodle", 10):
+		_fail("normal mode", "Stage 1 normal run should not block noodle supplier orders")
 		_finish()
 		return
 	_pass("startup")
@@ -89,7 +97,71 @@ func _run() -> void:
 	RunSetupData.set_day_summary(day_summary)
 	RunSetupData.set_run_summary(run_summary)
 	_pass("settlement summaries")
+
+	_run_tutorial_run_mode_checks(manager)
+	if not failures.is_empty():
+		_finish()
+		return
+
 	_finish()
+
+
+func _run_normal_run_mode_checks() -> void:
+	if not RunSetupData.is_normal_mode():
+		_fail("normal run mode", "stage setup did not set normal mode")
+		return
+
+	if RunSetupData.is_tutorial_mode():
+		_fail("normal run mode", "stage setup unexpectedly set tutorial mode")
+		return
+
+	if RunSetupData.is_tutorial_day_1():
+		_fail("normal run mode", "Stage 1 Day 1 normal run was treated as tutorial Day 1")
+		return
+
+	if RunSetupData.is_special_customer_tutorial_day():
+		_fail("normal run mode", "Stage 1 normal run was treated as special customer tutorial")
+
+
+func _run_tutorial_run_mode_checks(manager: Node) -> void:
+	RunSetupData.setup_tutorial_run("stage_1", 3)
+
+	if not RunSetupData.is_tutorial_mode():
+		_fail("tutorial run mode", "tutorial setup did not set tutorial mode")
+		return
+
+	if not RunSetupData.is_tutorial_day_1():
+		_fail("tutorial run mode", "tutorial setup did not start on tutorial Day 1")
+		return
+
+	if not manager.supplier_system.is_order_blocked_by_tutorial("noodle", 10):
+		_fail("tutorial supplier lock", "tutorial Day 1 should block regular noodle supplier orders")
+		return
+
+	manager.customer_queue_system.clear_day_state()
+	var first_customer: Node = _make_customer(manager, {}, "none")
+	manager.customer_queue_system.apply_tutorial_order_to_normal_customer(first_customer)
+	if first_customer.has_method("get_main_food_id") and str(first_customer.get_main_food_id()) != "glass_noodle":
+		_fail("tutorial forced order", "first tutorial customer should be forced to glass noodles")
+		return
+
+	var second_customer: Node = _make_customer(manager, {}, "none")
+	manager.customer_queue_system.apply_tutorial_order_to_normal_customer(second_customer)
+	if second_customer.has_method("get_main_food_id") and str(second_customer.get_main_food_id()) != "noodle":
+		_fail("tutorial forced order", "second tutorial customer should be forced to noodles")
+		return
+
+	RunSetupData.current_day_in_run = 2
+	if not RunSetupData.is_special_customer_tutorial_day():
+		_fail("tutorial Day 2", "tutorial Day 2 should be the special customer tutorial day")
+		return
+
+	RunSetupData.current_day_in_run = 3
+	if not RunSetupData.is_tutorial_day_3():
+		_fail("tutorial Day 3", "tutorial Day 3 helper did not return true")
+		return
+
+	_pass("tutorial run mode")
 
 
 func _run_order_flow(manager: Node) -> void:
@@ -133,10 +205,13 @@ func _run_order_flow(manager: Node) -> void:
 func _run_restock_flow(manager: Node) -> void:
 	var before_supplier_stock: int = int(manager.raw_stock.get("potato_slice", 0))
 	var was_open_for_business: bool = manager.is_open_for_business
+	var had_opened_for_business_today: bool = manager.has_opened_for_business_today
 	manager.is_open_for_business = false
+	manager.has_opened_for_business_today = false
 	manager.supplier_system.place_order("potato_slice", 1)
 	manager.supplier_system.update(999.0)
 	manager.is_open_for_business = was_open_for_business
+	manager.has_opened_for_business_today = had_opened_for_business_today
 	if int(manager.raw_stock.get("potato_slice", 0)) <= before_supplier_stock:
 		_fail("supplier restock", "supplier order did not increase stock")
 		return

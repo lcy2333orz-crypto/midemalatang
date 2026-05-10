@@ -91,21 +91,21 @@ func reset_tutorial_state_for_new_day() -> void:
 	special_tutorial_echo_left = false
 	special_tutorial_echo_checked = false
 
-	if RunSetupData.is_tutorial_day():
+	if RunSetupData.is_tutorial_day_1():
 		tutorial_stage = TUTORIAL_STAGE_CHECK_STORAGE
 	else:
 		tutorial_stage = TUTORIAL_STAGE_OFF
 
 
 func notify_order_revealed(_customer: Node) -> void:
-	if not RunSetupData.is_tutorial_day():
+	if not RunSetupData.is_tutorial_day_1():
 		return
 
 	advance_tutorial_stage(TUTORIAL_STAGE_TAKE_PAYMENT)
 
 
 func notify_checkout_completed(_customer: Node) -> void:
-	if not RunSetupData.is_tutorial_day():
+	if not RunSetupData.is_tutorial_day_1():
 		return
 
 	tutorial_checkout_count += 1
@@ -117,7 +117,7 @@ func notify_checkout_completed(_customer: Node) -> void:
 
 
 func notify_order_delivered(_customer: Node) -> void:
-	if not RunSetupData.is_tutorial_day():
+	if not RunSetupData.is_tutorial_day_1():
 		return
 
 	tutorial_delivered_count += 1
@@ -129,7 +129,7 @@ func notify_order_delivered(_customer: Node) -> void:
 
 
 func notify_order_ready_for_delivery(_customer: Node) -> void:
-	if not RunSetupData.is_tutorial_day():
+	if not RunSetupData.is_tutorial_day_1():
 		return
 
 	if tutorial_delivered_count == 0:
@@ -139,14 +139,14 @@ func notify_order_ready_for_delivery(_customer: Node) -> void:
 
 
 func notify_auto_closed_by_timer() -> void:
-	if not RunSetupData.is_tutorial_day():
+	if not RunSetupData.is_tutorial_day_1():
 		return
 
 	advance_tutorial_stage(TUTORIAL_STAGE_AUTO_CLOSED_CLEANUP)
 
 
 func notify_tutorial_emergency_purchase_completed(_customer: Node) -> void:
-	if not RunSetupData.is_tutorial_day():
+	if not RunSetupData.is_tutorial_day_1():
 		return
 
 	if tutorial_checkout_count >= 2 and tutorial_delivered_count == 1:
@@ -169,11 +169,11 @@ func notify_special_customer_tutorial_echo_checked(_gift_id: String = "") -> voi
 
 
 func is_tutorial_timer_paused() -> bool:
-	return RunSetupData.is_tutorial_day() and tutorial_delivered_count < 2
+	return RunSetupData.is_tutorial_day_1() and tutorial_delivered_count < 2
 
 
 func advance_tutorial_stage_from_state() -> void:
-	if not RunSetupData.is_tutorial_day():
+	if not RunSetupData.is_tutorial_day_1():
 		tutorial_stage = TUTORIAL_STAGE_OFF
 		return
 
@@ -360,7 +360,7 @@ func show_storage_stock_only() -> void:
 	print("Cooked stock text: ", cooked_text)
 	print("Raw / staple stock text: ", raw_and_staple_text)
 
-	if RunSetupData.is_tutorial_day():
+	if RunSetupData.is_tutorial_day_1():
 		tutorial_has_seen_storage = true
 		if tutorial_stage == TUTORIAL_STAGE_CHECK_STORAGE:
 			advance_tutorial_stage(TUTORIAL_STAGE_OPEN_BUSINESS)
@@ -401,7 +401,7 @@ func _refresh_tutorial_hint(game_ui: Node) -> void:
 
 
 func _get_tutorial_hint_text() -> String:
-	if RunSetupData.is_tutorial_day():
+	if RunSetupData.is_tutorial_day_1():
 		return _get_first_day_tutorial_hint_text()
 
 	if RunSetupData.is_special_customer_tutorial_day():

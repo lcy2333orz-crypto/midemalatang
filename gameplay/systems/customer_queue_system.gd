@@ -82,7 +82,7 @@ func start_initial_customer_wave() -> void:
 
 	print("start spawning customers after opening...")
 
-	if RunSetupData.is_tutorial_day():
+	if RunSetupData.is_tutorial_day_1():
 		if manager.queued_customers.is_empty():
 			print("Tutorial day: spawning first customer only.")
 			spawn_customer()
@@ -163,7 +163,7 @@ func apply_tutorial_order_to_normal_customer(customer: Node) -> void:
 	if customer == null or not is_instance_valid(customer):
 		return
 
-	if not RunSetupData.is_tutorial_day():
+	if not RunSetupData.is_tutorial_day_1():
 		return
 
 	if CustomerOrderState.is_special_customer(customer):
@@ -298,13 +298,13 @@ func on_spawn_timer_timeout() -> void:
 
 
 func is_tutorial_intro_spawn_locked() -> bool:
-	return RunSetupData.is_tutorial_day() \
+	return RunSetupData.is_tutorial_day_1() \
 	and manager.gameplay_hud_system != null \
 	and manager.gameplay_hud_system.tutorial_delivered_count < 2
 
 
 func on_tutorial_order_delivered() -> void:
-	if not RunSetupData.is_tutorial_day():
+	if not RunSetupData.is_tutorial_day_1():
 		return
 
 	if manager.gameplay_hud_system == null:

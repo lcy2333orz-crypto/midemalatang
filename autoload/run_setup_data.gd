@@ -7,6 +7,10 @@ const RunRuntimeStateScript = preload("res://gameplay/models/run_runtime_state.g
 const RunConfigStateScript = preload("res://gameplay/models/run_config_state.gd")
 const RunDayEventStateScript = preload("res://gameplay/models/run_day_event_state.gd")
 
+const RUN_MODE_TUTORIAL: String = "tutorial"
+const RUN_MODE_NORMAL: String = "normal"
+
+var run_mode: String = RUN_MODE_NORMAL
 var selected_stage_id: String = ""
 var selected_difficulty_days: int = 7
 
@@ -285,6 +289,7 @@ func reset_run_setup() -> void:
 	_ensure_echo_state()
 	_ensure_settlement_state()
 	_ensure_runtime_state()
+	run_mode = RUN_MODE_NORMAL
 	selected_stage_id = ""
 	selected_difficulty_days = 7
 
@@ -334,15 +339,47 @@ func reset_run_setup() -> void:
 
 func setup_stage_run(stage_id: String, difficulty_days: int = 7) -> void:
 	_ensure_config_state()
-	config_state.setup_stage_run(stage_id, difficulty_days)
+	config_state.setup_stage_run(stage_id, difficulty_days, RUN_MODE_NORMAL)
+
+
+func setup_tutorial_run(stage_id: String = "stage_1", difficulty_days: int = 3) -> void:
+	_ensure_config_state()
+	config_state.setup_stage_run(stage_id, difficulty_days, RUN_MODE_TUTORIAL)
+
+
+func set_run_mode(mode: String) -> void:
+	if mode == RUN_MODE_TUTORIAL:
+		run_mode = RUN_MODE_TUTORIAL
+	else:
+		run_mode = RUN_MODE_NORMAL
+
+
+func is_tutorial_mode() -> bool:
+	return run_mode == RUN_MODE_TUTORIAL
+
+
+func is_normal_mode() -> bool:
+	return run_mode == RUN_MODE_NORMAL
+
+
+func is_tutorial_day_1() -> bool:
+	return is_tutorial_mode() and current_day_in_run == 1
+
+
+func is_tutorial_day_2() -> bool:
+	return is_tutorial_mode() and current_day_in_run == 2
+
+
+func is_tutorial_day_3() -> bool:
+	return is_tutorial_mode() and current_day_in_run == 3
 
 
 func is_tutorial_day() -> bool:
-	return selected_stage_id == "stage_1" and current_day_in_run == 1
+	return is_tutorial_day_1()
 
 
 func is_special_customer_tutorial_day() -> bool:
-	return selected_stage_id == "stage_1" and current_day_in_run == 2
+	return is_tutorial_day_2()
 
 
 func _apply_default_station_layout() -> void:

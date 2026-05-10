@@ -28,7 +28,7 @@ func debug_validate() -> Array[String]:
 
 
 func setup_daily_special_customer_plan() -> void:
-	if owner != null and owner.has_method("is_tutorial_day") and owner.is_tutorial_day():
+	if owner != null and owner.has_method("is_tutorial_day_1") and owner.is_tutorial_day_1():
 		owner.current_day_special_spawn_plan = []
 		print("Tutorial day: special customer plan disabled.")
 		return

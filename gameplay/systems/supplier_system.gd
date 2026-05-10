@@ -136,11 +136,11 @@ func place_order(item_id: String, amount: int = 1) -> void:
 
 
 func is_item_blocked_by_tutorial(item_id: String) -> bool:
-	return RunSetupData.is_tutorial_day() and item_id == "noodle"
+	return RunSetupData.is_tutorial_day_1() and item_id == "noodle"
 
 
 func is_order_blocked_by_tutorial(item_id: String, amount: int) -> bool:
-	if not RunSetupData.is_tutorial_day():
+	if not RunSetupData.is_tutorial_day_1():
 		return false
 
 	if is_item_blocked_by_tutorial(item_id):
@@ -177,7 +177,7 @@ func has_tutorial_required_supply_delivered(item_id: String) -> bool:
 
 
 func are_tutorial_required_supplies_ordered() -> bool:
-	if not RunSetupData.is_tutorial_day():
+	if not RunSetupData.is_tutorial_day_1():
 		return true
 
 	for item_id in get_tutorial_required_supply_item_ids():
@@ -188,7 +188,7 @@ func are_tutorial_required_supplies_ordered() -> bool:
 
 
 func are_tutorial_required_supplies_delivered() -> bool:
-	if not RunSetupData.is_tutorial_day():
+	if not RunSetupData.is_tutorial_day_1():
 		return true
 
 	for item_id in get_tutorial_required_supply_item_ids():

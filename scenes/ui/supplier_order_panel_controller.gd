@@ -98,7 +98,7 @@ func refresh() -> void:
 		lines.append(TextDB.get_text("UI_SUPPLIER_MONEY") % manager.money)
 		lines.append(TextDB.get_text("UI_SUPPLIER_RAW_STOCK") % manager.inventory_system.get_raw_stock_text())
 		lines.append(TextDB.get_text("UI_SUPPLIER_STAPLE_STOCK") % manager.inventory_system.get_staple_stock_text())
-		if RunSetupData.is_tutorial_day():
+		if RunSetupData.is_tutorial_day_1():
 			lines.append(TextDB.get_text("UI_SUPPLIER_NOODLE_TUTORIAL_LOCKED"))
 			lines.append(get_tutorial_supplier_status_text())
 
