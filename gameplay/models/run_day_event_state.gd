@@ -28,9 +28,19 @@ func debug_validate() -> Array[String]:
 
 
 func setup_daily_special_customer_plan() -> void:
-	if owner != null and owner.has_method("is_tutorial_day_1") and owner.is_tutorial_day_1():
+	if owner != null and owner.has_method("is_tutorial_mode") and owner.is_tutorial_mode():
+		if owner.has_method("is_special_customer_tutorial_day") and owner.is_special_customer_tutorial_day():
+			owner.current_day_special_spawn_plan = [
+				{
+					"type": "mouse",
+					"name": TextDB.get_text("UI_SPECIAL_CUSTOMER_MOUSE")
+				}
+			]
+			print("Tutorial special customer plan prepared.")
+			return
+
 		owner.current_day_special_spawn_plan = []
-		print("Tutorial day: special customer plan disabled.")
+		print("Tutorial day: special customer plan disabled for this day.")
 		return
 
 	owner.current_day_special_spawn_plan = [

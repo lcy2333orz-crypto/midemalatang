@@ -382,6 +382,91 @@ func is_special_customer_tutorial_day() -> bool:
 	return is_tutorial_day_2()
 
 
+func get_tutorial_customer_plan_for_current_day() -> Array:
+	return get_tutorial_customer_plan_for_day(current_day_in_run)
+
+
+func get_tutorial_customer_plan_for_day(day_index: int) -> Array:
+	if not is_tutorial_mode():
+		return []
+
+	match day_index:
+		1:
+			return [
+				{
+					"main_food_id": ItemIds.GLASS_NOODLE,
+					"ingredients": {
+						ItemIds.SPINACH: 1,
+						ItemIds.POTATO_SLICE: 1
+					}
+				},
+				{
+					"main_food_id": ItemIds.NOODLE,
+					"ingredients": {
+						ItemIds.TOFU_PUFF: 1
+					}
+				},
+				{
+					"main_food_id": ItemIds.NONE,
+					"ingredients": {
+						ItemIds.SPINACH: 1,
+						ItemIds.TOFU_PUFF: 1
+					}
+				}
+			]
+		2:
+			return [
+				{
+					"main_food_id": ItemIds.GLASS_NOODLE,
+					"ingredients": {
+						ItemIds.POTATO_SLICE: 1,
+						ItemIds.TOFU_PUFF: 1
+					}
+				},
+				{
+					"main_food_id": ItemIds.NONE,
+					"ingredients": {
+						ItemIds.SPINACH: 1,
+						ItemIds.POTATO_SLICE: 1
+					}
+				}
+			]
+		3:
+			return [
+				{
+					"main_food_id": ItemIds.NONE,
+					"ingredients": {
+						ItemIds.SPINACH: 1
+					}
+				},
+				{
+					"main_food_id": ItemIds.GLASS_NOODLE,
+					"ingredients": {
+						ItemIds.POTATO_SLICE: 1
+					}
+				},
+				{
+					"main_food_id": ItemIds.NOODLE,
+					"ingredients": {
+						ItemIds.TOFU_PUFF: 1
+					}
+				}
+			]
+		_:
+			return []
+
+
+func get_tutorial_customer_spawn_interval_seconds() -> float:
+	if is_tutorial_day_3():
+		return 1.2
+
+	return 1.5
+
+
+func get_tutorial_customer_count_for_current_day() -> int:
+	return get_tutorial_customer_plan_for_current_day().size()
+
+
 func _apply_default_station_layout() -> void:
 	_ensure_config_state()
 	config_state.apply_default_station_layout()

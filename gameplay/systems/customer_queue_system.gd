@@ -82,9 +82,9 @@ func start_initial_customer_wave() -> void:
 
 	print("start spawning customers after opening...")
 
-	if RunSetupData.is_tutorial_day_1():
+	if has_tutorial_customer_plan():
 		if manager.queued_customers.is_empty():
-			print("Tutorial day: spawning first customer only.")
+			print("Tutorial day: spawning first scripted customer only.")
 			spawn_customer()
 		return
 
@@ -96,6 +96,9 @@ func start_initial_customer_wave() -> void:
 
 
 func get_modified_spawn_timer_wait_time() -> float:
+	if has_tutorial_customer_plan():
+		return RunSetupData.get_tutorial_customer_spawn_interval_seconds()
+
 	var multiplier: float = RunSetupData.get_current_day_multiplier(
 		"customer_spawn_interval_multiplier",
 		1.0
@@ -106,6 +109,10 @@ func get_modified_spawn_timer_wait_time() -> float:
 
 func start_spawn_timer_if_needed() -> void:
 	if not manager.business_day_system.can_spawn_customers_now():
+		return
+
+	if has_spawned_all_tutorial_customers():
+		print("Tutorial day: all scripted customers have spawned.")
 		return
 
 	if is_tutorial_intro_spawn_locked():
@@ -135,6 +142,10 @@ func spawn_customer() -> void:
 		print("Current state does not allow customer spawning.")
 		return
 
+	if has_spawned_all_tutorial_customers():
+		print("Tutorial day: scripted customer limit reached.")
+		return
+
 	if manager.customer_scene == null:
 		print("Customer scene is missing")
 		return
@@ -160,38 +171,39 @@ func spawn_customer() -> void:
 
 
 func apply_tutorial_order_to_normal_customer(customer: Node) -> void:
+	apply_tutorial_customer_plan_to_customer(customer)
+
+
+func apply_tutorial_customer_plan_to_customer(customer: Node) -> void:
 	if customer == null or not is_instance_valid(customer):
 		return
 
-	if not RunSetupData.is_tutorial_day_1():
+	if not RunSetupData.is_tutorial_mode():
 		return
 
-	if CustomerOrderState.is_special_customer(customer):
+	var customer_plan: Array = RunSetupData.get_tutorial_customer_plan_for_current_day()
+	if tutorial_normal_customer_spawn_count >= customer_plan.size():
+		return
+
+	var plan_value: Variant = customer_plan[tutorial_normal_customer_spawn_count]
+	tutorial_normal_customer_spawn_count += 1
+
+	if typeof(plan_value) != TYPE_DICTIONARY:
 		return
 
 	if not customer.has_method("apply_forced_order"):
 		return
 
-	tutorial_normal_customer_spawn_count += 1
+	var plan_data: Dictionary = plan_value as Dictionary
+	var main_food_id: String = str(plan_data.get("main_food_id", "none"))
+	var ingredients: Dictionary = {}
+	var ingredients_value: Variant = plan_data.get("ingredients", {})
 
-	if tutorial_normal_customer_spawn_count == 1:
-		customer.apply_forced_order("glass_noodle", {
-			"spinach": 1,
-			"potato_slice": 1
-		})
-		print("Applied tutorial forced order to normal customer 1.")
-		return
+	if typeof(ingredients_value) == TYPE_DICTIONARY:
+		ingredients = (ingredients_value as Dictionary).duplicate(true)
 
-	if tutorial_normal_customer_spawn_count == 2:
-		customer.apply_forced_order("noodle", {
-			"tofu_puff": 1
-		})
-		print("Applied tutorial forced order to normal customer 2.")
-		return
-
-	if customer.has_method("get_main_food_id") and str(customer.get_main_food_id()) == "noodle":
-		customer.apply_forced_order("glass_noodle", customer.get_ingredients())
-		print("Replaced noodle order after tutorial customer 2.")
+	customer.apply_forced_order(main_food_id, ingredients)
+	print("Applied tutorial scripted order to customer ", tutorial_normal_customer_spawn_count, ": ", main_food_id, " / ", ingredients)
 
 
 func apply_special_customer_plan_to_customer(customer: Node) -> void:
@@ -289,12 +301,27 @@ func on_spawn_timer_timeout() -> void:
 	if not manager.business_day_system.can_spawn_customers_now():
 		return
 
+	if has_spawned_all_tutorial_customers():
+		print("Tutorial day: spawn timer timeout ignored because scripted customer limit was reached.")
+		return
+
 	if is_tutorial_intro_spawn_locked():
 		print("Tutorial day: spawn timer timeout ignored until first two orders are delivered.")
 		return
 
 	if manager.queued_customers.size() < manager.max_queue_size:
 		spawn_customer()
+
+
+func has_tutorial_customer_plan() -> bool:
+	return RunSetupData.is_tutorial_mode() and RunSetupData.get_tutorial_customer_count_for_current_day() > 0
+
+
+func has_spawned_all_tutorial_customers() -> bool:
+	if not has_tutorial_customer_plan():
+		return false
+
+	return tutorial_normal_customer_spawn_count >= RunSetupData.get_tutorial_customer_count_for_current_day()
 
 
 func is_tutorial_intro_spawn_locked() -> bool:

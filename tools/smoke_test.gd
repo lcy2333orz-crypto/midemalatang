@@ -121,6 +121,11 @@ func _run_normal_run_mode_checks() -> void:
 
 	if RunSetupData.is_special_customer_tutorial_day():
 		_fail("normal run mode", "Stage 1 normal run was treated as special customer tutorial")
+		return
+
+	if RunSetupData.get_tutorial_customer_count_for_current_day() != 0:
+		_fail("normal run mode", "normal run should not expose a tutorial customer plan")
+		return
 
 
 func _run_tutorial_run_mode_checks(manager: Node) -> void:
@@ -132,6 +137,10 @@ func _run_tutorial_run_mode_checks(manager: Node) -> void:
 
 	if not RunSetupData.is_tutorial_day_1():
 		_fail("tutorial run mode", "tutorial setup did not start on tutorial Day 1")
+		return
+
+	if RunSetupData.get_tutorial_customer_count_for_current_day() != 3:
+		_fail("tutorial customer plan", "tutorial Day 1 should have 3 scripted customers")
 		return
 
 	if not manager.supplier_system.is_order_blocked_by_tutorial("noodle", 10):
@@ -156,9 +165,29 @@ func _run_tutorial_run_mode_checks(manager: Node) -> void:
 		_fail("tutorial Day 2", "tutorial Day 2 should be the special customer tutorial day")
 		return
 
+	if RunSetupData.get_tutorial_customer_count_for_current_day() != 2:
+		_fail("tutorial customer plan", "tutorial Day 2 should have 2 scripted customers")
+		return
+
+	RunSetupData.setup_daily_special_customer_plan()
+	manager.customer_queue_system.clear_day_state()
+	var day2_customer: Node = _make_customer(manager, {}, "none")
+	manager.customer_queue_system.apply_special_customer_plan_to_customer(day2_customer)
+	manager.customer_queue_system.apply_tutorial_order_to_normal_customer(day2_customer)
+	if day2_customer.has_method("has_special_customer_flag") and not bool(day2_customer.has_special_customer_flag()):
+		_fail("tutorial Day 2 special", "first tutorial Day 2 customer should be special")
+		return
+	if day2_customer.has_method("get_main_food_id") and str(day2_customer.get_main_food_id()) != "glass_noodle":
+		_fail("tutorial Day 2 special", "first tutorial Day 2 special customer should have a fixed order")
+		return
+
 	RunSetupData.current_day_in_run = 3
 	if not RunSetupData.is_tutorial_day_3():
 		_fail("tutorial Day 3", "tutorial Day 3 helper did not return true")
+		return
+
+	if RunSetupData.get_tutorial_customer_count_for_current_day() != 3:
+		_fail("tutorial customer plan", "tutorial Day 3 should have 3 scripted customers")
 		return
 
 	_pass("tutorial run mode")
