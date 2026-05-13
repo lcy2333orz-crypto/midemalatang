@@ -32,9 +32,16 @@ func _process(_delta: float) -> void:
 
 
 func _create_or_update_debug_station_label() -> void:
+	if not is_station_enabled():
+		_remove_debug_station_label()
+		return
+
 	var label_text: String = str(DEBUG_STATION_LABELS.get(station_name, ""))
 	if label_text == "":
 		return
+
+	if station_name == "GiftBox":
+		label_text = TextDB.get_text("UI_STATION_TIP_BOX")
 
 	if label_text.begins_with("UI_"):
 		label_text = TextDB.get_text(label_text)
@@ -106,6 +113,9 @@ func _get_debug_station_label_name() -> String:
 
 
 func get_interaction_priority() -> int:
+	if not is_station_enabled():
+		return -999999
+
 	if interaction_priority != 0:
 		return interaction_priority
 
@@ -135,6 +145,9 @@ func get_interaction_priority() -> int:
 
 
 func get_interaction_prompt() -> String:
+	if not is_station_enabled():
+		return ""
+
 	if interaction_label.strip_edges() != "":
 		return interaction_label
 
@@ -148,6 +161,9 @@ func get_interaction_prompt() -> String:
 			return TextDB.get_text("UI_PROMPT_INTERACT")
 
 func interact() -> void:
+	if not is_station_enabled():
+		return
+
 	print("Interact with ", station_name)
 
 	var game_manager = get_tree().get_first_node_in_group("game_manager")
@@ -159,7 +175,10 @@ func interact() -> void:
 
 
 func toggle_business() -> void:
-	if station_name != "Counter":
+	if not is_station_enabled():
+		return
+
+	if station_name != "Counter" and station_name != "GiftBox":
 		print("This station cannot toggle business.")
 		return
 
@@ -175,7 +194,32 @@ func toggle_business() -> void:
 	game_manager.station_interaction_system.toggle_business(station_name)
 
 
+func is_station_enabled() -> bool:
+	if not monitoring:
+		return false
+
+	var station_node: Node = get_parent()
+	if station_node != null and station_node is CanvasItem:
+		if not (station_node as CanvasItem).visible:
+			return false
+
+	return true
+
+
+func _remove_debug_station_label() -> void:
+	var label_parent: Node = _get_debug_station_label_parent()
+	if label_parent == null:
+		return
+
+	var label: Node = label_parent.get_node_or_null(_get_debug_station_label_name())
+	if label != null:
+		label.queue_free()
+
+
 func _on_body_entered(body: Node) -> void:
+	if not is_station_enabled():
+		return
+
 	if not body.is_in_group("player"):
 		return
 

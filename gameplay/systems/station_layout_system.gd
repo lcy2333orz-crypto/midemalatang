@@ -3,11 +3,11 @@ extends RefCounted
 
 const ATTACHED_STATION_OFFSETS: Dictionary = {
 	"counter": {
-		"gift_box": Vector2(-62, 4)
+		"gift_box": Vector2(0, 0)
 	},
 	"cooker_1": {
-		"staple_ladle_1": Vector2(-155, 50),
-		"staple_ladle_2": Vector2(155, 50)
+		"staple_ladle_1": Vector2(-75, 15),
+		"staple_ladle_2": Vector2(75, 15)
 	},
 	"storage": {
 		"glass_noodle_basket": Vector2(155, 0),

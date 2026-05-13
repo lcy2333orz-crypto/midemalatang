@@ -32,7 +32,7 @@ func get_interaction_prompt(station_name: String) -> String:
 		"EmergencyShop":
 			return TextDB.get_text("UI_PROMPT_EMERGENCY_SHOP")
 		"GiftBox":
-			return TextDB.get_text("UI_PROMPT_GIFT_BOX")
+			return _get_tip_box_prompt()
 		"GlassNoodleBasket":
 			return _get_staple_basket_prompt("glass_noodle")
 		"NoodleBasket":
@@ -66,6 +66,9 @@ func interact(station_name: String) -> void:
 		"EmergencyShop":
 			_interact_emergency_shop()
 		"GiftBox":
+			if manager.business_day_system.can_finalize_day_now():
+				manager.business_day_system.finish_day_from_cleanup()
+				return
 			manager.day_event_system.interact_with_gift_box()
 		"GlassNoodleBasket":
 			manager.cooking_system.interact_with_staple_basket("glass_noodle")
@@ -82,7 +85,7 @@ func interact(station_name: String) -> void:
 
 
 func toggle_business(station_name: String) -> void:
-	if station_name != "Counter":
+	if station_name != "Counter" and station_name != "GiftBox":
 		print("This station cannot toggle business.")
 		return
 
@@ -92,10 +95,10 @@ func toggle_business(station_name: String) -> void:
 
 	if manager.is_open_for_business:
 		manager.business_day_system.close_business()
-		print("Counter toggled business: close")
+		print("Tip box toggled business: close")
 	else:
 		manager.open_business()
-		print("Counter toggled business: open")
+		print("Tip box toggled business: open")
 
 
 func on_player_entered_station(station_name: String) -> void:
@@ -122,6 +125,16 @@ func _get_counter_prompt() -> String:
 		return TextDB.get_text("UI_PROMPT_COUNTER_PAY")
 
 	return TextDB.get_text("UI_PROMPT_COUNTER_PAID")
+
+
+func _get_tip_box_prompt() -> String:
+	if manager.business_day_system.can_finalize_day_now():
+		return TextDB.get_text("UI_PROMPT_TIP_BOX_SETTLEMENT")
+
+	if not manager.is_open_for_business:
+		return TextDB.get_text("UI_PROMPT_TIP_BOX_OPEN")
+
+	return TextDB.get_text("UI_PROMPT_TIP_BOX")
 
 
 func _get_delivery_prompt() -> String:
