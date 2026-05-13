@@ -136,7 +136,7 @@ func place_order(item_id: String, amount: int = 1) -> void:
 
 
 func is_item_blocked_by_tutorial(item_id: String) -> bool:
-	return RunSetupData.is_tutorial_day_1() and item_id == "noodle"
+	return false
 
 
 func is_order_blocked_by_tutorial(item_id: String, amount: int) -> bool:

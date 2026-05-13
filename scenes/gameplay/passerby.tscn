@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/gameplay/passerby.gd" id="1_passerby"]
+
+[node name="Passerby" type="CharacterBody2D" groups=["passersby"]]
+collision_layer = 0
+collision_mask = 0
+script = ExtResource("1_passerby")
+
+[node name="Visual" type="Node2D" parent="."]
+
+[node name="Polygon2D" type="Polygon2D" parent="Visual"]
+color = Color(0.35, 0.48, 0.95, 1)
+polygon = PackedVector2Array(-14, -20, 14, -20, 14, 20, -14, 20)

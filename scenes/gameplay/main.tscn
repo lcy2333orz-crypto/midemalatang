@@ -5,6 +5,7 @@
 [ext_resource type="PackedScene" uid="uid://dxv8fg3rkxamc" path="res://scenes/gameplay/customer.tscn" id="3_h2yge"]
 [ext_resource type="Script" uid="uid://c2ciya17b656e" path="res://scenes/ui/ui_layer.gd" id="3_lquwl"]
 [ext_resource type="Script" uid="uid://c682ebjbspsim" path="res://scenes/gameplay/game_manager.gd" id="4_1bvp3"]
+[ext_resource type="PackedScene" path="res://scenes/gameplay/passerby.tscn" id="5_passerby"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_7dm0k"]
 size = Vector2(180, 120)
@@ -67,30 +68,45 @@ size = Vector2(64, 52)
 [node name="Spawns" type="Node2D" parent="." unique_id=902001230]
 
 [node name="PlayerSpawn" type="Marker2D" parent="Spawns" unique_id=341334920]
-position = Vector2(250, 335)
+position = Vector2(480, 430)
 
 [node name="CustomerSpawn" type="Marker2D" parent="Spawns" unique_id=1112229354]
-position = Vector2(40, 135)
+position = Vector2(-40, 70)
 
-[node name="QueueSpot1" type="Marker2D" parent="Spawns" unique_id=335344092]
-position = Vector2(280, 145)
+[node name="StreetSpawnLeft" type="Marker2D" parent="Spawns" groups=["street_spawn_left"]]
+position = Vector2(-40, 70)
 
-[node name="QueueSpot2" type="Marker2D" parent="Spawns" unique_id=2103792036]
-position = Vector2(280, 95)
+[node name="StreetSpawnRight" type="Marker2D" parent="Spawns" groups=["street_spawn_right"]]
+position = Vector2(1040, 70)
 
-[node name="QueueSpot3" type="Marker2D" parent="Spawns" unique_id=1534848966]
-position = Vector2(280, 45)
+[node name="StreetExitLeft" type="Marker2D" parent="Spawns" groups=["street_exit_left"]]
+position = Vector2(-80, 70)
+
+[node name="StreetExitRight" type="Marker2D" parent="Spawns" groups=["street_exit_right"]]
+position = Vector2(1080, 70)
+
+[node name="QueueSpot1" type="Marker2D" parent="Spawns" unique_id=335344092 groups=["customer_wait_spot"]]
+position = Vector2(400, 150)
+
+[node name="QueueSpot2" type="Marker2D" parent="Spawns" unique_id=2103792036 groups=["customer_wait_spot"]]
+position = Vector2(500, 125)
+
+[node name="QueueSpot3" type="Marker2D" parent="Spawns" unique_id=1534848966 groups=["customer_wait_spot"]]
+position = Vector2(600, 150)
 
 [node name="DeliveryWaitSpot" type="Marker2D" parent="Spawns" groups=["delivery_wait_spot"]]
-position = Vector2(740, 135)
+position = Vector2(690, 135)
+
+[node name="TrashDropSpot" type="Marker2D" parent="Spawns" groups=["trash_drop_spot"]]
+position = Vector2(900, 250)
 
 [node name="ExitPoint" type="Marker2D" parent="Spawns" unique_id=1300883298 groups=["exit_point"]]
-position = Vector2(900, 135)
+position = Vector2(1080, 70)
 
 [node name="Stations" type="Node2D" parent="." unique_id=389743625]
 
 [node name="Counter" type="Node2D" parent="Stations" unique_id=671557791]
-position = Vector2(280, 220)
+position = Vector2(260, 250)
 
 [node name="Visual" type="Node2D" parent="Stations/Counter" unique_id=1403062318]
 
@@ -114,7 +130,7 @@ shape = SubResource("RectangleShape2D_7dm0k")
 shape = SubResource("RectangleShape2D_xsaao")
 
 [node name="Cooker" type="Node2D" parent="Stations" unique_id=1584601145]
-position = Vector2(480, 220)
+position = Vector2(500, 250)
 
 [node name="Visual" type="Node2D" parent="Stations/Cooker" unique_id=545458128]
 
@@ -139,7 +155,7 @@ shape = SubResource("RectangleShape2D_ig7tw")
 shape = SubResource("RectangleShape2D_aurnk")
 
 [node name="DeliveryPoint" type="Node2D" parent="Stations" unique_id=1177242921 groups=["delivery_spot"]]
-position = Vector2(680, 220)
+position = Vector2(760, 250)
 
 [node name="Visual" type="Node2D" parent="Stations/DeliveryPoint" unique_id=1006287538]
 
@@ -163,7 +179,7 @@ shape = SubResource("RectangleShape2D_0xm2m")
 shape = SubResource("RectangleShape2D_tlw26")
 
 [node name="StorageArea" type="Node2D" parent="Stations" unique_id=1616193361]
-position = Vector2(650, 380)
+position = Vector2(170, 425)
 
 [node name="Visual" type="Node2D" parent="Stations/StorageArea" unique_id=1445830613]
 
@@ -187,7 +203,7 @@ shape = SubResource("RectangleShape2D_storage_interaction")
 shape = SubResource("RectangleShape2D_storage_solid")
 
 [node name="TrashBin" type="Node2D" parent="Stations"]
-position = Vector2(800, 380)
+position = Vector2(900, 250)
 
 [node name="Visual" type="Node2D" parent="Stations/TrashBin"]
 
@@ -234,7 +250,7 @@ shape = SubResource("RectangleShape2D_lquwl")
 shape = SubResource("RectangleShape2D_vrg53")
 
 [node name="GlassNoodleBasket" type="Node2D" parent="Stations" unique_id=1630752081]
-position = Vector2(500, 300)
+position = Vector2(325, 425)
 scale = Vector2(0.5, 0.5)
 
 [node name="Visual" type="Node2D" parent="Stations/GlassNoodleBasket" unique_id=1103558268]
@@ -259,7 +275,7 @@ shape = SubResource("RectangleShape2D_basket_interaction")
 shape = SubResource("RectangleShape2D_basket_solid")
 
 [node name="NoodleBasket" type="Node2D" parent="Stations" unique_id=283729249]
-position = Vector2(560, 300)
+position = Vector2(440, 425)
 scale = Vector2(0.5, 0.5)
 
 [node name="Visual" type="Node2D" parent="Stations/NoodleBasket" unique_id=196300936]
@@ -283,8 +299,33 @@ shape = SubResource("RectangleShape2D_basket_interaction")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/NoodleBasket/SolidBody"]
 shape = SubResource("RectangleShape2D_basket_solid")
 
+[node name="DisposablePlateStack" type="Node2D" parent="Stations"]
+position = Vector2(555, 425)
+scale = Vector2(0.5, 0.5)
+
+[node name="Visual" type="Node2D" parent="Stations/DisposablePlateStack"]
+
+[node name="Polygon2D" type="Polygon2D" parent="Stations/DisposablePlateStack/Visual"]
+color = Color(0.93, 0.93, 0.88, 1)
+polygon = PackedVector2Array(-60, -40, 60, -40, 60, 40, -60, 40)
+
+[node name="InteractionArea" type="Area2D" parent="Stations/DisposablePlateStack"]
+collision_layer = 2
+script = ExtResource("1_0xm2m")
+station_name = "DisposablePlateStack"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/DisposablePlateStack/InteractionArea"]
+shape = SubResource("RectangleShape2D_basket_interaction")
+
+[node name="LabelPoint" type="Marker2D" parent="Stations/DisposablePlateStack"]
+
+[node name="SolidBody" type="StaticBody2D" parent="Stations/DisposablePlateStack"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/DisposablePlateStack/SolidBody"]
+shape = SubResource("RectangleShape2D_basket_solid")
+
 [node name="StapleLadle1" type="Node2D" parent="Stations" unique_id=241111430]
-position = Vector2(500, 350)
+position = Vector2(345, 300)
 scale = Vector2(0.5, 0.5)
 
 [node name="Visual" type="Node2D" parent="Stations/StapleLadle1" unique_id=710750646]
@@ -309,7 +350,7 @@ shape = SubResource("RectangleShape2D_ladle_interaction")
 shape = SubResource("RectangleShape2D_ladle_solid")
 
 [node name="StapleLadle2" type="Node2D" parent="Stations" unique_id=1443454171]
-position = Vector2(560, 350)
+position = Vector2(655, 300)
 scale = Vector2(0.5, 0.5)
 
 [node name="Visual" type="Node2D" parent="Stations/StapleLadle2" unique_id=1565908761]
@@ -334,7 +375,7 @@ shape = SubResource("RectangleShape2D_ladle_interaction")
 shape = SubResource("RectangleShape2D_ladle_solid")
 
 [node name="GiftBox" type="Node2D" parent="Stations" unique_id=1071373065]
-position = Vector2(320, 250)
+position = Vector2(198, 254)
 scale = Vector2(0.35, 0.35)
 
 [node name="Visual" type="Node2D" parent="Stations/GiftBox" unique_id=1525595814]
@@ -362,7 +403,7 @@ shape = SubResource("RectangleShape2D_tip_solid")
 [node name="Characters" type="Node2D" parent="." unique_id=1772073976]
 
 [node name="Player" parent="Characters" unique_id=1448892241 instance=ExtResource("1_ig7tw")]
-position = Vector2(250, 305)
+position = Vector2(480, 430)
 
 [node name="Orders" type="Node" parent="." unique_id=1001496981]
 
@@ -459,8 +500,16 @@ offset_bottom = 23.0
 [node name="GameManager" type="Node" parent="." unique_id=1062233427 groups=["game_manager"]]
 script = ExtResource("4_1bvp3")
 customer_scene = ExtResource("3_h2yge")
+passerby_scene = ExtResource("5_passerby")
+street_total_spawn_count = 24
+street_customer_ratio = 0.35
+street_same_side_exit_ratio = 0.15
+street_spawn_interval_seconds = 0.9
 
 [node name="SpawnTimer" type="Timer" parent="GameManager" unique_id=1579172830]
+one_shot = true
+
+[node name="StreetSpawnTimer" type="Timer" parent="GameManager"]
 one_shot = true
 
 [node name="MetaProgress" type="Node" parent="." unique_id=2088587694]
@@ -470,19 +519,19 @@ one_shot = true
 [node name="LayoutSlots" type="Node2D" parent="." unique_id=806798287]
 
 [node name="SlotA" type="Marker2D" parent="LayoutSlots" unique_id=1077234080]
-position = Vector2(220, 240)
+position = Vector2(260, 250)
 
 [node name="SlotB" type="Marker2D" parent="LayoutSlots" unique_id=2033913141]
-position = Vector2(450, 240)
+position = Vector2(500, 250)
 
 [node name="SlotC" type="Marker2D" parent="LayoutSlots" unique_id=344607718]
-position = Vector2(660, 240)
+position = Vector2(760, 250)
 
 [node name="SlotD" type="Marker2D" parent="LayoutSlots" unique_id=1316249324]
-position = Vector2(540, 240)
+position = Vector2(620, 250)
 
 [node name="SlotE" type="Marker2D" parent="LayoutSlots" unique_id=819792884]
-position = Vector2(220, 420)
+position = Vector2(170, 425)
 
 [node name="SlotF" type="Marker2D" parent="LayoutSlots" unique_id=1389469593]
-position = Vector2(830, 240)
+position = Vector2(900, 425)

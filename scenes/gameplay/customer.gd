@@ -4,11 +4,15 @@ const ItemIds = preload("res://gameplay/models/item_ids.gd")
 
 enum CustomerState {
 	MOVING_TO_QUEUE,
+	THINKING_AT_CART,
 	WAITING_IN_QUEUE,
 	AT_COUNTER,
 	ORDER_NEGOTIATING,
 	MOVING_TO_DELIVERY,
 	WAITING_AT_DELIVERY,
+	EATING,
+	MOVING_TO_TRASH,
+	THROWING_TRASH,
 	MOVING_TO_EXIT
 }
 
@@ -68,21 +72,32 @@ var leaving_due_to_patience: bool = false
 
 var patience_bar_bg: ColorRect
 var patience_bar_fill: ColorRect
+var status_label: Label
+var thinking_time_left: float = 0.0
+var eating_time_left: float = 0.0
+var throw_trash_time_left: float = 0.0
+var trash_drop_position: Vector2 = Vector2.ZERO
+var final_exit_position: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
 	add_to_group("customers")
 	randomize_order()
 	reset_patience()
 	_create_patience_bar()
+	_create_or_update_status_label("")
 
 func _physics_process(delta: float) -> void:
 	_update_patience(delta)
 	_update_patience_bar()
+	_update_service_state(delta)
 
 	if current_state == CustomerState.WAITING_IN_QUEUE \
+	or current_state == CustomerState.THINKING_AT_CART \
 	or current_state == CustomerState.AT_COUNTER \
 	or current_state == CustomerState.ORDER_NEGOTIATING \
-	or current_state == CustomerState.WAITING_AT_DELIVERY:
+	or current_state == CustomerState.WAITING_AT_DELIVERY \
+	or current_state == CustomerState.EATING \
+	or current_state == CustomerState.THROWING_TRASH:
 		velocity = Vector2.ZERO
 		move_and_slide()
 		return
@@ -111,6 +126,30 @@ func _create_patience_bar() -> void:
 	patience_bar_fill.size = Vector2(36, 5)
 	patience_bar_fill.position = Vector2.ZERO
 	patience_bar_bg.add_child(patience_bar_fill)
+
+
+func _create_or_update_status_label(status_text: String) -> void:
+	if status_label == null:
+		status_label = Label.new()
+		status_label.name = "CustomerStatusLabel"
+		status_label.position = Vector2(-32, -62)
+		status_label.size = Vector2(64, 24)
+		status_label.z_index = 45
+		status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		status_label.add_theme_font_size_override("font_size", 15)
+		status_label.add_theme_color_override("font_color", Color(1.0, 0.96, 0.64, 1.0))
+		status_label.add_theme_color_override("font_outline_color", Color(0.05, 0.04, 0.03, 0.95))
+		status_label.add_theme_constant_override("outline_size", 3)
+		add_child(status_label)
+
+	status_label.text = status_text
+	status_label.visible = status_text != ""
+
+
+func set_customer_status(status_text: String) -> void:
+	_create_or_update_status_label(status_text)
+
 
 func _update_patience_bar() -> void:
 	if patience_bar_bg == null or patience_bar_fill == null:
@@ -152,6 +191,48 @@ func _update_patience(delta: float) -> void:
 			counter_patience_current = 0.0
 			_leave_due_to_no_patience()
 
+
+func _update_service_state(delta: float) -> void:
+	if current_state == CustomerState.THINKING_AT_CART:
+		thinking_time_left -= delta
+		if thinking_time_left <= 0.0:
+			thinking_time_left = 0.0
+			_finish_thinking_and_order()
+		return
+
+	if current_state == CustomerState.EATING:
+		eating_time_left -= delta
+		if eating_time_left <= 0.0:
+			eating_time_left = 0.0
+			start_happy_trash_walk()
+		return
+
+	if current_state == CustomerState.THROWING_TRASH:
+		throw_trash_time_left -= delta
+		if throw_trash_time_left <= 0.0:
+			throw_trash_time_left = 0.0
+			go_to_exit(final_exit_position)
+
+
+func start_thinking_for_order() -> void:
+	if order_revealed or is_checked_out:
+		current_state = CustomerState.WAITING_AT_DELIVERY if is_waiting_after_checkout else CustomerState.WAITING_IN_QUEUE
+		set_customer_status("wait")
+		return
+
+	current_state = CustomerState.THINKING_AT_CART
+	thinking_time_left = randf_range(0.45, 1.8)
+	set_customer_status("...")
+
+
+func _finish_thinking_and_order() -> void:
+	var game_manager = get_tree().get_first_node_in_group("game_manager")
+	if game_manager != null and game_manager.order_system != null:
+		game_manager.order_system.auto_create_pending_order(self)
+
+	if not order_served:
+		set_customer_status("wait")
+
 func _leave_due_to_no_patience() -> void:
 	if current_state == CustomerState.MOVING_TO_EXIT:
 		return
@@ -176,23 +257,30 @@ func _leave_due_to_no_patience() -> void:
 	queue_index = -1
 	leaving_due_to_patience = true
 
-	var exit_point = get_tree().get_first_node_in_group("exit_point")
-	if exit_point:
-		target_position = exit_point.global_position
+	var exit_position: Variant = get_meta("street_exit_position", null)
+	if typeof(exit_position) == TYPE_VECTOR2:
+		target_position = exit_position
 	else:
-		queue_free()
+		var exit_point = get_tree().get_first_node_in_group("exit_point")
+		if exit_point:
+			target_position = exit_point.global_position
+		else:
+			queue_free()
 
 func _on_reached_target() -> void:
 	match current_state:
 		CustomerState.MOVING_TO_QUEUE:
-			if queue_index == 0:
-				current_state = CustomerState.AT_COUNTER
-			else:
-				current_state = CustomerState.WAITING_IN_QUEUE
+			start_thinking_for_order()
 
 		CustomerState.MOVING_TO_DELIVERY:
 			current_state = CustomerState.WAITING_AT_DELIVERY
+			set_customer_status("wait")
 			print("Customer reached delivery point and is now waiting.")
+
+		CustomerState.MOVING_TO_TRASH:
+			current_state = CustomerState.THROWING_TRASH
+			throw_trash_time_left = 0.45
+			set_customer_status(get_served_reaction_text())
 
 		CustomerState.MOVING_TO_EXIT:
 			queue_free()
@@ -205,10 +293,7 @@ func move_to_queue_position(queue_position: Vector2, new_queue_index: int) -> vo
 
 	if global_position.distance_to(queue_position) <= 5.0:
 		target_position = queue_position
-		if queue_index == 0:
-			current_state = CustomerState.AT_COUNTER
-		else:
-			current_state = CustomerState.WAITING_IN_QUEUE
+		start_thinking_for_order()
 		return
 
 	target_position = queue_position
@@ -352,6 +437,8 @@ func get_special_customer_name() -> String:
 	return special_customer_name
 
 func start_waiting_for_food(main_food_cooking: bool, ingredient_cooking: bool) -> void:
+	is_in_queue = false
+	queue_index = -1
 	is_waiting_for_food = true
 	is_ready_for_delivery = false
 	is_waiting_after_checkout = true
@@ -366,6 +453,8 @@ func start_waiting_for_food(main_food_cooking: bool, ingredient_cooking: bool) -
 	cart_ingredients_ready = not ingredient_cooking
 
 	_refresh_cart_ready_for_delivery()
+
+	set_customer_status("wait")
 
 	print("Customer started waiting for food. main_food_cooking=", main_food_cooking, " ingredient_cooking=", ingredient_cooking)
 
@@ -422,9 +511,28 @@ func mark_order_served() -> void:
 	needs_main_food_cooking = false
 	needs_ingredient_cooking = false
 
-	show_served_reaction()
+	set_customer_status("eat")
 
 	print("Customer order served.")
+
+
+func start_eating_after_service(trash_position: Vector2, exit_position: Vector2) -> void:
+	trash_drop_position = trash_position
+	final_exit_position = exit_position
+	is_in_queue = false
+	queue_index = -1
+	current_state = CustomerState.EATING
+	eating_time_left = randf_range(1.2, 3.6)
+	leaving_due_to_patience = false
+	set_customer_status("eat")
+	print("Customer is eating for ", eating_time_left, " seconds.")
+
+
+func start_happy_trash_walk() -> void:
+	current_state = CustomerState.MOVING_TO_TRASH
+	target_position = trash_drop_position
+	set_customer_status(get_served_reaction_text())
+	print("Customer finished eating and is moving to trash.")
 
 func blocks_cart_cleanup() -> bool:
 	# 餐车阶段判断的是：
@@ -453,15 +561,14 @@ func get_served_reaction_text() -> String:
 	if is_special_customer:
 		match special_customer_type:
 			"mouse":
-				var mouse_options: Array[String] = ["🧀", "✨", "😋", "⭐"]
+				var mouse_options: Array[String] = ["Nice!", "Yum!", "Good!", "Star!"]
 				return mouse_options[randi() % mouse_options.size()]
 			_:
-				var special_options: Array[String] = ["⭐", "✨", "😋", "❤️"]
+				var special_options: Array[String] = ["Great!", "Yum!", "Good!", "Love!"]
 				return special_options[randi() % special_options.size()]
 
-	var normal_options: Array[String] = ["😊", "😋", "✨", "❤️"]
+	var normal_options: Array[String] = ["Good!", "Yum!", "Nice!", "Full!"]
 	return normal_options[randi() % normal_options.size()]
-
 func _create_customer_reaction_label(text: String) -> void:
 	var old_label = get_node_or_null("CustomerReactionLabel")
 	if old_label:

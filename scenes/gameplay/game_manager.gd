@@ -16,8 +16,14 @@ const EconomySystemScript = preload("res://gameplay/systems/economy_system.gd")
 const GameplayHudSystemScript = preload("res://gameplay/systems/gameplay_hud_system.gd")
 const StationInteractionSystemScript = preload("res://gameplay/systems/station_interaction_system.gd")
 const NightQueueBuilderScript = preload("res://gameplay/systems/night_queue_builder.gd")
+const StreetCrowdSystemScript = preload("res://gameplay/systems/street_crowd_system.gd")
 
 @export var customer_scene: PackedScene
+@export var passerby_scene: PackedScene
+@export var street_total_spawn_count: int = 24
+@export_range(0.0, 1.0, 0.01) var street_customer_ratio: float = 0.35
+@export_range(0.0, 1.0, 0.01) var street_same_side_exit_ratio: float = 0.15
+@export var street_spawn_interval_seconds: float = 0.9
 
 var business_day_system: BusinessDaySystem
 var customer_queue_system: CustomerQueueSystem
@@ -35,6 +41,7 @@ var economy_system: EconomySystem
 var gameplay_hud_system: GameplayHudSystem
 var station_interaction_system: StationInteractionSystem
 var night_queue_builder: NightQueueBuilder
+var street_crowd_system: StreetCrowdSystem
 
 var queued_customers: Array = []
 var pending_customers: Array = []
@@ -102,12 +109,18 @@ var has_second_cooker: bool = false
 var order_panel_blocked_for_this_run: bool = false
 
 @onready var spawn_timer: Timer = $SpawnTimer
+@onready var street_spawn_timer: Timer = $StreetSpawnTimer
 @onready var characters_node: Node = $"../Characters"
 @onready var customer_spawn: Marker2D = $"../Spawns/CustomerSpawn"
+@onready var street_spawn_left: Marker2D = $"../Spawns/StreetSpawnLeft"
+@onready var street_spawn_right: Marker2D = $"../Spawns/StreetSpawnRight"
+@onready var street_exit_left: Marker2D = $"../Spawns/StreetExitLeft"
+@onready var street_exit_right: Marker2D = $"../Spawns/StreetExitRight"
 
 @onready var queue_spot_1: Marker2D = $"../Spawns/QueueSpot1"
 @onready var queue_spot_2: Marker2D = $"../Spawns/QueueSpot2"
 @onready var queue_spot_3: Marker2D = $"../Spawns/QueueSpot3"
+@onready var trash_drop_spot: Marker2D = $"../Spawns/TrashDropSpot"
 
 @onready var slot_a: Marker2D = $"../LayoutSlots/SlotA"
 @onready var slot_b: Marker2D = $"../LayoutSlots/SlotB"
@@ -124,6 +137,8 @@ var order_panel_blocked_for_this_run: bool = false
 @onready var emergency_shop_node: Node2D = $"../Stations/EmergencyShop"
 @onready var glass_noodle_basket_node: Node2D = $"../Stations/GlassNoodleBasket"
 @onready var noodle_basket_node: Node2D = $"../Stations/NoodleBasket"
+@onready var disposable_plate_stack_node: Node2D = $"../Stations/DisposablePlateStack"
+@onready var trash_bin_node: Node2D = $"../Stations/TrashBin"
 @onready var staple_ladle_1_node: Node2D = $"../Stations/StapleLadle1"
 @onready var staple_ladle_2_node: Node2D = $"../Stations/StapleLadle2"
 @onready var gift_box_node: Node2D = $"../Stations/GiftBox"
@@ -140,6 +155,9 @@ func _ready() -> void:
 	if spawn_timer != null:
 		base_spawn_timer_wait_time = spawn_timer.wait_time
 		spawn_timer.timeout.connect(_on_spawn_timer_timeout)
+
+	if street_spawn_timer != null:
+		street_spawn_timer.timeout.connect(_on_street_spawn_timer_timeout)
 
 	initialize_systems()
 	debug_validate_runtime()
@@ -165,6 +183,7 @@ func initialize_systems() -> void:
 	gameplay_hud_system = GameplayHudSystemScript.new()
 	station_interaction_system = StationInteractionSystemScript.new()
 	night_queue_builder = NightQueueBuilderScript.new()
+	street_crowd_system = StreetCrowdSystemScript.new()
 
 	for system in [
 		business_day_system,
@@ -182,7 +201,8 @@ func initialize_systems() -> void:
 		economy_system,
 		gameplay_hud_system,
 		station_interaction_system,
-		night_queue_builder
+		night_queue_builder,
+		street_crowd_system
 	]:
 		system.bind(self)
 
@@ -216,7 +236,8 @@ func get_system_debug_report() -> Array[String]:
 		economy_system,
 		gameplay_hud_system,
 		station_interaction_system,
-		night_queue_builder
+		night_queue_builder,
+		street_crowd_system
 	]:
 		if system == null:
 			report.append("A gameplay system failed to initialize.")
@@ -237,14 +258,26 @@ func debug_validate_runtime() -> bool:
 	if spawn_timer == null:
 		blocking_errors.append("GameManager: SpawnTimer is missing.")
 
+	if street_spawn_timer == null:
+		blocking_errors.append("GameManager: StreetSpawnTimer is missing.")
+
 	if characters_node == null:
 		blocking_errors.append("GameManager: Characters node is missing.")
 
 	if customer_spawn == null:
 		blocking_errors.append("GameManager: CustomerSpawn marker is missing.")
 
+	if street_spawn_left == null or street_spawn_right == null:
+		blocking_errors.append("GameManager: one or more street spawn markers are missing.")
+
+	if street_exit_left == null or street_exit_right == null:
+		blocking_errors.append("GameManager: one or more street exit markers are missing.")
+
 	if queue_spot_1 == null or queue_spot_2 == null or queue_spot_3 == null:
 		blocking_errors.append("GameManager: one or more queue spots are missing.")
+
+	if trash_drop_spot == null:
+		blocking_errors.append("GameManager: TrashDropSpot marker is missing.")
 
 	if counter_node == null:
 		blocking_errors.append("GameManager: Counter station node is missing.")
@@ -254,6 +287,12 @@ func debug_validate_runtime() -> bool:
 
 	if storage_node == null:
 		blocking_errors.append("GameManager: StorageArea station node is missing.")
+
+	if disposable_plate_stack_node == null:
+		blocking_errors.append("GameManager: DisposablePlateStack station node is missing.")
+
+	if trash_bin_node == null:
+		blocking_errors.append("GameManager: TrashBin station node is missing.")
 
 	if cooker_1_node == null:
 		blocking_errors.append("GameManager: primary Cooker station node is missing.")
@@ -293,6 +332,9 @@ func debug_validate_runtime() -> bool:
 
 	if typeof(staple_stock) != TYPE_DICTIONARY:
 		blocking_errors.append("GameManager: staple_stock is not a Dictionary.")
+
+	if street_total_spawn_count < 0:
+		blocking_errors.append("GameManager: street_total_spawn_count cannot be negative.")
 
 	for warning in get_system_debug_report():
 		warnings.append(warning)
@@ -357,6 +399,7 @@ func start_round() -> void:
 	has_opened_for_business_today = false
 	supplier_system.clear_day_state()
 	customer_queue_system.clear_day_state()
+	street_crowd_system.clear_day_state()
 
 	day_time_left = day_duration_seconds
 	auto_close_triggered = false
@@ -384,6 +427,9 @@ func start_round() -> void:
 
 	if spawn_timer != null and is_instance_valid(spawn_timer):
 		spawn_timer.stop()
+
+	if street_spawn_timer != null and is_instance_valid(street_spawn_timer):
+		street_spawn_timer.stop()
 
 	print("Not opened yet. Normal customers will not spawn.")
 
@@ -430,6 +476,10 @@ func interact_with_staple_ladle(slot_index: int) -> void:
 	cooking_system.interact_with_staple_ladle(slot_index)
 
 
+func interact_with_disposable_plate_stack() -> void:
+	cooking_system.interact_with_disposable_plate_stack()
+
+
 func initialize_cooker_slots() -> void:
 	cooking_system.initialize_cooker_slots()
 
@@ -462,6 +512,10 @@ func spawn_customer() -> void:
 		return
 
 	customer_queue_system.spawn_customer()
+
+
+func get_street_spawn_interval_seconds() -> float:
+	return max(street_spawn_interval_seconds, 0.1)
 
 
 func record_special_customer_result(customer: Node, result: String) -> void:
@@ -505,6 +559,18 @@ func is_pending_customer_fully_submitted(customer: Node) -> bool:
 
 func interact_with_delivery_point() -> void:
 	order_system.interact_with_delivery_point()
+
+func serve_or_announce_ready_food() -> void:
+	order_system.player_serve_or_announce_ready_food()
+
+func get_trash_drop_position() -> Vector2:
+	if trash_drop_spot != null:
+		return trash_drop_spot.global_position
+
+	if trash_bin_node != null:
+		return trash_bin_node.global_position
+
+	return Vector2(900, 250)
 
 func complete_delivery_for_customer(customer: Node) -> bool:
 	return order_system.complete_delivery(customer)
@@ -551,6 +617,9 @@ func _on_customer_exited(customer: Node) -> void:
 
 func _on_spawn_timer_timeout() -> void:
 	customer_queue_system.on_spawn_timer_timeout()
+
+func _on_street_spawn_timer_timeout() -> void:
+	street_crowd_system.on_spawn_timer_timeout()
 
 func add_pending_customer(customer: Node) -> void:
 	remove_customer_from_queue(customer)

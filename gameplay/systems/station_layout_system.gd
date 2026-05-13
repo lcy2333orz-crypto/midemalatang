@@ -3,15 +3,16 @@ extends RefCounted
 
 const ATTACHED_STATION_OFFSETS: Dictionary = {
 	"counter": {
-		"gift_box": Vector2(52, -12)
+		"gift_box": Vector2(-62, 4)
 	},
 	"cooker_1": {
-		"staple_ladle_1": Vector2(-105, 45),
-		"staple_ladle_2": Vector2(105, 45)
+		"staple_ladle_1": Vector2(-155, 50),
+		"staple_ladle_2": Vector2(155, 50)
 	},
 	"storage": {
-		"glass_noodle_basket": Vector2(170, 0),
-		"noodle_basket": Vector2(315, 0)
+		"glass_noodle_basket": Vector2(155, 0),
+		"noodle_basket": Vector2(270, 0),
+		"disposable_plate_stack": Vector2(385, 0)
 	}
 }
 
@@ -50,6 +51,9 @@ func debug_validate() -> Array[String]:
 	if manager.glass_noodle_basket_node == null or manager.noodle_basket_node == null:
 		warnings.append("StationLayoutSystem: one or more staple basket station nodes are missing.")
 
+	if manager.disposable_plate_stack_node == null:
+		warnings.append("StationLayoutSystem: DisposablePlateStack station node is missing.")
+
 	if manager.staple_ladle_1_node == null or manager.staple_ladle_2_node == null:
 		warnings.append("StationLayoutSystem: one or more staple ladle station nodes are missing.")
 
@@ -80,6 +84,7 @@ func place_attached_stations() -> void:
 	place_attached_station(manager.staple_ladle_2_node, manager.cooker_1_node, "cooker_1", "staple_ladle_2")
 	place_attached_station(manager.glass_noodle_basket_node, manager.storage_node, "storage", "glass_noodle_basket")
 	place_attached_station(manager.noodle_basket_node, manager.storage_node, "storage", "noodle_basket")
+	place_attached_station(manager.disposable_plate_stack_node, manager.storage_node, "storage", "disposable_plate_stack")
 
 
 func place_attached_station(

@@ -88,6 +88,10 @@ func start_initial_customer_wave() -> void:
 			spawn_customer()
 		return
 
+	if manager.street_crowd_system != null and manager.street_crowd_system.should_control_customer_spawns():
+		print("Street crowd system controls normal customer spawning.")
+		return
+
 	for i in range(manager.max_queue_size):
 		if manager.queued_customers.size() >= manager.max_queue_size:
 			break
@@ -109,6 +113,9 @@ func get_modified_spawn_timer_wait_time() -> float:
 
 func start_spawn_timer_if_needed() -> void:
 	if not manager.business_day_system.can_spawn_customers_now():
+		return
+
+	if manager.street_crowd_system != null and manager.street_crowd_system.should_control_customer_spawns():
 		return
 
 	if has_spawned_all_tutorial_customers():
@@ -137,7 +144,7 @@ func start_spawn_timer_if_needed() -> void:
 	print("Spawn timer started. wait_time=", manager.spawn_timer.wait_time)
 
 
-func spawn_customer() -> void:
+func spawn_customer(spawn_position: Variant = null, exit_position: Variant = null) -> void:
 	if not manager.business_day_system.can_spawn_customers_now():
 		print("Current state does not allow customer spawning.")
 		return
@@ -158,7 +165,14 @@ func spawn_customer() -> void:
 	print("spawned customer instance: ", customer_instance)
 
 	manager.characters_node.add_child(customer_instance)
-	customer_instance.global_position = manager.customer_spawn.global_position
+	if typeof(spawn_position) == TYPE_VECTOR2:
+		customer_instance.global_position = spawn_position
+	else:
+		customer_instance.global_position = manager.customer_spawn.global_position
+
+	if typeof(exit_position) == TYPE_VECTOR2:
+		customer_instance.set_meta("street_exit_position", exit_position)
+
 	print("customer initial pos: ", customer_instance.global_position)
 
 	apply_special_customer_plan_to_customer(customer_instance)
@@ -299,6 +313,9 @@ func on_customer_exited(customer: Node) -> void:
 
 func on_spawn_timer_timeout() -> void:
 	if not manager.business_day_system.can_spawn_customers_now():
+		return
+
+	if manager.street_crowd_system != null and manager.street_crowd_system.should_control_customer_spawns():
 		return
 
 	if has_spawned_all_tutorial_customers():

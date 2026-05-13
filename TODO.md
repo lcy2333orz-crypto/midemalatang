@@ -1,5 +1,7 @@
 # TODO
 
+- Gate the legacy emergency-restock system behind stage configuration so Stage 1 and the tutorial do not expose the old emergency shop flow.
+
 这个文件只记录仍然要做、尚未完成的事项；当前状态说明请看 `README.md`。
 
 ## 架构拆分

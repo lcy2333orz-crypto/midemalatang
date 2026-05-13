@@ -5,6 +5,7 @@ extends Area2D
 @export var interaction_priority: int = 0
 
 const DEBUG_STATION_LABELS: Dictionary = {
+	"DisposablePlateStack": "UI_STATION_DISPOSABLE_PLATE",
 	"Counter": "柜台",
 	"Cooker": "大锅",
 	"DeliveryPoint": "出餐口",
@@ -115,6 +116,8 @@ func get_interaction_priority() -> int:
 			return 95
 		"StapleLadle1", "StapleLadle2":
 			return 90
+		"DisposablePlateStack":
+			return 86
 		"GlassNoodleBasket", "NoodleBasket":
 			return 85
 		"Cooker":

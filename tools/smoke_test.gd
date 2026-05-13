@@ -39,6 +39,10 @@ func _run() -> void:
 		_fail("startup", "GameManager runtime validation failed")
 		_finish()
 		return
+	_run_street_crowd_layout_checks(manager)
+	if not failures.is_empty():
+		_finish()
+		return
 	if manager.supplier_system.is_order_blocked_by_tutorial("noodle", 10):
 		_fail("normal mode", "Stage 1 normal run should not block noodle supplier orders")
 		_finish()
@@ -143,8 +147,8 @@ func _run_tutorial_run_mode_checks(manager: Node) -> void:
 		_fail("tutorial customer plan", "tutorial Day 1 should have 3 scripted customers")
 		return
 
-	if not manager.supplier_system.is_order_blocked_by_tutorial("noodle", 10):
-		_fail("tutorial supplier lock", "tutorial Day 1 should block regular noodle supplier orders")
+	if manager.supplier_system.is_order_blocked_by_tutorial("noodle", 10):
+		_fail("tutorial supplier lock", "tutorial Day 1 should allow regular noodle supplier orders")
 		return
 
 	manager.customer_queue_system.clear_day_state()
@@ -193,6 +197,42 @@ func _run_tutorial_run_mode_checks(manager: Node) -> void:
 	_pass("tutorial run mode")
 
 
+func _run_street_crowd_layout_checks(manager: Node) -> void:
+	if manager.street_spawn_left == null or manager.street_spawn_right == null:
+		_fail("street crowd layout", "street spawn markers are missing")
+		return
+
+	if manager.street_exit_left == null or manager.street_exit_right == null:
+		_fail("street crowd layout", "street exit markers are missing")
+		return
+
+	if manager.street_spawn_timer == null:
+		_fail("street crowd layout", "street spawn timer is missing")
+		return
+
+	if manager.passerby_scene == null:
+		_fail("street crowd layout", "passerby scene is missing")
+		return
+
+	if manager.street_total_spawn_count < 0:
+		_fail("street crowd policy", "street_total_spawn_count should be non-negative")
+		return
+
+	if manager.street_customer_ratio < 0.0 or manager.street_customer_ratio > 1.0:
+		_fail("street crowd policy", "street_customer_ratio should be between 0 and 1")
+		return
+
+	if manager.street_same_side_exit_ratio < 0.0 or manager.street_same_side_exit_ratio > 1.0:
+		_fail("street crowd policy", "street_same_side_exit_ratio should be between 0 and 1")
+		return
+
+	if manager.queue_spot_1.global_position.y >= manager.get_node("../Characters/Player").global_position.y:
+		_fail("street crowd layout", "customer wait spot should stay in front of the cart")
+		return
+
+	_pass("street crowd layout")
+
+
 func _run_order_flow(manager: Node) -> void:
 	manager.cooked_stock = {"spinach": 1, "potato_slice": 0, "tofu_puff": 0}
 	manager.raw_stock = {"spinach": 1, "potato_slice": 0, "tofu_puff": 0}
@@ -229,6 +269,28 @@ func _run_order_flow(manager: Node) -> void:
 		_fail("delivery", "waiting customer was not delivered")
 		return
 	_pass("cooking and delivery")
+
+	manager.cooking_system.initialize_staple_ladle_slots()
+	manager.staple_stock = {"glass_noodle": 1, "noodle": 1}
+	manager.cooking_system.interact_with_staple_basket("glass_noodle")
+	if str(manager.cooking_system.held_raw_staple_food_id) != "glass_noodle":
+		_fail("plate rule", "raw glass noodles should not require a disposable plate")
+		return
+	manager.cooking_system.interact_with_staple_ladle(0)
+	manager.cooking_system.update_staple_ladle_slots(999.0)
+	manager.cooking_system.interact_with_staple_ladle(0)
+	if str(manager.cooking_system.held_staple_food_id) != "":
+		_fail("plate rule", "ready staple should not be taken without a disposable plate")
+		return
+	manager.cooking_system.interact_with_disposable_plate_stack()
+	manager.cooking_system.interact_with_staple_ladle(0)
+	if str(manager.cooking_system.held_staple_food_id) != "glass_noodle":
+		_fail("plate rule", "ready staple should be taken with a disposable plate")
+		return
+	if bool(manager.cooking_system.held_disposable_plate):
+		_fail("plate rule", "disposable plate should be consumed when taking cooked staple")
+		return
+	_pass("plate rule")
 
 
 func _run_restock_flow(manager: Node) -> void:

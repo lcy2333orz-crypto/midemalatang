@@ -34,6 +34,8 @@ var held_raw_staple_food_id: String = ""
 
 var held_staple_food_id: String = ""
 
+var held_disposable_plate: bool = false
+
 var cooker_slots: Array = []
 
 
@@ -515,7 +517,7 @@ func _build_ladle_row(ladle_index: int) -> HBoxContainer:
 
 	take_out_button.custom_minimum_size = Vector2(64, 28)
 
-	take_out_button.disabled = slot_state != "ready" or held_staple_food_id != ""
+	take_out_button.disabled = slot_state != "ready" or held_staple_food_id != "" or not held_disposable_plate
 
 	row.add_child(take_out_button)
 
@@ -1172,6 +1174,7 @@ func initialize_staple_ladle_slots() -> void:
 	held_raw_staple_food_id = ""
 
 	held_staple_food_id = ""
+	held_disposable_plate = false
 
 
 
@@ -1565,8 +1568,13 @@ func take_ready_staple_from_ladle(slot_index: int) -> void:
 
 		return
 
+	if not held_disposable_plate:
 
+		print(TextDB.get_text("LOG_PLATE_REQUIRED_FOR_STAPLE"))
 
+		return
+
+	held_disposable_plate = false
 	held_staple_food_id = main_food_id
 
 
@@ -1656,6 +1664,24 @@ func interact_with_staple_basket(main_food_id: String) -> void:
 
 
 	print(TextDB.get_text("LOG_STAPLE_HELD_RAW_NEEDS_MATCHING_BASKET") % [TextDB.get_item_name(held_raw_staple_food_id)])
+
+
+func interact_with_disposable_plate_stack() -> void:
+
+	if held_staple_food_id != "":
+
+		print(TextDB.get_text("LOG_STAPLE_HAND_HAS_COOKED_DELIVER_FIRST") % [TextDB.get_item_name(held_staple_food_id)])
+
+		return
+
+	if held_disposable_plate:
+
+		held_disposable_plate = false
+		print(TextDB.get_text("LOG_PLATE_RETURNED"))
+		return
+
+	held_disposable_plate = true
+	print(TextDB.get_text("LOG_PLATE_PICKED"))
 
 
 
@@ -2188,6 +2214,7 @@ func clear_day_end_state() -> Dictionary:
 		"held_raw": "",
 
 		"held": "",
+		"held_plate": false,
 
 		"ladles": []
 
@@ -2208,6 +2235,11 @@ func clear_day_end_state() -> Dictionary:
 		discarded["held"] = held_staple_food_id
 
 		held_staple_food_id = ""
+
+	if held_disposable_plate:
+
+		discarded["held_plate"] = true
+		held_disposable_plate = false
 
 
 
@@ -2259,7 +2291,9 @@ func discard_held_staple_food() -> Dictionary:
 
 		"held_raw": "",
 
-		"held": ""
+		"held": "",
+
+		"held_plate": false
 
 	}
 
@@ -2278,6 +2312,11 @@ func discard_held_staple_food() -> Dictionary:
 		discarded["held"] = held_staple_food_id
 
 		held_staple_food_id = ""
+
+	if held_disposable_plate:
+
+		discarded["held_plate"] = true
+		held_disposable_plate = false
 
 
 

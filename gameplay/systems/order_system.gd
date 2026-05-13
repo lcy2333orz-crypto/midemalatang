@@ -216,6 +216,24 @@ func confirm_checkout(customer: Node, quoted_price: int = -1) -> Dictionary:
 	return result
 
 
+func auto_create_pending_order(customer: Node) -> bool:
+	if customer == null or not is_instance_valid(customer):
+		return false
+
+	if CustomerOrderState.is_checked_out(customer):
+		return false
+
+	if not begin_checkout(customer):
+		return false
+
+	var checkout_result: Dictionary = confirm_checkout(customer, customer.get_order_price())
+	if bool(checkout_result.get("success", false)):
+		player_serve_or_announce_ready_food()
+		return true
+
+	return false
+
+
 func route_after_payment(customer: Node, evaluation: Dictionary) -> String:
 	var fulfillment_status: String = str(evaluation.get("fulfillment_status", "invalid"))
 	var needs_waiting: bool = bool(evaluation.get("needs_waiting", false))
@@ -224,9 +242,9 @@ func route_after_payment(customer: Node, evaluation: Dictionary) -> String:
 	var needs_emergency_purchase: bool = bool(evaluation.get("needs_emergency_purchase", false))
 
 	if needs_emergency_purchase:
-		_route_waiting_customer(customer, needs_main_food_cooking, true, true)
-		print("Customer paid, but order currently needs emergency purchase.")
-		return "waiting_emergency"
+		_route_waiting_customer(customer, needs_main_food_cooking, true, false)
+		print("Customer paid, but order currently has no stock path.")
+		return "waiting_shortage"
 
 	if fulfillment_status == "instant":
 		prepare_stock_for_waiting_order(customer, fulfillment_status)
@@ -234,10 +252,7 @@ func route_after_payment(customer: Node, evaluation: Dictionary) -> String:
 		if not needs_waiting:
 			customer.mark_order_served()
 			manager.reputation_system.record_served(customer)
-
-			var instant_exit_point: Node = manager.get_tree().get_first_node_in_group("exit_point") as Node
-			if instant_exit_point:
-				customer.go_to_exit(instant_exit_point.global_position)
+			send_customer_to_eat(customer)
 
 			manager.customer_queue_system.release_counter_customer(customer)
 
@@ -262,9 +277,9 @@ func route_after_payment(customer: Node, evaluation: Dictionary) -> String:
 		print("Customer paid and is now waiting for food.")
 		return "waiting_delivery"
 
-	_route_waiting_customer(customer, needs_main_food_cooking, true, true)
-	print("Customer paid, but order currently needs emergency purchase.")
-	return "waiting_emergency"
+	_route_waiting_customer(customer, needs_main_food_cooking, true, false)
+	print("Customer paid, but order currently has no stock path.")
+	return "waiting_shortage"
 
 
 func _route_waiting_customer(customer: Node, needs_main_food_cooking: bool, needs_ingredient_cooking: bool, needs_emergency_purchase: bool) -> void:
@@ -454,16 +469,103 @@ func apply_adjusted_order_to_customer(customer: Node, adjusted_order: Dictionary
 	print("Customer accepts adjusted order: ", customer.get_ingredients_text())
 
 
+func resolve_pending_shortages_from_storage() -> bool:
+	var changed_anything: bool = false
+
+	for customer in manager.pending_order_system.get_all().duplicate():
+		if customer == null or not is_instance_valid(customer):
+			continue
+
+		if CustomerOrderState.is_served(customer):
+			continue
+
+		var adjusted: Dictionary = get_adjusted_order(customer.get_ingredients())
+		var can_keep_main_food: bool = can_keep_customer_main_food(customer)
+		var new_main_food_id: String = get_customer_main_food_stock_id(customer)
+		var customer_changed: bool = false
+
+		if not can_keep_main_food:
+			new_main_food_id = get_available_alternative_main_food_id(new_main_food_id)
+
+		if adjusted.is_empty() and new_main_food_id == "none":
+			reject_waiting_customer_after_shortage(customer)
+			changed_anything = true
+			continue
+
+		if adjusted != customer.get_ingredients() or new_main_food_id != get_customer_main_food_stock_id(customer):
+			return_reserved_cooked_ingredients(customer)
+			customer.apply_forced_order(new_main_food_id, adjusted)
+			CustomerOrderState.clear_ingredient_reservations(customer)
+			CustomerOrderState.set_order_revealed(customer, true)
+			customer_changed = true
+
+		if not customer_changed:
+			continue
+
+		var evaluation: Dictionary = evaluate_order_before_checkout(customer)
+		prepare_stock_for_waiting_order(customer, str(evaluation.get("fulfillment_status", "waitable")))
+		CustomerOrderState.set_needs_main_food(customer, new_main_food_id != "none")
+		CustomerOrderState.set_needs_ingredients(customer, not get_customer_ingredients_to_cook(customer).is_empty())
+		CustomerOrderState.set_needs_emergency_purchase(customer, false)
+		customer.start_waiting_for_food(
+			CustomerOrderState.needs_main_food(customer),
+			CustomerOrderState.needs_ingredients(customer)
+		)
+		changed_anything = true
+
+	if changed_anything:
+		player_serve_or_announce_ready_food()
+
+	return changed_anything
+
+
+func can_keep_customer_main_food(customer: Node) -> bool:
+	if not customer_has_main_food(customer):
+		return true
+
+	if not CustomerOrderState.needs_main_food(customer):
+		return true
+
+	var main_food_id: String = get_customer_main_food_stock_id(customer)
+	return int(manager.staple_stock.get(main_food_id, 0)) > 0
+
+
+func return_reserved_cooked_ingredients(customer: Node) -> void:
+	var reserved: Dictionary = CustomerOrderState.get_reserved_cooked_ingredients(customer)
+
+	for item_id in reserved.keys():
+		var item_key: String = str(item_id)
+		var amount: int = int(reserved.get(item_key, 0))
+		if amount <= 0:
+			continue
+		manager.cooked_stock[item_key] = int(manager.cooked_stock.get(item_key, 0)) + amount
+
+
+func get_available_alternative_main_food_id(current_main_food_id: String) -> String:
+	for candidate_id in RunSetupData.get_staple_item_ids():
+		var candidate_key: String = str(candidate_id)
+		if candidate_key == current_main_food_id:
+			continue
+		if int(manager.staple_stock.get(candidate_key, 0)) > 0:
+			return candidate_key
+
+	return "none"
+
+
+func reject_waiting_customer_after_shortage(customer: Node) -> void:
+	manager.reputation_system.record_failed(customer, "sold out")
+	manager.pending_order_system.remove(customer)
+	customer.go_to_exit(get_customer_exit_position(customer))
+	print("Customer leaves because the pending order cannot be changed.")
+
+
 func reject_customer_before_checkout(customer: Node) -> void:
 	if customer == null or not is_instance_valid(customer):
 		return
 
 	manager.reputation_system.record_failed(customer, "rejected before checkout")
 
-	var exit_point = manager.get_tree().get_first_node_in_group("exit_point")
-
-	if exit_point:
-		customer.go_to_exit(exit_point.global_position)
+	customer.go_to_exit(get_customer_exit_position(customer))
 
 	manager.customer_queue_system.release_counter_customer(customer)
 
@@ -484,6 +586,10 @@ func is_pending_customer_fully_submitted(customer: Node) -> bool:
 
 
 func interact_with_delivery_point() -> void:
+	player_serve_or_announce_ready_food()
+
+
+func player_serve_or_announce_ready_food() -> void:
 	var changed_anything: bool = false
 	var completed_customer: Node = null
 
@@ -535,7 +641,7 @@ func interact_with_delivery_point() -> void:
 		_refresh_cart_pot_panel_if_open()
 		return
 
-	print("No deliverable customer.")
+	print(TextDB.get_text("LOG_READY_FOOD_ANNOUNCED"))
 
 
 func complete_delivery(customer: Node) -> bool:
@@ -555,9 +661,7 @@ func complete_delivery(customer: Node) -> bool:
 	manager.reputation_system.record_served(customer)
 	manager.customer_queue_system.remove_customer_from_pending(customer)
 
-	var exit_point = manager.get_tree().get_first_node_in_group("exit_point")
-	if exit_point:
-		customer.go_to_exit(exit_point.global_position)
+	send_customer_to_eat(customer)
 
 	print("Delivered order to customer.")
 	_refresh_cart_pot_panel_if_open()
@@ -565,6 +669,32 @@ func complete_delivery(customer: Node) -> bool:
 	manager.customer_queue_system.on_tutorial_order_delivered()
 
 	return true
+
+
+func send_customer_to_eat(customer: Node) -> void:
+	if customer == null or not is_instance_valid(customer):
+		return
+
+	var trash_position: Vector2 = manager.get_trash_drop_position()
+	var exit_position: Vector2 = get_customer_exit_position(customer)
+
+	if customer.has_method("start_eating_after_service"):
+		customer.start_eating_after_service(trash_position, exit_position)
+	else:
+		customer.go_to_exit(exit_position)
+
+
+func get_customer_exit_position(customer: Node) -> Vector2:
+	if customer != null and is_instance_valid(customer):
+		var meta_value: Variant = customer.get_meta("street_exit_position", null)
+		if typeof(meta_value) == TYPE_VECTOR2:
+			return meta_value
+
+	var exit_point = manager.get_tree().get_first_node_in_group("exit_point")
+	if exit_point != null and exit_point is Node2D:
+		return (exit_point as Node2D).global_position
+
+	return Vector2(1080, 70)
 
 
 func get_first_deliverable_pending_customer() -> Node:

@@ -7,6 +7,7 @@ var item_key_map: Dictionary = {
 	"none": "UI_ITEM_NONE",
 	"glass_noodle": "UI_ITEM_GLASS_NOODLE",
 	"noodle": "UI_ITEM_NOODLE",
+	"disposable_plate": "UI_ITEM_DISPOSABLE_PLATE",
 	"spinach": "UI_ITEM_SPINACH",
 	"potato_slice": "UI_ITEM_POTATO_SLICE",
 	"tofu_puff": "UI_ITEM_TOFU_PUFF"

@@ -37,6 +37,8 @@ func get_interaction_prompt(station_name: String) -> String:
 			return _get_staple_basket_prompt("glass_noodle")
 		"NoodleBasket":
 			return _get_staple_basket_prompt("noodle")
+		"DisposablePlateStack":
+			return _get_disposable_plate_prompt()
 		"StapleLadle1":
 			return _get_ladle_prompt(0, TextDB.get_text("UI_LADLE_1"))
 		"StapleLadle2":
@@ -56,6 +58,8 @@ func interact(station_name: String) -> void:
 		"DeliveryPoint":
 			manager.order_system.interact_with_delivery_point()
 		"StorageArea":
+			if manager.is_open_for_business and manager.order_system.resolve_pending_shortages_from_storage():
+				return
 			manager.supplier_system.open_panel()
 		"TrashBin":
 			_interact_trash_bin()
@@ -67,6 +71,8 @@ func interact(station_name: String) -> void:
 			manager.cooking_system.interact_with_staple_basket("glass_noodle")
 		"NoodleBasket":
 			manager.cooking_system.interact_with_staple_basket("noodle")
+		"DisposablePlateStack":
+			manager.cooking_system.interact_with_disposable_plate_stack()
 		"StapleLadle1":
 			manager.cooking_system.interact_with_staple_ladle(0)
 		"StapleLadle2":
@@ -126,6 +132,9 @@ func _get_delivery_prompt() -> String:
 
 
 func _get_trash_bin_prompt() -> String:
+	if bool(manager.cooking_system.held_disposable_plate):
+		return TextDB.get_text("UI_PROMPT_TRASH_BIN")
+
 	if str(manager.cooking_system.held_raw_staple_food_id) != "":
 		return TextDB.get_text("UI_PROMPT_TRASH_BIN")
 
@@ -133,6 +142,16 @@ func _get_trash_bin_prompt() -> String:
 		return TextDB.get_text("UI_PROMPT_TRASH_BIN")
 
 	return TextDB.get_text("UI_PROMPT_TRASH_BIN_EMPTY")
+
+
+func _get_disposable_plate_prompt() -> String:
+	if str(manager.cooking_system.held_staple_food_id) != "":
+		return TextDB.get_text("UI_PROMPT_HELD_COOKED_STAPLE")
+
+	if bool(manager.cooking_system.held_disposable_plate):
+		return TextDB.get_text("UI_PROMPT_DISPOSABLE_PLATE_HELD")
+
+	return TextDB.get_text("UI_PROMPT_DISPOSABLE_PLATE")
 
 
 func _get_staple_basket_prompt(main_food_id: String) -> String:
@@ -172,6 +191,8 @@ func _get_ladle_prompt(slot_index: int, display_name: String) -> String:
 
 	if state == "ready":
 		if held_cooked == "":
+			if not bool(manager.cooking_system.held_disposable_plate):
+				return TextDB.get_text("UI_PROMPT_NEED_DISPOSABLE_PLATE")
 			return TextDB.get_text("UI_PROMPT_TAKE_FROM_LADLE") % display_name
 		return TextDB.get_text("UI_PROMPT_HAND_HAS_COOKED_STAPLE")
 
@@ -228,8 +249,9 @@ func _interact_trash_bin() -> void:
 	var discarded: Dictionary = manager.cooking_system.discard_held_staple_food()
 	var discarded_raw: String = str(discarded.get("held_raw", ""))
 	var discarded_cooked: String = str(discarded.get("held", ""))
+	var discarded_plate: bool = bool(discarded.get("held_plate", false))
 
-	if discarded_raw == "" and discarded_cooked == "":
+	if discarded_raw == "" and discarded_cooked == "" and not discarded_plate:
 		print("Trash bin used, but the player is not holding staple food.")
 		return
 
@@ -238,3 +260,6 @@ func _interact_trash_bin() -> void:
 
 	if discarded_cooked != "":
 		print("Discarded cooked staple food: ", discarded_cooked)
+
+	if discarded_plate:
+		print(TextDB.get_text("LOG_PLATE_DISCARDED"))

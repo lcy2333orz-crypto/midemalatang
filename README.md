@@ -1,5 +1,15 @@
 # malatang
 
+## Current Gameplay Notes
+
+- `scenes/gameplay/main.tscn` is shared by the tutorial and Stage 1. The top street uses `StreetSpawnLeft/Right` and `StreetExitLeft/Right` for both customers and passerby NPCs; `street_total_spawn_count`, `street_customer_ratio`, and `street_same_side_exit_ratio` stay configurable on `GameManager`.
+- Customers move from the street into cart-front wait spots, think for a short random time, then auto-create a pending order. They do not enter the player operation area.
+- The cart table keeps the cooker in the middle, two staple ladles inside the cooker boundary, raw staple baskets behind the cart, a `DisposablePlateStack` beside `NoodleBasket`, and `TrashBin` at the right packing side.
+- Raw glass noodles and raw noodles can be picked up directly. A disposable plate is required only before taking cooked staple food out of a ladle; taking cooked staple consumes the plate.
+- `F` is the global service key: holding cooked staple hands it to the first matching pending customer anywhere; otherwise it announces ready cooked toppings so waiting customers can take them in order.
+- After receiving a complete order, a customer eats, shows an evaluation, walks to `TrashDropSpot`, throws trash away, and exits without blocking day cleanup.
+- The tutorial no longer teaches emergency restock. Tutorial Day 1 supplier noodle orders are available, and shortage handling on this map is driven through storage-side order adjustment or customer departure.
+
 
 
 ## 本轮更新

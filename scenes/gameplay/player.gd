@@ -75,6 +75,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		try_interact()
 
 
+	if event.is_action_pressed("serve_or_announce"):
+
+		try_serve_or_announce_ready_food()
+
+
 
 	if event.is_action_pressed("toggle_business"):
 
@@ -212,6 +217,28 @@ func try_toggle_business() -> void:
 
 	_update_interaction_prompt()
 
+	_update_hand_state_prompt()
+
+
+func try_serve_or_announce_ready_food() -> void:
+
+	if not _can_interact_now():
+
+		return
+
+	var game_manager = get_tree().get_first_node_in_group("game_manager")
+
+	if game_manager == null:
+
+		return
+
+	if not game_manager.has_method("serve_or_announce_ready_food"):
+
+		return
+
+	last_interact_time_msec = Time.get_ticks_msec()
+	game_manager.serve_or_announce_ready_food()
+	_update_interaction_prompt()
 	_update_hand_state_prompt()
 
 
@@ -390,6 +417,10 @@ func get_current_carry_state() -> String:
 
 			return "small"
 
+		if bool(game_manager.cooking_system.held_disposable_plate):
+
+			return "small"
+
 
 
 	return "none"
@@ -418,6 +449,8 @@ func get_current_hand_text() -> String:
 
 	var held_raw: String = str(game_manager.cooking_system.held_raw_staple_food_id)
 
+	var held_plate: bool = bool(game_manager.cooking_system.held_disposable_plate)
+
 
 
 	if held_cooked != "":
@@ -429,6 +462,10 @@ func get_current_hand_text() -> String:
 	if held_raw != "":
 
 		return TextDB.get_text("UI_HAND_RAW") % game_manager.get_ingredient_display_name(held_raw)
+
+	if held_plate:
+
+		return TextDB.get_text("UI_HAND_DISPOSABLE_PLATE")
 
 
 

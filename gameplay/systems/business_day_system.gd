@@ -75,6 +75,7 @@ func open_business() -> void:
 	print("=== Business opened ===")
 
 	manager.customer_queue_system.start_initial_customer_wave()
+	manager.street_crowd_system.start_day_crowd()
 
 
 func close_business() -> void:
@@ -86,6 +87,9 @@ func close_business() -> void:
 
 	if manager.spawn_timer != null and is_instance_valid(manager.spawn_timer):
 		manager.spawn_timer.stop()
+
+	if manager.street_spawn_timer != null and is_instance_valid(manager.street_spawn_timer):
+		manager.street_spawn_timer.stop()
 
 	print("=== Business closed ===")
 	try_finish_day()
@@ -134,6 +138,9 @@ func enter_cleanup_phase() -> void:
 
 	if manager.spawn_timer != null and is_instance_valid(manager.spawn_timer):
 		manager.spawn_timer.stop()
+
+	if manager.street_spawn_timer != null and is_instance_valid(manager.street_spawn_timer):
+		manager.street_spawn_timer.stop()
 
 	var game_ui = manager.get_tree().get_first_node_in_group("game_ui")
 	if game_ui:
