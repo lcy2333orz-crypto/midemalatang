@@ -78,6 +78,7 @@ var eating_time_left: float = 0.0
 var throw_trash_time_left: float = 0.0
 var trash_drop_position: Vector2 = Vector2.ZERO
 var final_exit_position: Vector2 = Vector2.ZERO
+var has_started_trash_exit: bool = false
 
 func _ready() -> void:
 	add_to_group("customers")
@@ -209,8 +210,9 @@ func _update_service_state(delta: float) -> void:
 
 	if current_state == CustomerState.THROWING_TRASH:
 		throw_trash_time_left -= delta
-		if throw_trash_time_left <= 0.0:
+		if throw_trash_time_left <= 0.0 and not has_started_trash_exit:
 			throw_trash_time_left = 0.0
+			has_started_trash_exit = true
 			go_to_exit(final_exit_position)
 
 
@@ -279,7 +281,8 @@ func _on_reached_target() -> void:
 
 		CustomerState.MOVING_TO_TRASH:
 			current_state = CustomerState.THROWING_TRASH
-			throw_trash_time_left = 0.45
+			throw_trash_time_left = 0.5
+			has_started_trash_exit = false
 			set_customer_status(get_served_reaction_text())
 
 		CustomerState.MOVING_TO_EXIT:
@@ -519,6 +522,7 @@ func mark_order_served() -> void:
 func start_eating_after_service(trash_position: Vector2, exit_position: Vector2) -> void:
 	trash_drop_position = trash_position
 	final_exit_position = exit_position
+	has_started_trash_exit = false
 	is_in_queue = false
 	queue_index = -1
 	current_state = CustomerState.EATING
@@ -529,6 +533,9 @@ func start_eating_after_service(trash_position: Vector2, exit_position: Vector2)
 
 
 func start_happy_trash_walk() -> void:
+	if current_state == CustomerState.MOVING_TO_TRASH or current_state == CustomerState.THROWING_TRASH:
+		return
+
 	current_state = CustomerState.MOVING_TO_TRASH
 	target_position = trash_drop_position
 	set_customer_status(get_served_reaction_text())
