@@ -20,11 +20,11 @@ func _ready() -> void:
 
 func _on_stage1_button_pressed() -> void:
 	RunSetupData.setup_stage_run("stage_1", 7)
-	get_tree().change_scene_to_file("res://scenes/gameplay/main.tscn")
+	get_tree().change_scene_to_file("res://scenes/gameplay/test_restaurant.tscn")
 
 func _on_stage2_button_pressed() -> void:
 	RunSetupData.setup_stage_run("stage_2", 7)
-	get_tree().change_scene_to_file("res://scenes/gameplay/main.tscn")
+	get_tree().change_scene_to_file("res://scenes/gameplay/test_restaurant.tscn")
 
 func _on_back_button_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/menus/home_menu.tscn")

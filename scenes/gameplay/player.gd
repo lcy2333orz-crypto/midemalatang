@@ -397,6 +397,11 @@ func get_current_speed_multiplier() -> float:
 
 func get_current_carry_state() -> String:
 
+	var restaurant_manager = get_tree().get_first_node_in_group("restaurant_game_manager")
+	if restaurant_manager != null and restaurant_manager.has_method("get_hand_text"):
+		if restaurant_manager.get("held_bowl") != null:
+			return "heavy"
+
 	var game_manager = get_tree().get_first_node_in_group("game_manager")
 
 	if game_manager == null:
@@ -430,6 +435,10 @@ func get_current_carry_state() -> String:
 
 
 func get_current_hand_text() -> String:
+
+	var restaurant_manager = get_tree().get_first_node_in_group("restaurant_game_manager")
+	if restaurant_manager != null and restaurant_manager.has_method("get_hand_text"):
+		return str(restaurant_manager.get_hand_text())
 
 	var game_manager = get_tree().get_first_node_in_group("game_manager")
 

@@ -29,7 +29,7 @@ func _on_stage_select_button_pressed() -> void:
 
 func _on_tutorial_button_pressed() -> void:
 	RunSetupData.setup_tutorial_run("stage_1", 3)
-	get_tree().change_scene_to_file("res://scenes/gameplay/main.tscn")
+	get_tree().change_scene_to_file("res://scenes/gameplay/test_restaurant.tscn")
 
 func _on_notebook_button_pressed() -> void:
 	message_label.text = TextDB.get_text("UI_HOME_NOTEBOOK_NOT_READY")

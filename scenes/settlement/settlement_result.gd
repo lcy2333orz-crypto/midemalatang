@@ -1757,7 +1757,7 @@ func _on_retry_button_pressed() -> void:
 		clear_leftover_food_for_next_day()
 
 		RunSetupData.current_day_in_run += 1
-		get_tree().change_scene_to_file("res://scenes/gameplay/main.tscn")
+		get_tree().change_scene_to_file("res://scenes/gameplay/test_restaurant.tscn")
 		return
 
 	clear_leftover_food_for_next_day()
