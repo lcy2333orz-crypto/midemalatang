@@ -112,6 +112,9 @@ func interact_counter() -> void:
 	if held_dirty_cooker != null:
 		_refresh_ui("先把脏锅倒进垃圾桶。")
 		return
+	if held_bowl != null:
+		interact_takeout_counter_delivery()
+		return
 	var customer: RestaurantCustomer = _get_counter_customer()
 	if customer == null:
 		_refresh_ui("No customer at counter.")
@@ -286,7 +289,21 @@ func interact_takeout_pickup() -> void:
 	if _reject_overcooked_held_order():
 		return
 	if held_bowl.service_mode != "takeout" or held_bowl.status != OrderBowl.STATUS_PACKED:
-		_refresh_ui("Takeout orders must be packed first.")
+		_refresh_ui("外带订单打包后交给收银台。")
+		return
+	_refresh_ui("外带订单交给收银台。")
+
+
+func interact_takeout_counter_delivery() -> void:
+	if held_bowl == null:
+		return
+	if _reject_overcooked_held_order():
+		return
+	if held_bowl.service_mode != "takeout":
+		_refresh_ui("堂食订单送到对应堂食桌。")
+		return
+	if held_bowl.status != OrderBowl.STATUS_PACKED:
+		_refresh_ui("外带订单需要先去打包台。")
 		return
 	_complete_held_order()
 
@@ -333,7 +350,7 @@ func force_complete_one_order_for_smoke() -> bool:
 		return false
 	if held_bowl.service_mode == "takeout":
 		interact_packing_area()
-		interact_takeout_pickup()
+		interact_counter()
 	else:
 		interact_delivery_table(held_bowl.table_id)
 
@@ -551,10 +568,11 @@ func _refresh_ui(message: String = "") -> void:
 
 func _get_order_card_text(target_bowl: OrderBowl) -> String:
 	var patience_percent: int = int(round(target_bowl.get_order_patience_ratio() * 100.0))
-	return "#%03d\n%s\n%s\n%s\n%d%%" % [
+	return "#%03d\n%s\n%s\n%s\n%s\n%d%%" % [
 		target_bowl.order_id,
 		_service_text(target_bowl.service_mode, target_bowl.table_id),
 		_staple_text(target_bowl.staple_type),
+		_delivery_destination_text(target_bowl),
 		_get_bowl_location_text(target_bowl),
 		patience_percent
 	]
@@ -584,3 +602,9 @@ func _staple_text(staple_type: String) -> String:
 			return "无主食"
 		_:
 			return staple_type
+
+
+func _delivery_destination_text(target_bowl: OrderBowl) -> String:
+	if target_bowl.service_mode == "dine_in":
+		return "堂食桌%d" % target_bowl.table_id
+	return "收银台"

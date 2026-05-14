@@ -18,7 +18,17 @@ func _run() -> void:
 		_finish()
 		return
 
+	await _check_delivery_paths()
+	if not failures.is_empty():
+		_finish()
+		return
+
 	await _check_overcooked_trash_rule()
+	if not failures.is_empty():
+		_finish()
+		return
+
+	await _check_order_card_destination()
 	if not failures.is_empty():
 		_finish()
 		return
@@ -86,6 +96,58 @@ func _check_order_loop() -> void:
 
 	scene.queue_free()
 	_pass("order loop")
+
+
+func _check_delivery_paths() -> void:
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("delivery paths", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	var takeout_bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(takeout_bowl)
+	takeout_bowl.setup_order(501, {"spinach": 1}, "noodle", "hot", "takeout", 0)
+	takeout_bowl.status = OrderBowl.STATUS_COOKED
+	manager.held_bowl = takeout_bowl
+	manager.interact_sauce_station()
+	manager.interact_packing_area()
+	manager.interact_takeout_pickup()
+	if manager.held_bowl == null:
+		_fail("delivery paths", "takeout should not complete at pickup area")
+		scene.queue_free()
+		return
+	manager.interact_counter()
+	if manager.held_bowl != null or int(manager.completed_orders) != 1:
+		_fail("delivery paths", "packed takeout should complete at counter")
+		scene.queue_free()
+		return
+
+	var dine_bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(dine_bowl)
+	dine_bowl.setup_order(502, {"spinach": 1}, "noodle", "hot", "dine_in", 2)
+	dine_bowl.status = OrderBowl.STATUS_COOKED
+	manager.held_bowl = dine_bowl
+	manager.interact_sauce_station()
+	manager.interact_delivery_table(1)
+	if manager.held_bowl == null:
+		_fail("delivery paths", "dine-in should not complete at the wrong table")
+		scene.queue_free()
+		return
+	manager.interact_delivery_table(2)
+	if manager.held_bowl != null or int(manager.completed_orders) != 2:
+		_fail("delivery paths", "dine-in should complete at the assigned table")
+		scene.queue_free()
+		return
+
+	scene.queue_free()
+	_pass("delivery paths")
 
 
 func _check_overcooked_trash_rule() -> void:
@@ -191,6 +253,49 @@ func _check_overcooked_trash_rule() -> void:
 
 	scene.queue_free()
 	_pass("overcooked trash")
+
+
+func _check_order_card_destination() -> void:
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("order card destination", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	var takeout_bowl: OrderBowl = OrderBowl.new()
+	takeout_bowl.setup_order(401, {"spinach": 1}, "noodle", "hot", "takeout", 0)
+	var takeout_text: String = manager._get_order_card_text(takeout_bowl)
+	if not takeout_text.contains("收银台"):
+		_fail("order card destination", "takeout card should show counter destination")
+		scene.queue_free()
+		return
+	if not takeout_text.contains("#401") or not takeout_text.contains("100%"):
+		_fail("order card destination", "takeout card should keep id and patience")
+		scene.queue_free()
+		return
+
+	var dine_bowl: OrderBowl = OrderBowl.new()
+	dine_bowl.setup_order(402, {"spinach": 1}, "noodle", "hot", "dine_in", 2)
+	var dine_text: String = manager._get_order_card_text(dine_bowl)
+	if not dine_text.contains("堂食桌2"):
+		_fail("order card destination", "dine-in card should show table destination")
+		scene.queue_free()
+		return
+	if not dine_text.contains("#402") or not dine_text.contains("100%"):
+		_fail("order card destination", "dine-in card should keep id and patience")
+		scene.queue_free()
+		return
+
+	takeout_bowl.queue_free()
+	dine_bowl.queue_free()
+	scene.queue_free()
+	_pass("order card destination")
 
 
 func _check_staple_timing() -> void:

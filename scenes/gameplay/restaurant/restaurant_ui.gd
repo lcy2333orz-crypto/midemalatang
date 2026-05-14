@@ -97,7 +97,7 @@ func _ensure_widgets() -> void:
 
 func _create_order_card(card_text: String) -> Panel:
 	var card: Panel = Panel.new()
-	card.custom_minimum_size = Vector2(110, 104)
+	card.custom_minimum_size = Vector2(110, 118)
 
 	var box: VBoxContainer = VBoxContainer.new()
 	box.set_anchors_preset(Control.PRESET_FULL_RECT)
