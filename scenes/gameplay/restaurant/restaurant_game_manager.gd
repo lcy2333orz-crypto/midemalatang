@@ -15,13 +15,6 @@ var spawn_count: int = 0
 var spawn_elapsed: float = 0.0
 
 var held_bowl: OrderBowl = null
-var checkout_customer: RestaurantCustomer = null
-var checkout_step: int = 0
-var checkout_staple: String = "glass_noodle"
-var checkout_spice: String = "mild"
-var checkout_service_mode: String = "takeout"
-var checkout_table_id: int = 1
-
 @onready var characters_node: Node2D = $"../Characters"
 @onready var bowls_node: Node2D = $"../Bowls"
 @onready var entrance: Marker2D = $"../Markers/Entrance"
@@ -50,6 +43,7 @@ func _process(delta: float) -> void:
 	if spawn_count < max_customers and spawn_elapsed >= spawn_interval_seconds:
 		spawn_elapsed = 0.0
 		spawn_customer()
+	_update_order_patience(delta)
 	_refresh_ui()
 
 
@@ -112,51 +106,33 @@ func interact_with_station(station_name: String) -> void:
 
 
 func interact_counter() -> void:
-	if checkout_customer == null or not is_instance_valid(checkout_customer):
-		checkout_customer = _get_counter_customer()
-		checkout_step = 0
-
-	if checkout_customer == null:
+	var customer: RestaurantCustomer = _get_counter_customer()
+	if customer == null:
 		_refresh_ui("No customer at counter.")
 		return
 
-	match checkout_step:
-		0:
-			_refresh_ui("Weighed bowl: %dg. Choose staple next." % _estimate_weight(checkout_customer.get_bowl_ingredients()))
-		1:
-			checkout_staple = _next_staple(checkout_staple)
-			_refresh_ui("Staple selected: %s." % checkout_staple)
-		2:
-			checkout_spice = _next_spice(checkout_spice)
-			_refresh_ui("Spice selected: %s." % checkout_spice)
-		3:
-			checkout_service_mode = _next_service_mode(checkout_service_mode)
-			checkout_table_id = _next_table_id() if checkout_service_mode == "dine_in" else 0
-			_refresh_ui("Service selected: %s." % _service_text(checkout_service_mode, checkout_table_id))
-		_:
-			_create_order_from_checkout()
-			return
-
-	checkout_step += 1
+	_create_order_from_customer(customer)
 
 
-func _create_order_from_checkout() -> void:
-	var customer: RestaurantCustomer = checkout_customer
+func _create_order_from_customer(customer: RestaurantCustomer) -> void:
 	if customer == null or customer.customer_bowl == null:
-		_reset_checkout()
 		return
 
 	var bowl: OrderBowl = customer.customer_bowl
 	var order_id: int = next_order_id
 	next_order_id += 1
+	var staple_type: String = _random_staple()
+	var spice_level: String = _random_spice()
+	var service_mode: String = _random_service_mode()
+	var table_id: int = _next_table_id() if service_mode == "dine_in" else 0
 
 	bowl.setup_order(
 		order_id,
 		customer.get_bowl_ingredients(),
-		checkout_staple,
-		checkout_spice,
-		checkout_service_mode,
-		checkout_table_id
+		staple_type,
+		spice_level,
+		service_mode,
+		table_id
 	)
 
 	waiting_area.add_bowl(bowl)
@@ -165,12 +141,16 @@ func _create_order_from_checkout() -> void:
 	queued_customers.erase(customer)
 	waiting_customers_by_order_id[order_id] = customer
 	var wait_position: Vector2 = takeout_wait.global_position
-	if checkout_service_mode == "dine_in":
-		wait_position = _get_table_spot(checkout_table_id)
-	customer.wait_for_order(order_id, checkout_service_mode, checkout_table_id, wait_position)
+	if service_mode == "dine_in":
+		wait_position = _get_table_spot(table_id)
+	customer.wait_for_order(order_id, service_mode, table_id, wait_position)
 
-	_refresh_ui("Order #%03d clipped and sent to waiting area." % order_id)
-	_reset_checkout()
+	_refresh_ui("Order #%03d created: %s / %s / %s." % [
+		order_id,
+		staple_type,
+		spice_level,
+		_service_text(service_mode, table_id)
+	])
 	refresh_queue_positions()
 
 
@@ -280,15 +260,20 @@ func force_complete_one_order_for_smoke() -> bool:
 		await get_tree().process_frame
 		guard += 1
 
-	for i in range(5):
-		interact_counter()
+	interact_counter()
 
 	interact_waiting_order_area()
 	interact_cooker(cooker_1)
-	if cooker_1.bowl == null:
+	if cooker_1.active_bowl == null:
+		return false
+	if cooker_1.holder_bowl == null:
+		return false
+	if not bool(cooker_1.holder_bowl.is_empty_holder):
 		return false
 
-	cooker_1.bowl.update_cooking(4.2)
+	cooker_1.active_bowl.update_cooking(4.2)
+	if cooker_1.get_status_text() != "已熟":
+		return false
 	interact_cooker(cooker_1)
 	interact_sauce_station()
 
@@ -337,14 +322,6 @@ func _get_counter_customer() -> RestaurantCustomer:
 	return null
 
 
-func _reset_checkout() -> void:
-	checkout_customer = null
-	checkout_step = 0
-	checkout_staple = "glass_noodle"
-	checkout_spice = "mild"
-	checkout_service_mode = "takeout" if next_order_id % 2 == 1 else "dine_in"
-
-
 func _estimate_weight(ingredients: Dictionary) -> int:
 	var count: int = 0
 	for item_id in ingredients.keys():
@@ -352,28 +329,19 @@ func _estimate_weight(ingredients: Dictionary) -> int:
 	return 120 + count * 45
 
 
-func _next_staple(current: String) -> String:
-	match current:
-		"glass_noodle":
-			return "noodle"
-		"noodle":
-			return "none"
-		_:
-			return "glass_noodle"
+func _random_staple() -> String:
+	var options: Array[String] = ["glass_noodle", "noodle", "none"]
+	return options[randi() % options.size()]
 
 
-func _next_spice(current: String) -> String:
-	match current:
-		"mild":
-			return "medium"
-		"medium":
-			return "hot"
-		_:
-			return "mild"
+func _random_spice() -> String:
+	var options: Array[String] = ["mild", "medium", "hot"]
+	return options[randi() % options.size()]
 
 
-func _next_service_mode(current: String) -> String:
-	return "takeout" if current == "dine_in" else "dine_in"
+func _random_service_mode() -> String:
+	var options: Array[String] = ["dine_in", "takeout"]
+	return options[randi() % options.size()]
 
 
 func _next_table_id() -> int:
@@ -402,6 +370,36 @@ func _get_table_spot(table_id: int) -> Vector2:
 	return Vector2(760, 330)
 
 
+func _update_order_patience(delta: float) -> void:
+	for bowl in _get_tracked_order_bowls():
+		if bowl != null and is_instance_valid(bowl):
+			bowl.update_order_patience(delta)
+
+
+func _get_tracked_order_bowls() -> Array[OrderBowl]:
+	var bowls: Array[OrderBowl] = []
+	if held_bowl != null:
+		bowls.append(held_bowl)
+	for waiting_bowl in waiting_area.bowls:
+		if waiting_bowl != null and waiting_bowl not in bowls:
+			bowls.append(waiting_bowl)
+	for cooker in [cooker_1, cooker_2]:
+		if cooker != null and cooker.active_bowl != null and cooker.active_bowl not in bowls:
+			bowls.append(cooker.active_bowl)
+	return bowls
+
+
+func _get_bowl_location_text(target_bowl: OrderBowl) -> String:
+	if target_bowl == held_bowl:
+		return "手持"
+	if waiting_area.bowls.has(target_bowl):
+		return "待煮"
+	for cooker in [cooker_1, cooker_2]:
+		if cooker != null and cooker.active_bowl == target_bowl:
+			return "%s/%s" % [cooker.station_id, cooker.get_status_text()]
+	return "处理中"
+
+
 func _refresh_ui(message: String = "") -> void:
 	if ui == null:
 		return
@@ -418,10 +416,20 @@ func _refresh_ui(message: String = "") -> void:
 
 	var order_lines: Array[String] = []
 	if held_bowl != null:
-		order_lines.append("HELD %s" % held_bowl.get_detail_text())
+		order_lines.append(_get_order_card_text(held_bowl))
 	for bowl in waiting_area.bowls:
-		order_lines.append("WAIT %s" % bowl.get_detail_text())
+		order_lines.append(_get_order_card_text(bowl))
 	for cooker in [cooker_1, cooker_2]:
-		if cooker != null and cooker.bowl != null:
-			order_lines.append("COOK %s %.1fs" % [cooker.bowl.get_detail_text(), cooker.bowl.cook_time])
+		if cooker != null and cooker.active_bowl != null and cooker.active_bowl != held_bowl:
+			order_lines.append(_get_order_card_text(cooker.active_bowl))
 	ui.update_orders("\n".join(order_lines))
+
+
+func _get_order_card_text(target_bowl: OrderBowl) -> String:
+	var patience_percent: int = int(round(target_bowl.get_order_patience_ratio() * 100.0))
+	return "#%03d %s %s %d%%" % [
+		target_bowl.order_id,
+		_get_bowl_location_text(target_bowl),
+		target_bowl.staple_state,
+		patience_percent
+	]

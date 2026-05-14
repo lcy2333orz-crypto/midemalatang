@@ -383,6 +383,21 @@ text = "锅位1"
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="PotArea" type="Node2D" parent="Stations/CookerStations/CookerStation1"]
+position = Vector2(0, 0)
+
+[node name="BowlHolderArea" type="Node2D" parent="Stations/CookerStations/CookerStation1"]
+position = Vector2(0, 44)
+
+[node name="StatusLabel" type="Label" parent="Stations/CookerStations/CookerStation1"]
+offset_left = -44.0
+offset_top = -68.0
+offset_right = 44.0
+offset_bottom = -46.0
+text = "空锅"
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="SolidBody" type="StaticBody2D" parent="Stations/CookerStations/CookerStation1"]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/CookerStations/CookerStation1/SolidBody"]
@@ -412,6 +427,21 @@ offset_top = -12.0
 offset_right = 36.0
 offset_bottom = 12.0
 text = "锅位2"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PotArea" type="Node2D" parent="Stations/CookerStations/CookerStation2"]
+position = Vector2(0, 0)
+
+[node name="BowlHolderArea" type="Node2D" parent="Stations/CookerStations/CookerStation2"]
+position = Vector2(0, 44)
+
+[node name="StatusLabel" type="Label" parent="Stations/CookerStations/CookerStation2"]
+offset_left = -44.0
+offset_top = -68.0
+offset_right = 44.0
+offset_bottom = -46.0
+text = "空锅"
 horizontal_alignment = 1
 vertical_alignment = 1
 

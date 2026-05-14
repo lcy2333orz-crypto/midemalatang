@@ -19,6 +19,7 @@ extends CharacterBody2D
 var nearby_stations: Array[Area2D] = []
 
 var last_interact_time_msec: int = -999999
+var highlighted_station: Area2D = null
 
 
 
@@ -110,6 +111,10 @@ func unregister_nearby_station(station: Area2D) -> void:
 	if station in nearby_stations:
 
 		nearby_stations.erase(station)
+
+	if highlighted_station == station:
+		_set_station_highlight(highlighted_station, false)
+		highlighted_station = null
 
 
 
@@ -495,6 +500,7 @@ func _update_interaction_prompt() -> void:
 
 
 	var target_station = get_best_station()
+	_update_highlighted_station(target_station)
 
 
 
@@ -519,6 +525,21 @@ func _update_interaction_prompt() -> void:
 	if game_ui.has_method("show_interaction_prompt"):
 
 		game_ui.show_interaction_prompt(prompt_text)
+
+
+func _update_highlighted_station(target_station: Area2D) -> void:
+	if highlighted_station == target_station:
+		return
+	if highlighted_station != null and is_instance_valid(highlighted_station):
+		_set_station_highlight(highlighted_station, false)
+	highlighted_station = target_station
+	if highlighted_station != null and is_instance_valid(highlighted_station):
+		_set_station_highlight(highlighted_station, true)
+
+
+func _set_station_highlight(station: Area2D, value: bool) -> void:
+	if station != null and is_instance_valid(station) and station.has_method("set_highlighted"):
+		station.set_highlighted(value)
 
 
 

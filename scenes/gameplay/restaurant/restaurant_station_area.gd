@@ -5,6 +5,9 @@ extends Area2D
 @export var station_label: String = ""
 @export var interaction_priority: int = 0
 
+var base_color: Color = Color.WHITE
+var has_base_color: bool = false
+
 func _ready() -> void:
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
@@ -41,6 +44,22 @@ func interact() -> void:
 	var manager: Node = get_tree().get_first_node_in_group("restaurant_game_manager")
 	if manager != null and manager.has_method("interact_with_station"):
 		manager.interact_with_station(station_name)
+
+
+func set_highlighted(value: bool) -> void:
+	var station_node: Node = get_parent()
+	if station_node == null:
+		return
+	var visual: Polygon2D = station_node.get_node_or_null("Visual") as Polygon2D
+	if visual == null:
+		return
+	if not has_base_color:
+		base_color = visual.color
+		has_base_color = true
+	if value:
+		visual.color = base_color.lightened(0.28)
+	else:
+		visual.color = base_color
 
 
 func _get_label_text() -> String:

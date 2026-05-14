@@ -24,8 +24,11 @@ var customer_bowl: OrderBowl = null
 var order_id: int = 0
 var service_mode: String = "dine_in"
 var table_id: int = 0
+var queue_patience_max: float = 100.0
+var queue_patience_current: float = 100.0
 
 var status_label: Label
+var patience_bar: ProgressBar
 
 
 func _ready() -> void:
@@ -35,6 +38,8 @@ func _ready() -> void:
 
 
 func _physics_process(_delta: float) -> void:
+	_update_queue_patience(_delta)
+
 	var to_target: Vector2 = target_position - global_position
 	if to_target.length() > 5.0:
 		velocity = to_target.normalized() * move_speed
@@ -81,6 +86,7 @@ func wait_for_order(new_order_id: int, new_service_mode: String, new_table_id: i
 	target_position = wait_position
 	current_state = CustomerState.WAITING_TABLE if service_mode == "dine_in" else CustomerState.WAITING_TAKEOUT
 	_set_status("table %d" % table_id if service_mode == "dine_in" else "takeout")
+	_update_patience_bar_visibility()
 
 
 func complete_order(exit_position: Vector2) -> void:
@@ -160,7 +166,33 @@ func _ensure_visuals() -> void:
 		status_label.add_theme_constant_override("outline_size", 3)
 		add_child(status_label)
 
+	if patience_bar == null:
+		patience_bar = ProgressBar.new()
+		patience_bar.name = "QueuePatienceBar"
+		patience_bar.position = Vector2(-24, -42)
+		patience_bar.size = Vector2(48, 8)
+		patience_bar.min_value = 0.0
+		patience_bar.max_value = queue_patience_max
+		patience_bar.value = queue_patience_current
+		patience_bar.show_percentage = false
+		add_child(patience_bar)
+		_update_patience_bar_visibility()
+
 
 func _set_status(text: String) -> void:
 	_ensure_visuals()
 	status_label.text = text
+
+
+func _update_queue_patience(delta: float) -> void:
+	if current_state == CustomerState.QUEUEING or current_state == CustomerState.AT_COUNTER:
+		queue_patience_current = max(queue_patience_current - delta * 5.0, 0.0)
+	if patience_bar != null:
+		patience_bar.value = queue_patience_current
+	_update_patience_bar_visibility()
+
+
+func _update_patience_bar_visibility() -> void:
+	if patience_bar == null:
+		return
+	patience_bar.visible = current_state == CustomerState.QUEUEING or current_state == CustomerState.AT_COUNTER

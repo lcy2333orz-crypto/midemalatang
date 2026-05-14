@@ -24,10 +24,13 @@ const STATUS_DONE = "done"
 
 var ingredients: Dictionary = {}
 var sauces: Array[String] = []
+var is_empty_holder: bool = false
 var cook_time: float = 0.0
 var ingredient_time_required: float = 4.0
 var staple_perfect_time: float = 3.0
 var staple_overcook_time: float = 6.0
+var order_patience_max: float = 100.0
+var order_patience_current: float = 100.0
 
 var bowl_rect: Polygon2D
 var clip_rect: Polygon2D
@@ -48,8 +51,10 @@ func setup_customer_bowl(new_ingredients: Dictionary) -> void:
 	table_id = 0
 	status = STATUS_CUSTOMER_BOWL
 	staple_state = STAPLE_RAW
+	is_empty_holder = false
 	sauces.clear()
 	cook_time = 0.0
+	order_patience_current = order_patience_max
 	refresh_visuals()
 
 
@@ -69,8 +74,10 @@ func setup_order(
 	table_id = new_table_id
 	status = STATUS_WAITING
 	staple_state = STAPLE_RAW
+	is_empty_holder = false
 	sauces.clear()
 	cook_time = 0.0
+	order_patience_current = order_patience_max
 	refresh_visuals()
 
 
@@ -91,6 +98,28 @@ func update_cooking(delta: float) -> void:
 	if cook_time >= ingredient_time_required and status == STATUS_COOKING:
 		status = STATUS_COOKED
 
+	refresh_visuals()
+
+
+func update_order_patience(delta: float) -> void:
+	if order_id <= 0 or status == STATUS_DONE:
+		return
+	order_patience_current = max(order_patience_current - delta * 3.0, 0.0)
+
+
+func get_order_patience_ratio() -> float:
+	if order_patience_max <= 0.0:
+		return 0.0
+	return clamp(order_patience_current / order_patience_max, 0.0, 1.0)
+
+
+func set_empty_holder_visual() -> void:
+	is_empty_holder = true
+	refresh_visuals()
+
+
+func set_full_order_visual() -> void:
+	is_empty_holder = false
 	refresh_visuals()
 
 
@@ -133,6 +162,8 @@ func mark_done() -> void:
 
 func get_summary_text() -> String:
 	var id_text: String = "C" if order_id <= 0 else "#%03d" % order_id
+	if is_empty_holder:
+		return "%s 空盆" % id_text
 	return "%s %s %s %s" % [id_text, service_mode, staple_type, status]
 
 
@@ -203,6 +234,12 @@ func _ensure_visuals() -> void:
 
 func refresh_visuals() -> void:
 	_ensure_visuals()
+
+	if is_empty_holder:
+		bowl_rect.color = Color(0.82, 0.82, 0.82, 1.0)
+		clip_rect.color = Color(1.0, 0.96, 0.55, 1.0)
+		label.text = "空\n%s" % ("C" if order_id <= 0 else str(order_id))
+		return
 
 	match status:
 		STATUS_CUSTOMER_BOWL:
