@@ -16,6 +16,8 @@ var spawn_count: int = 0
 var spawn_elapsed: float = 0.0
 
 var held_bowl: OrderBowl = null
+var held_dirty_cooker: CookerStation = null
+var held_dirty_pot_visual: Node2D = null
 @onready var characters_node: Node2D = $"../Characters"
 @onready var bowls_node: Node2D = $"../Bowls"
 @onready var entrance: Marker2D = $"../Markers/Entrance"
@@ -107,6 +109,9 @@ func interact_with_station(station_name: String) -> void:
 
 
 func interact_counter() -> void:
+	if held_dirty_cooker != null:
+		_refresh_ui("先把脏锅倒进垃圾桶。")
+		return
 	var customer: RestaurantCustomer = _get_counter_customer()
 	if customer == null:
 		_refresh_ui("No customer at counter.")
@@ -163,6 +168,10 @@ func _create_order_from_customer(customer: RestaurantCustomer) -> void:
 
 
 func interact_waiting_order_area() -> void:
+	if held_dirty_cooker != null:
+		_refresh_ui("先把脏锅倒进垃圾桶。")
+		return
+
 	if held_bowl == null:
 		var bowl: OrderBowl = waiting_area.take_first_bowl()
 		if bowl == null:
@@ -186,6 +195,10 @@ func interact_cooker(cooker: CookerStation) -> void:
 	if cooker == null:
 		return
 
+	if held_dirty_cooker != null:
+		_refresh_ui("先把脏锅倒进垃圾桶。")
+		return
+
 	if held_bowl != null:
 		if held_bowl.status != OrderBowl.STATUS_WAITING:
 			_refresh_ui("Only waiting bowls can enter cooker.")
@@ -197,6 +210,11 @@ func interact_cooker(cooker: CookerStation) -> void:
 			_refresh_ui("Cooker is occupied.")
 		return
 
+	if cooker.active_bowl != null and cooker.active_bowl.is_overcooked():
+		_hold_dirty_cooker(cooker)
+		_refresh_ui("拿起脏锅 #%03d，去垃圾桶清理。" % cooker.get_active_order_id())
+		return
+
 	var bowl: OrderBowl = cooker.take_bowl()
 	if bowl == null:
 		_refresh_ui("Cooker is busy or empty.")
@@ -206,6 +224,9 @@ func interact_cooker(cooker: CookerStation) -> void:
 
 
 func interact_sauce_station() -> void:
+	if held_dirty_cooker != null:
+		_refresh_ui("先把脏锅倒进垃圾桶。")
+		return
 	if held_bowl == null:
 		_refresh_ui("Hold a cooked bowl before adding sauces.")
 		return
@@ -219,6 +240,9 @@ func interact_sauce_station() -> void:
 
 
 func interact_packing_area() -> void:
+	if held_dirty_cooker != null:
+		_refresh_ui("先把脏锅倒进垃圾桶。")
+		return
 	if held_bowl == null:
 		_refresh_ui("Hold a takeout bowl to pack.")
 		return
@@ -235,6 +259,9 @@ func interact_packing_area() -> void:
 
 
 func interact_delivery_table(table_id: int) -> void:
+	if held_dirty_cooker != null:
+		_refresh_ui("先把脏锅倒进垃圾桶。")
+		return
 	if held_bowl == null:
 		_refresh_ui("Hold a dine-in bowl to serve.")
 		return
@@ -250,6 +277,9 @@ func interact_delivery_table(table_id: int) -> void:
 
 
 func interact_takeout_pickup() -> void:
+	if held_dirty_cooker != null:
+		_refresh_ui("先把脏锅倒进垃圾桶。")
+		return
 	if held_bowl == null:
 		_refresh_ui("Hold a packed takeout bowl.")
 		return
@@ -262,6 +292,10 @@ func interact_takeout_pickup() -> void:
 
 
 func interact_trash_bin() -> void:
+	if held_dirty_cooker != null:
+		_clear_held_dirty_cooker()
+		return
+
 	if held_bowl == null:
 		_refresh_ui("Nothing to discard.")
 		return
@@ -269,7 +303,7 @@ func interact_trash_bin() -> void:
 	_clear_waiting_customer_for_order(discarded_order_id)
 	held_bowl.queue_free()
 	held_bowl = null
-	_refresh_ui("Discarded order #%03d." % discarded_order_id)
+	_refresh_ui("丢弃订单 #%03d" % discarded_order_id)
 
 
 func force_complete_one_order_for_smoke() -> bool:
@@ -307,6 +341,8 @@ func force_complete_one_order_for_smoke() -> bool:
 
 
 func get_hand_text() -> String:
+	if held_dirty_cooker != null:
+		return "拿着脏锅 #%03d" % held_dirty_cooker.get_active_order_id()
 	if held_bowl == null:
 		return ""
 	return "拿着 #%03d" % held_bowl.order_id
@@ -326,7 +362,7 @@ func _complete_held_order() -> void:
 	bowl.queue_free()
 	held_bowl = null
 	completed_orders += 1
-	_refresh_ui("Completed order #%03d." % completed_order_id)
+	_refresh_ui("完成订单 #%03d +1" % completed_order_id)
 
 
 func _hold_bowl(bowl: OrderBowl) -> void:
@@ -334,6 +370,76 @@ func _hold_bowl(bowl: OrderBowl) -> void:
 	var player: Node2D = get_tree().get_first_node_in_group("player") as Node2D
 	if player != null:
 		bowl.attach_to_holder(player)
+
+
+func _hold_dirty_cooker(cooker: CookerStation) -> void:
+	if cooker == null or cooker.active_bowl == null or not cooker.active_bowl.is_overcooked():
+		return
+	held_dirty_cooker = cooker
+	_attach_dirty_pot_visual(cooker.get_active_order_id())
+
+
+func _clear_held_dirty_cooker() -> void:
+	if held_dirty_cooker == null:
+		_clear_dirty_pot_visual()
+		return
+
+	var cleared_bowl: OrderBowl = held_dirty_cooker.clear_overcooked_bowl()
+	var cleared_order_id: int = 0
+	if cleared_bowl != null:
+		cleared_order_id = cleared_bowl.order_id
+		_clear_waiting_customer_for_order(cleared_order_id)
+		cleared_bowl.queue_free()
+
+	held_dirty_cooker = null
+	_clear_dirty_pot_visual()
+
+	if cleared_order_id > 0:
+		_refresh_ui("订单 #%03d 煮烂，顾客生气离开" % cleared_order_id)
+	else:
+		_refresh_ui("脏锅已经清空。")
+
+
+func _attach_dirty_pot_visual(order_id: int) -> void:
+	_clear_dirty_pot_visual()
+	var player: Node2D = get_tree().get_first_node_in_group("player") as Node2D
+	if player == null:
+		return
+
+	held_dirty_pot_visual = Node2D.new()
+	held_dirty_pot_visual.name = "HeldDirtyPotVisual"
+	player.add_child(held_dirty_pot_visual)
+	held_dirty_pot_visual.position = Vector2(0, -42)
+	held_dirty_pot_visual.z_index = 25
+
+	var pot: Polygon2D = Polygon2D.new()
+	pot.color = Color(0.12, 0.1, 0.08, 1.0)
+	pot.polygon = PackedVector2Array([
+		Vector2(-26, -12),
+		Vector2(26, -12),
+		Vector2(22, 16),
+		Vector2(-22, 16)
+	])
+	held_dirty_pot_visual.add_child(pot)
+
+	var label: Label = Label.new()
+	label.name = "DirtyPotLabel"
+	label.position = Vector2(-42, -34)
+	label.size = Vector2(84, 24)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.text = "脏锅 #%03d" % order_id
+	label.add_theme_font_size_override("font_size", 12)
+	label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.5, 1.0))
+	label.add_theme_color_override("font_outline_color", Color.BLACK)
+	label.add_theme_constant_override("outline_size", 3)
+	held_dirty_pot_visual.add_child(label)
+
+
+func _clear_dirty_pot_visual() -> void:
+	if held_dirty_pot_visual != null and is_instance_valid(held_dirty_pot_visual):
+		held_dirty_pot_visual.queue_free()
+	held_dirty_pot_visual = null
 
 
 func _get_counter_customer() -> RestaurantCustomer:

@@ -131,39 +131,61 @@ func _check_overcooked_trash_rule() -> void:
 		return
 
 	manager.interact_cooker(manager.cooker_1)
-	if manager.held_bowl == null or not manager.held_bowl.is_overcooked():
-		_fail("overcooked trash", "overcooked order could not be taken from cooker")
+	if manager.held_bowl != null:
+		_fail("overcooked trash", "overcooked order should not enter held_bowl")
 		scene.queue_free()
 		return
-	if manager.cooker_1.active_bowl != null:
-		_fail("overcooked trash", "cooker should be empty after taking the overcooked order")
+	if manager.held_dirty_cooker != manager.cooker_1:
+		_fail("overcooked trash", "overcooked cooker should become the held dirty cooker")
+		scene.queue_free()
+		return
+	if manager.cooker_1.active_bowl == null:
+		_fail("overcooked trash", "overcooked order should stay in cooker until trash")
 		scene.queue_free()
 		return
 
 	var completed_before: int = int(manager.completed_orders)
 	manager.interact_sauce_station()
-	if manager.held_bowl == null or not manager.held_bowl.is_overcooked():
-		_fail("overcooked trash", "sauce station should not accept overcooked orders")
-		scene.queue_free()
-		return
-
-	if manager.held_bowl.service_mode == "takeout":
-		manager.interact_packing_area()
-		manager.interact_takeout_pickup()
-	else:
-		manager.interact_delivery_table(manager.held_bowl.table_id)
-	if int(manager.completed_orders) != completed_before:
-		_fail("overcooked trash", "overcooked order should not complete")
+	if manager.held_dirty_cooker != manager.cooker_1:
+		_fail("overcooked trash", "sauce station should not clear dirty cooker")
 		scene.queue_free()
 		return
 
 	manager.interact_trash_bin()
-	if manager.held_bowl != null:
-		_fail("overcooked trash", "trash bin did not clear held overcooked order")
+	if manager.held_dirty_cooker != null:
+		_fail("overcooked trash", "trash bin did not clear held dirty cooker")
+		scene.queue_free()
+		return
+	if manager.cooker_1.active_bowl != null:
+		_fail("overcooked trash", "trash bin did not clear the overcooked cooker")
 		scene.queue_free()
 		return
 	if int(manager.completed_orders) != completed_before:
 		_fail("overcooked trash", "discarded overcooked order should not count as completed")
+		scene.queue_free()
+		return
+
+	var bowl_scene: PackedScene = load("res://scenes/gameplay/restaurant/order_bowl.tscn")
+	var bowl_1: OrderBowl = bowl_scene.instantiate() as OrderBowl
+	var bowl_2: OrderBowl = bowl_scene.instantiate() as OrderBowl
+	bowl_1.setup_order(301, {"spinach": 1}, "noodle", "hot", "takeout", 0)
+	bowl_2.setup_order(302, {"spinach": 1}, "noodle", "hot", "takeout", 0)
+	manager.cooker_1.add_bowl(bowl_1)
+	manager.cooker_2.add_bowl(bowl_2)
+	manager.cooker_1.active_bowl.update_cooking(7.2)
+	manager.cooker_2.active_bowl.update_cooking(7.2)
+	manager.interact_cooker(manager.cooker_2)
+	if manager.held_dirty_cooker != manager.cooker_2:
+		_fail("overcooked trash", "player should hold the overcooked cooker they interacted with")
+		scene.queue_free()
+		return
+	manager.interact_trash_bin()
+	if manager.cooker_2.active_bowl != null:
+		_fail("overcooked trash", "trash should clear the held dirty cooker")
+		scene.queue_free()
+		return
+	if manager.cooker_1.active_bowl == null:
+		_fail("overcooked trash", "trash should not clear a different overcooked cooker")
 		scene.queue_free()
 		return
 

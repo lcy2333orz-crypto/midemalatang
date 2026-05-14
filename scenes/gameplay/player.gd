@@ -409,7 +409,7 @@ func get_current_carry_state() -> String:
 
 	var restaurant_manager = get_tree().get_first_node_in_group("restaurant_game_manager")
 	if restaurant_manager != null and restaurant_manager.has_method("get_hand_text"):
-		if restaurant_manager.get("held_bowl") != null:
+		if restaurant_manager.get("held_bowl") != null or restaurant_manager.get("held_dirty_cooker") != null:
 			return "heavy"
 
 	var game_manager = get_tree().get_first_node_in_group("game_manager")
@@ -576,12 +576,16 @@ func _update_held_order_label() -> void:
 		held_order_label.visible = false
 		return
 
-	var bowl = restaurant_manager.get("held_bowl")
-	if bowl == null:
+	if not restaurant_manager.has_method("get_hand_text"):
 		held_order_label.visible = false
 		return
 
-	held_order_label.text = "拿着 #%03d" % int(bowl.order_id)
+	var hand_text: String = str(restaurant_manager.get_hand_text())
+	if hand_text.strip_edges() == "":
+		held_order_label.visible = false
+		return
+
+	held_order_label.text = hand_text
 	held_order_label.visible = true
 
 

@@ -126,7 +126,7 @@ func set_full_order_visual() -> void:
 
 
 func can_leave_cooker() -> bool:
-	return status == STATUS_COOKED or is_overcooked()
+	return status == STATUS_COOKED and not is_overcooked()
 
 
 func is_overcooked() -> bool:

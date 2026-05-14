@@ -57,6 +57,24 @@ func take_bowl() -> OrderBowl:
 	return result
 
 
+func clear_overcooked_bowl() -> OrderBowl:
+	if active_bowl == null or not active_bowl.is_overcooked():
+		return null
+
+	var result: OrderBowl = active_bowl
+	active_bowl = null
+	holder_bowl = null
+	bowl = null
+	_update_status_label()
+	return result
+
+
+func get_active_order_id() -> int:
+	if active_bowl == null:
+		return 0
+	return active_bowl.order_id
+
+
 func get_status_text() -> String:
 	if active_bowl == null:
 		return "空锅"
