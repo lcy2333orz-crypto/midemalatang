@@ -9,6 +9,7 @@ const STATUS_CUSTOMER_BOWL = "customer_bowl"
 const STATUS_WAITING = "waiting"
 const STATUS_COOKING = "cooking"
 const STATUS_COOKED = "cooked"
+const STATUS_OVERCOOKED = "overcooked"
 const STATUS_SAUCED = "sauced"
 const STATUS_PACKED = "packed"
 const STATUS_READY = "ready"
@@ -27,8 +28,9 @@ var sauces: Array[String] = []
 var is_empty_holder: bool = false
 var cook_time: float = 0.0
 var ingredient_time_required: float = 4.0
-var staple_perfect_time: float = 3.0
-var staple_overcook_time: float = 6.0
+var ready_window_seconds: float = 3.0
+var staple_perfect_time: float = 4.0
+var staple_overcook_time: float = 7.0
 var order_patience_max: float = 100.0
 var order_patience_current: float = 100.0
 
@@ -55,6 +57,7 @@ func setup_customer_bowl(new_ingredients: Dictionary) -> void:
 	sauces.clear()
 	cook_time = 0.0
 	order_patience_current = order_patience_max
+	_sync_cooking_thresholds()
 	refresh_visuals()
 
 
@@ -78,25 +81,24 @@ func setup_order(
 	sauces.clear()
 	cook_time = 0.0
 	order_patience_current = order_patience_max
+	_sync_cooking_thresholds()
 	refresh_visuals()
 
 
 func update_cooking(delta: float) -> void:
-	if status != STATUS_COOKING and status != STATUS_COOKED:
+	if status != STATUS_COOKING and status != STATUS_COOKED and status != STATUS_OVERCOOKED:
 		return
 
 	cook_time += delta
 
-	if staple_type != "none":
-		if cook_time >= staple_overcook_time:
-			staple_state = STAPLE_OVERCOOKED
-		elif cook_time >= staple_perfect_time:
-			staple_state = STAPLE_PERFECT
-		else:
-			staple_state = STAPLE_RAW
-
-	if cook_time >= ingredient_time_required and status == STATUS_COOKING:
+	if cook_time >= staple_overcook_time:
+		staple_state = STAPLE_OVERCOOKED
+		status = STATUS_OVERCOOKED
+	elif cook_time >= ingredient_time_required:
+		staple_state = STAPLE_PERFECT
 		status = STATUS_COOKED
+	else:
+		staple_state = STAPLE_RAW
 
 	refresh_visuals()
 
@@ -124,7 +126,48 @@ func set_full_order_visual() -> void:
 
 
 func can_leave_cooker() -> bool:
-	return status == STATUS_COOKED
+	return status == STATUS_COOKED or is_overcooked()
+
+
+func is_overcooked() -> bool:
+	return status == STATUS_OVERCOOKED or staple_state == STAPLE_OVERCOOKED
+
+
+func get_order_status_text() -> String:
+	if is_overcooked():
+		return "煮烂"
+	match status:
+		STATUS_WAITING:
+			return "等待中"
+		STATUS_COOKING:
+			return "烹饪中"
+		STATUS_COOKED:
+			return "已熟"
+		STATUS_SAUCED:
+			return "可出餐"
+		STATUS_PACKED:
+			return "已打包"
+		STATUS_READY:
+			return "可出餐"
+		STATUS_DONE:
+			return "完成"
+		_:
+			return "等待中"
+
+
+func get_cooker_timer_text() -> String:
+	if is_overcooked():
+		return "煮烂"
+	if status == STATUS_COOKED:
+		return "已熟 %.1fs" % max(staple_overcook_time - cook_time, 0.0)
+	if status == STATUS_COOKING:
+		return "烹饪中 %.1fs" % max(ingredient_time_required - cook_time, 0.0)
+	return "空锅"
+
+
+func _sync_cooking_thresholds() -> void:
+	staple_perfect_time = ingredient_time_required
+	staple_overcook_time = ingredient_time_required + ready_window_seconds
 
 
 func add_next_sauce() -> void:
@@ -250,6 +293,8 @@ func refresh_visuals() -> void:
 			bowl_rect.color = Color(1.0, 0.5, 0.25, 1.0)
 		STATUS_COOKED:
 			bowl_rect.color = Color(0.35, 0.9, 0.45, 1.0)
+		STATUS_OVERCOOKED:
+			bowl_rect.color = Color(0.16, 0.12, 0.08, 1.0)
 		STATUS_SAUCED:
 			bowl_rect.color = Color(0.8, 0.45, 0.2, 1.0)
 		STATUS_PACKED:

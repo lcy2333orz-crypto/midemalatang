@@ -27,6 +27,7 @@ func add_bowl(new_bowl: OrderBowl) -> bool:
 	_ensure_parts()
 	if new_bowl == null or active_bowl != null:
 		return false
+
 	active_bowl = new_bowl
 	holder_bowl = new_bowl
 	bowl = new_bowl
@@ -46,6 +47,7 @@ func can_take_bowl() -> bool:
 func take_bowl() -> OrderBowl:
 	if not can_take_bowl():
 		return null
+
 	var result: OrderBowl = active_bowl
 	result.set_full_order_visual()
 	active_bowl = null
@@ -58,11 +60,7 @@ func take_bowl() -> OrderBowl:
 func get_status_text() -> String:
 	if active_bowl == null:
 		return "空锅"
-	if active_bowl.staple_state == OrderBowl.STAPLE_OVERCOOKED:
-		return "煮烂"
-	if active_bowl.status == OrderBowl.STATUS_COOKED:
-		return "已熟"
-	return "烹饪中"
+	return active_bowl.get_cooker_timer_text()
 
 
 func _ensure_parts() -> void:

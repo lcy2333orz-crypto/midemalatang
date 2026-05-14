@@ -18,6 +18,11 @@ func _run() -> void:
 		_finish()
 		return
 
+	await _check_overcooked_trash_rule()
+	if not failures.is_empty():
+		_finish()
+		return
+
 	_check_staple_timing()
 	_finish()
 
@@ -62,7 +67,7 @@ func _check_order_loop() -> void:
 	await process_frame
 	await process_frame
 
-	var manager: Node = get_first_node_in_group("restaurant_game_manager")
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
 	if manager == null:
 		_fail("order loop", "restaurant manager was not found")
 		scene.queue_free()
@@ -83,6 +88,89 @@ func _check_order_loop() -> void:
 	_pass("order loop")
 
 
+func _check_overcooked_trash_rule() -> void:
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("overcooked trash", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	var guard: int = 0
+	while manager._get_counter_customer() == null and guard < 360:
+		await process_frame
+		guard += 1
+
+	var customer: Node = manager._get_counter_customer()
+	if customer == null:
+		_fail("overcooked trash", "no customer reached the counter")
+		scene.queue_free()
+		return
+	if customer.get_node_or_null("OrderBowl") != null:
+		_fail("overcooked trash", "customer should not display an order bowl")
+		scene.queue_free()
+		return
+
+	manager.interact_counter()
+	manager.interact_waiting_order_area()
+	manager.interact_cooker(manager.cooker_1)
+	if manager.cooker_1.active_bowl == null:
+		_fail("overcooked trash", "order did not enter cooker")
+		scene.queue_free()
+		return
+
+	manager.cooker_1.active_bowl.update_cooking(7.2)
+	if not manager.cooker_1.active_bowl.is_overcooked():
+		_fail("overcooked trash", "order did not overcook")
+		scene.queue_free()
+		return
+
+	manager.interact_cooker(manager.cooker_1)
+	if manager.held_bowl == null or not manager.held_bowl.is_overcooked():
+		_fail("overcooked trash", "overcooked order could not be taken from cooker")
+		scene.queue_free()
+		return
+	if manager.cooker_1.active_bowl != null:
+		_fail("overcooked trash", "cooker should be empty after taking the overcooked order")
+		scene.queue_free()
+		return
+
+	var completed_before: int = int(manager.completed_orders)
+	manager.interact_sauce_station()
+	if manager.held_bowl == null or not manager.held_bowl.is_overcooked():
+		_fail("overcooked trash", "sauce station should not accept overcooked orders")
+		scene.queue_free()
+		return
+
+	if manager.held_bowl.service_mode == "takeout":
+		manager.interact_packing_area()
+		manager.interact_takeout_pickup()
+	else:
+		manager.interact_delivery_table(manager.held_bowl.table_id)
+	if int(manager.completed_orders) != completed_before:
+		_fail("overcooked trash", "overcooked order should not complete")
+		scene.queue_free()
+		return
+
+	manager.interact_trash_bin()
+	if manager.held_bowl != null:
+		_fail("overcooked trash", "trash bin did not clear held overcooked order")
+		scene.queue_free()
+		return
+	if int(manager.completed_orders) != completed_before:
+		_fail("overcooked trash", "discarded overcooked order should not count as completed")
+		scene.queue_free()
+		return
+
+	scene.queue_free()
+	_pass("overcooked trash")
+
+
 func _check_staple_timing() -> void:
 	var bowl_scene: PackedScene = load("res://scenes/gameplay/restaurant/order_bowl.tscn")
 	if bowl_scene == null:
@@ -99,13 +187,18 @@ func _check_staple_timing() -> void:
 		return
 
 	bowl.update_cooking(3.2)
-	if bowl.staple_state != OrderBowl.STAPLE_PERFECT:
-		_fail("staple timing", "staple should be perfect inside the target window")
+	if bowl.staple_state != OrderBowl.STAPLE_RAW:
+		_fail("staple timing", "staple should still be raw before the cooking time")
+		return
+
+	bowl.update_cooking(1.0)
+	if bowl.status != OrderBowl.STATUS_COOKED or bowl.staple_state != OrderBowl.STAPLE_PERFECT:
+		_fail("staple timing", "staple should be cooked after four seconds")
 		return
 
 	bowl.update_cooking(3.1)
-	if bowl.staple_state != OrderBowl.STAPLE_OVERCOOKED:
-		_fail("staple timing", "staple should overcook after the timeout")
+	if not bowl.is_overcooked():
+		_fail("staple timing", "staple should overcook after the ready window")
 		return
 
 	bowl.queue_free()

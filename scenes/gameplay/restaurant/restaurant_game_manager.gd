@@ -2,6 +2,7 @@ class_name RestaurantGameManager
 extends Node
 
 const RestaurantCustomerScene = preload("res://scenes/gameplay/restaurant/restaurant_customer.tscn")
+const OrderBowlScene = preload("res://scenes/gameplay/restaurant/order_bowl.tscn")
 const ItemIds = preload("res://gameplay/models/item_ids.gd")
 
 @export var max_customers: int = 3
@@ -115,10 +116,15 @@ func interact_counter() -> void:
 
 
 func _create_order_from_customer(customer: RestaurantCustomer) -> void:
-	if customer == null or customer.customer_bowl == null:
+	if customer == null:
 		return
 
-	var bowl: OrderBowl = customer.customer_bowl
+	var ingredients: Dictionary = customer.get_bowl_ingredients()
+	if ingredients.is_empty():
+		_refresh_ui("Customer has not picked ingredients.")
+		return
+
+	var bowl: OrderBowl = OrderBowlScene.instantiate() as OrderBowl
 	var order_id: int = next_order_id
 	next_order_id += 1
 	var staple_type: String = _random_staple()
@@ -128,15 +134,17 @@ func _create_order_from_customer(customer: RestaurantCustomer) -> void:
 
 	bowl.setup_order(
 		order_id,
-		customer.get_bowl_ingredients(),
+		ingredients,
 		staple_type,
 		spice_level,
 		service_mode,
 		table_id
 	)
 
-	waiting_area.add_bowl(bowl)
-	customer.customer_bowl = null
+	if not waiting_area.add_bowl(bowl):
+		bowl.queue_free()
+		_refresh_ui("Waiting area is full.")
+		return
 
 	queued_customers.erase(customer)
 	waiting_customers_by_order_id[order_id] = customer
@@ -201,6 +209,8 @@ func interact_sauce_station() -> void:
 	if held_bowl == null:
 		_refresh_ui("Hold a cooked bowl before adding sauces.")
 		return
+	if _reject_overcooked_held_order():
+		return
 	if held_bowl.status != OrderBowl.STATUS_COOKED and held_bowl.status != OrderBowl.STATUS_SAUCED:
 		_refresh_ui("Bowl must be cooked before sauce.")
 		return
@@ -211,6 +221,8 @@ func interact_sauce_station() -> void:
 func interact_packing_area() -> void:
 	if held_bowl == null:
 		_refresh_ui("Hold a takeout bowl to pack.")
+		return
+	if _reject_overcooked_held_order():
 		return
 	if held_bowl.service_mode != "takeout":
 		_refresh_ui("Dine-in orders go to tables.")
@@ -226,6 +238,8 @@ func interact_delivery_table(table_id: int) -> void:
 	if held_bowl == null:
 		_refresh_ui("Hold a dine-in bowl to serve.")
 		return
+	if _reject_overcooked_held_order():
+		return
 	if held_bowl.service_mode != "dine_in" or held_bowl.table_id != table_id:
 		_refresh_ui("Wrong table.")
 		return
@@ -239,6 +253,8 @@ func interact_takeout_pickup() -> void:
 	if held_bowl == null:
 		_refresh_ui("Hold a packed takeout bowl.")
 		return
+	if _reject_overcooked_held_order():
+		return
 	if held_bowl.service_mode != "takeout" or held_bowl.status != OrderBowl.STATUS_PACKED:
 		_refresh_ui("Takeout orders must be packed first.")
 		return
@@ -249,9 +265,11 @@ func interact_trash_bin() -> void:
 	if held_bowl == null:
 		_refresh_ui("Nothing to discard.")
 		return
+	var discarded_order_id: int = held_bowl.order_id
+	_clear_waiting_customer_for_order(discarded_order_id)
 	held_bowl.queue_free()
 	held_bowl = null
-	_refresh_ui("Discarded held bowl.")
+	_refresh_ui("Discarded order #%03d." % discarded_order_id)
 
 
 func force_complete_one_order_for_smoke() -> bool:
@@ -272,7 +290,7 @@ func force_complete_one_order_for_smoke() -> bool:
 		return false
 
 	cooker_1.active_bowl.update_cooking(4.2)
-	if cooker_1.get_status_text() != "已熟":
+	if cooker_1.active_bowl.status != OrderBowl.STATUS_COOKED:
 		return false
 	interact_cooker(cooker_1)
 	interact_sauce_station()
@@ -290,11 +308,14 @@ func force_complete_one_order_for_smoke() -> bool:
 
 func get_hand_text() -> String:
 	if held_bowl == null:
-		return "Hands: empty"
-	return "Hands: %s" % held_bowl.get_summary_text()
+		return ""
+	return "拿着 #%03d" % held_bowl.order_id
 
 
 func _complete_held_order() -> void:
+	if held_bowl != null and held_bowl.is_overcooked():
+		_refresh_ui("Order #%03d is overcooked. Use the trash bin." % held_bowl.order_id)
+		return
 	var bowl: OrderBowl = held_bowl
 	var completed_order_id: int = bowl.order_id
 	var customer: RestaurantCustomer = waiting_customers_by_order_id.get(bowl.order_id, null)
@@ -351,8 +372,8 @@ func _next_table_id() -> int:
 
 func _service_text(mode: String, table_id: int) -> String:
 	if mode == "dine_in":
-		return "table %d" % table_id
-	return "takeout"
+		return "堂食 桌%d" % table_id
+	return "打包"
 
 
 func _get_queue_spot(index: int) -> Vector2:
@@ -391,13 +412,15 @@ func _get_tracked_order_bowls() -> Array[OrderBowl]:
 
 func _get_bowl_location_text(target_bowl: OrderBowl) -> String:
 	if target_bowl == held_bowl:
-		return "手持"
+		if target_bowl.status == OrderBowl.STATUS_WAITING:
+			return "手持"
+		return target_bowl.get_order_status_text()
 	if waiting_area.bowls.has(target_bowl):
-		return "待煮"
+		return "等待中"
 	for cooker in [cooker_1, cooker_2]:
 		if cooker != null and cooker.active_bowl == target_bowl:
-			return "%s/%s" % [cooker.station_id, cooker.get_status_text()]
-	return "处理中"
+			return target_bowl.get_order_status_text()
+	return target_bowl.get_order_status_text()
 
 
 func _refresh_ui(message: String = "") -> void:
@@ -414,22 +437,44 @@ func _refresh_ui(message: String = "") -> void:
 		line += "\n%s" % message
 	ui.update_status(line)
 
-	var order_lines: Array[String] = []
-	if held_bowl != null:
-		order_lines.append(_get_order_card_text(held_bowl))
-	for bowl in waiting_area.bowls:
-		order_lines.append(_get_order_card_text(bowl))
-	for cooker in [cooker_1, cooker_2]:
-		if cooker != null and cooker.active_bowl != null and cooker.active_bowl != held_bowl:
-			order_lines.append(_get_order_card_text(cooker.active_bowl))
-	ui.update_orders("\n".join(order_lines))
+	var order_cards: Array[String] = []
+	for bowl in _get_tracked_order_bowls():
+		order_cards.append(_get_order_card_text(bowl))
+	ui.update_order_cards(order_cards)
 
 
 func _get_order_card_text(target_bowl: OrderBowl) -> String:
 	var patience_percent: int = int(round(target_bowl.get_order_patience_ratio() * 100.0))
-	return "#%03d %s %s %d%%" % [
+	return "#%03d\n%s\n%s\n%s\n%d%%" % [
 		target_bowl.order_id,
+		_service_text(target_bowl.service_mode, target_bowl.table_id),
+		_staple_text(target_bowl.staple_type),
 		_get_bowl_location_text(target_bowl),
-		target_bowl.staple_state,
 		patience_percent
 	]
+
+
+func _reject_overcooked_held_order() -> bool:
+	if held_bowl == null or not held_bowl.is_overcooked():
+		return false
+	_refresh_ui("Order #%03d is overcooked. Use the trash bin." % held_bowl.order_id)
+	return true
+
+
+func _clear_waiting_customer_for_order(order_id: int) -> void:
+	var customer: RestaurantCustomer = waiting_customers_by_order_id.get(order_id, null)
+	if customer != null and is_instance_valid(customer):
+		customer.complete_order(exit_point.global_position)
+	waiting_customers_by_order_id.erase(order_id)
+
+
+func _staple_text(staple_type: String) -> String:
+	match staple_type:
+		"glass_noodle":
+			return "粉丝"
+		"noodle":
+			return "面"
+		"none":
+			return "无主食"
+		_:
+			return staple_type

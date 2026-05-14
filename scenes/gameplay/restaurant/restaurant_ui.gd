@@ -2,7 +2,7 @@ class_name RestaurantUI
 extends CanvasLayer
 
 var status_label: Label
-var orders_label: Label
+var orders_bar: HBoxContainer
 var prompt_label: Label
 var hand_label: Label
 
@@ -18,8 +18,19 @@ func update_status(text: String) -> void:
 
 
 func update_orders(text: String) -> void:
+	var card_texts: Array[String] = []
+	if text.strip_edges() != "":
+		card_texts.append(text)
+	update_order_cards(card_texts)
+
+
+func update_order_cards(card_texts: Array[String]) -> void:
 	_ensure_widgets()
-	orders_label.text = text
+	for child in orders_bar.get_children():
+		child.queue_free()
+
+	for card_text in card_texts:
+		orders_bar.add_child(_create_order_card(card_text))
 
 
 func show_interaction_prompt(prompt_text: String) -> void:
@@ -57,12 +68,12 @@ func _ensure_widgets() -> void:
 	status_label.add_theme_font_size_override("font_size", 15)
 	add_child(status_label)
 
-	orders_label = Label.new()
-	orders_label.name = "RestaurantOrdersLabel"
-	orders_label.position = Vector2(650, 14)
-	orders_label.size = Vector2(290, 180)
-	orders_label.add_theme_font_size_override("font_size", 13)
-	add_child(orders_label)
+	orders_bar = HBoxContainer.new()
+	orders_bar.name = "RestaurantOrdersBar"
+	orders_bar.position = Vector2(210, 12)
+	orders_bar.size = Vector2(730, 112)
+	orders_bar.add_theme_constant_override("separation", 8)
+	add_child(orders_bar)
 
 	prompt_label = Label.new()
 	prompt_label.name = "InteractionPromptLabel"
@@ -82,3 +93,43 @@ func _ensure_widgets() -> void:
 	hand_label.size = Vector2(360, 30)
 	hand_label.add_theme_font_size_override("font_size", 15)
 	add_child(hand_label)
+
+
+func _create_order_card(card_text: String) -> Panel:
+	var card: Panel = Panel.new()
+	card.custom_minimum_size = Vector2(110, 104)
+
+	var box: VBoxContainer = VBoxContainer.new()
+	box.set_anchors_preset(Control.PRESET_FULL_RECT)
+	box.offset_left = 6
+	box.offset_top = 4
+	box.offset_right = -6
+	box.offset_bottom = -5
+	box.add_theme_constant_override("separation", 2)
+	card.add_child(box)
+
+	var lines: PackedStringArray = card_text.split("\n", false)
+	var label_lines: Array[String] = []
+	var patience_percent: float = 0.0
+	for i in range(lines.size()):
+		if i == lines.size() - 1:
+			patience_percent = float(str(lines[i]).replace("%", ""))
+		else:
+			label_lines.append(lines[i])
+
+	var info_label: Label = Label.new()
+	info_label.text = "\n".join(label_lines)
+	info_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	info_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	info_label.add_theme_font_size_override("font_size", 12)
+	box.add_child(info_label)
+
+	var patience_bar: ProgressBar = ProgressBar.new()
+	patience_bar.min_value = 0.0
+	patience_bar.max_value = 100.0
+	patience_bar.value = clamp(patience_percent, 0.0, 100.0)
+	patience_bar.show_percentage = false
+	patience_bar.custom_minimum_size = Vector2(0, 10)
+	box.add_child(patience_bar)
+
+	return card

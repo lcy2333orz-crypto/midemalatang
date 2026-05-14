@@ -2,7 +2,6 @@ class_name RestaurantCustomer
 extends CharacterBody2D
 
 const ItemIds = preload("res://gameplay/models/item_ids.gd")
-const OrderBowlScene = preload("res://scenes/gameplay/restaurant/order_bowl.tscn")
 
 enum CustomerState {
 	ENTERING,
@@ -20,7 +19,7 @@ var manager: Node = null
 var current_state: CustomerState = CustomerState.ENTERING
 var target_position: Vector2 = Vector2.ZERO
 var desired_queue_index: int = -1
-var customer_bowl: OrderBowl = null
+var selected_ingredients: Dictionary = {}
 var order_id: int = 0
 var service_mode: String = "dine_in"
 var table_id: int = 0
@@ -82,7 +81,6 @@ func wait_for_order(new_order_id: int, new_service_mode: String, new_table_id: i
 	order_id = new_order_id
 	service_mode = new_service_mode
 	table_id = new_table_id
-	customer_bowl = null
 	target_position = wait_position
 	current_state = CustomerState.WAITING_TABLE if service_mode == "dine_in" else CustomerState.WAITING_TAKEOUT
 	_set_status("table %d" % table_id if service_mode == "dine_in" else "takeout")
@@ -96,14 +94,12 @@ func complete_order(exit_position: Vector2) -> void:
 
 
 func get_bowl_ingredients() -> Dictionary:
-	if customer_bowl == null:
-		return {}
-	return customer_bowl.ingredients.duplicate(true)
+	return selected_ingredients.duplicate(true)
 
 
 func _on_reached_target() -> void:
 	if current_state == CustomerState.ENTERING:
-		_create_customer_bowl()
+		_select_ingredients()
 		current_state = CustomerState.CHOOSING
 		_set_status("picked")
 		if manager != null and manager.has_method("enqueue_customer"):
@@ -119,23 +115,16 @@ func _on_reached_target() -> void:
 		queue_free()
 
 
-func _create_customer_bowl() -> void:
-	if customer_bowl != null:
+func _select_ingredients() -> void:
+	if not selected_ingredients.is_empty():
 		return
 
-	var bowl: OrderBowl = OrderBowlScene.instantiate() as OrderBowl
 	var ingredient_pool: Array[String] = ItemIds.BASIC_INGREDIENTS.duplicate()
 	ingredient_pool.shuffle()
 
 	var ingredient_count: int = randi_range(1, min(3, ingredient_pool.size()))
-	var ingredients: Dictionary = {}
 	for i in range(ingredient_count):
-		ingredients[ingredient_pool[i]] = randi_range(1, 2)
-
-	bowl.setup_customer_bowl(ingredients)
-	customer_bowl = bowl
-	add_child(bowl)
-	bowl.position = Vector2(0, -38)
+		selected_ingredients[ingredient_pool[i]] = randi_range(1, 2)
 
 
 func _ensure_visuals() -> void:

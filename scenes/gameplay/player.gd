@@ -20,6 +20,7 @@ var nearby_stations: Array[Area2D] = []
 
 var last_interact_time_msec: int = -999999
 var highlighted_station: Area2D = null
+var held_order_label: Label = null
 
 
 
@@ -54,6 +55,8 @@ func _physics_process(delta: float) -> void:
 	_update_interaction_prompt()
 
 	_update_hand_state_prompt()
+
+	_update_held_order_label()
 
 
 
@@ -223,6 +226,8 @@ func try_toggle_business() -> void:
 	_update_interaction_prompt()
 
 	_update_hand_state_prompt()
+
+	_update_held_order_label()
 
 
 func try_serve_or_announce_ready_food() -> void:
@@ -562,3 +567,37 @@ func _update_hand_state_prompt() -> void:
 
 
 	game_ui.update_hand_state(get_current_hand_text())
+
+
+func _update_held_order_label() -> void:
+	_ensure_held_order_label()
+	var restaurant_manager = get_tree().get_first_node_in_group("restaurant_game_manager")
+	if restaurant_manager == null:
+		held_order_label.visible = false
+		return
+
+	var bowl = restaurant_manager.get("held_bowl")
+	if bowl == null:
+		held_order_label.visible = false
+		return
+
+	held_order_label.text = "拿着 #%03d" % int(bowl.order_id)
+	held_order_label.visible = true
+
+
+func _ensure_held_order_label() -> void:
+	if held_order_label != null:
+		return
+
+	held_order_label = Label.new()
+	held_order_label.name = "HeldOrderLabel"
+	held_order_label.position = Vector2(-48, -78)
+	held_order_label.size = Vector2(96, 24)
+	held_order_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	held_order_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	held_order_label.add_theme_font_size_override("font_size", 13)
+	held_order_label.add_theme_color_override("font_color", Color(1.0, 0.96, 0.62, 1.0))
+	held_order_label.add_theme_color_override("font_outline_color", Color(0.04, 0.03, 0.02, 1.0))
+	held_order_label.add_theme_constant_override("outline_size", 3)
+	held_order_label.visible = false
+	add_child(held_order_label)
