@@ -1,354 +1,368 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene format=3 uid="uid://b4vixu7ouriwb"]
 
-[ext_resource type="PackedScene" path="res://scenes/gameplay/player.tscn" id="1_player"]
-[ext_resource type="Script" path="res://scenes/gameplay/restaurant/restaurant_game_manager.gd" id="2_manager"]
-[ext_resource type="Script" path="res://scenes/gameplay/restaurant/restaurant_station_area.gd" id="3_station_area"]
-[ext_resource type="Script" path="res://scenes/gameplay/restaurant/waiting_order_area.gd" id="4_waiting_area"]
-[ext_resource type="Script" path="res://scenes/gameplay/restaurant/cooker_station.gd" id="5_cooker"]
-[ext_resource type="Script" path="res://scenes/gameplay/restaurant/restaurant_ui.gd" id="6_ui"]
-
-[sub_resource type="RectangleShape2D" id="Shape_counter"]
-size = Vector2(150, 90)
-
-[sub_resource type="RectangleShape2D" id="Shape_wide"]
-size = Vector2(210, 110)
-
-[sub_resource type="RectangleShape2D" id="Shape_station"]
-size = Vector2(130, 90)
-
-[sub_resource type="RectangleShape2D" id="Shape_table"]
-size = Vector2(120, 100)
-
-[sub_resource type="RectangleShape2D" id="Shape_bin"]
-size = Vector2(90, 80)
+[ext_resource type="PackedScene" uid="uid://c8eg3meju24nj" path="res://scenes/gameplay/player.tscn" id="1_player"]
+[ext_resource type="Script" uid="uid://btc7pfuqyt0tg" path="res://scenes/gameplay/restaurant/restaurant_game_manager.gd" id="2_manager"]
+[ext_resource type="Script" uid="uid://cs23ox8mr88ko" path="res://scenes/gameplay/restaurant/restaurant_station_area.gd" id="3_station_area"]
+[ext_resource type="Script" uid="uid://cub2a1ggstgav" path="res://scenes/gameplay/restaurant/waiting_order_area.gd" id="4_waiting_area"]
+[ext_resource type="Script" uid="uid://ci10kx374fy67" path="res://scenes/gameplay/restaurant/cooker_station.gd" id="5_cooker"]
+[ext_resource type="Script" uid="uid://ciidmld6xe4px" path="res://scenes/gameplay/restaurant/restaurant_ui.gd" id="6_ui"]
 
 [sub_resource type="WorldBoundaryShape2D" id="WorldBoundary_floor"]
 
-[node name="TestRestaurant" type="Node2D"]
+[sub_resource type="RectangleShape2D" id="Shape_counter"]
+size = Vector2(144, 72)
 
-[node name="Floor" type="Polygon2D" parent="."]
+[sub_resource type="RectangleShape2D" id="Shape_table"]
+size = Vector2(72, 72)
+
+[sub_resource type="RectangleShape2D" id="Shape_bin"]
+size = Vector2(72, 72)
+
+[sub_resource type="RectangleShape2D" id="Shape_wide"]
+size = Vector2(144, 72)
+
+[sub_resource type="RectangleShape2D" id="Shape_station"]
+size = Vector2(72, 72)
+
+[node name="TestRestaurant" type="Node2D" unique_id=1218075060]
+
+[node name="Floor" type="Polygon2D" parent="." unique_id=1263471712]
 color = Color(0.78, 0.78, 0.72, 1)
 polygon = PackedVector2Array(0, 0, 960, 0, 960, 540, 0, 540)
 
-[node name="FrontHouseBand" type="Polygon2D" parent="."]
+[node name="FrontHouseBand" type="Polygon2D" parent="." unique_id=710062273]
 color = Color(0.88, 0.86, 0.78, 1)
 polygon = PackedVector2Array(0, 0, 960, 0, 960, 270, 0, 270)
 
-[node name="KitchenBand" type="Polygon2D" parent="."]
+[node name="KitchenBand" type="Polygon2D" parent="." unique_id=982115541]
 color = Color(0.68, 0.72, 0.74, 1)
 polygon = PackedVector2Array(0, 270, 960, 270, 960, 540, 0, 540)
 
-[node name="WorldBounds" type="StaticBody2D" parent="."]
+[node name="WorldBounds" type="StaticBody2D" parent="." unique_id=2094573508]
 
-[node name="FloorBoundary" type="CollisionShape2D" parent="WorldBounds"]
+[node name="FloorBoundary" type="CollisionShape2D" parent="WorldBounds" unique_id=1918884179]
 position = Vector2(480, 540)
 shape = SubResource("WorldBoundary_floor")
 
-[node name="Markers" type="Node2D" parent="."]
+[node name="Markers" type="Node2D" parent="." unique_id=1149641053]
 
-[node name="Entrance" type="Marker2D" parent="Markers"]
-position = Vector2(28, 88)
+[node name="Entrance" type="Marker2D" parent="Markers" unique_id=1166424580]
+position = Vector2(36, 192)
 
-[node name="IngredientDisplay" type="Marker2D" parent="Markers"]
-position = Vector2(185, 88)
+[node name="IngredientDisplay" type="Marker2D" parent="Markers" unique_id=1306246998]
+position = Vector2(204, 252)
 
-[node name="CounterSpot" type="Marker2D" parent="Markers"]
-position = Vector2(355, 138)
+[node name="CounterSpot" type="Marker2D" parent="Markers" unique_id=1696711942]
+position = Vector2(420, 252)
 
-[node name="Exit" type="Marker2D" parent="Markers"]
+[node name="Exit" type="Marker2D" parent="Markers" unique_id=324844502]
 position = Vector2(1010, 88)
 
-[node name="TakeoutWait" type="Marker2D" parent="Markers"]
-position = Vector2(805, 110)
+[node name="TakeoutWait" type="Marker2D" parent="Markers" unique_id=692527405]
+position = Vector2(828, 252)
 
-[node name="TakeoutPickup" type="Marker2D" parent="Markers"]
-position = Vector2(824, 210)
+[node name="TakeoutPickup" type="Marker2D" parent="Markers" unique_id=692061811]
+position = Vector2(828, 420)
 
-[node name="QueueSpots" type="Node2D" parent="Markers"]
+[node name="QueueSpots" type="Node2D" parent="Markers" unique_id=367971302]
 
-[node name="QueueSpot1" type="Marker2D" parent="Markers/QueueSpots"]
-position = Vector2(455, 138)
+[node name="QueueSpot1" type="Marker2D" parent="Markers/QueueSpots" unique_id=1763141212]
+position = Vector2(312, 252)
 
-[node name="QueueSpot2" type="Marker2D" parent="Markers/QueueSpots"]
-position = Vector2(545, 138)
+[node name="QueueSpot2" type="Marker2D" parent="Markers/QueueSpots" unique_id=1776585299]
+position = Vector2(312, 312)
 
-[node name="QueueSpot3" type="Marker2D" parent="Markers/QueueSpots"]
-position = Vector2(635, 138)
+[node name="QueueSpot3" type="Marker2D" parent="Markers/QueueSpots" unique_id=1286055746]
+position = Vector2(228, 312)
 
-[node name="TableSpots" type="Node2D" parent="Markers"]
+[node name="TableSpots" type="Node2D" parent="Markers" unique_id=631462711]
 
-[node name="TableSpot1" type="Marker2D" parent="Markers/TableSpots"]
-position = Vector2(675, 84)
+[node name="TableSpot1" type="Marker2D" parent="Markers/TableSpots" unique_id=2068268812]
+position = Vector2(660, 252)
 
-[node name="TableSpot2" type="Marker2D" parent="Markers/TableSpots"]
-position = Vector2(760, 84)
+[node name="TableSpot2" type="Marker2D" parent="Markers/TableSpots" unique_id=710838384]
+position = Vector2(744, 252)
 
-[node name="TableSpot3" type="Marker2D" parent="Markers/TableSpots"]
-position = Vector2(845, 84)
+[node name="TableSpot3" type="Marker2D" parent="Markers/TableSpots" unique_id=58141177]
+position = Vector2(828, 252)
 
-[node name="Stations" type="Node2D" parent="."]
+[node name="Stations" type="Node2D" parent="." unique_id=936979590]
 
-[node name="EntranceZone" type="Node2D" parent="Stations"]
-position = Vector2(48, 88)
+[node name="EntranceZone" type="Node2D" parent="Stations" unique_id=552206459]
+position = Vector2(84, 192)
 
-[node name="Visual" type="Polygon2D" parent="Stations/EntranceZone"]
+[node name="Visual" type="Polygon2D" parent="Stations/EntranceZone" unique_id=384260356]
 color = Color(0.45, 0.75, 1, 1)
-polygon = PackedVector2Array(-42, -36, 42, -36, 42, 36, -42, 36)
+polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
 
-[node name="IngredientDisplay" type="Node2D" parent="Stations"]
-position = Vector2(185, 88)
+[node name="Label" type="Label" parent="Stations/EntranceZone"]
+offset_left = -36.0
+offset_top = -10.0
+offset_right = 36.0
+offset_bottom = 12.0
+text = "Entrance"
+horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="Visual" type="Polygon2D" parent="Stations/IngredientDisplay"]
+[node name="IngredientDisplay" type="Node2D" parent="Stations" unique_id=419339159]
+position = Vector2(204, 192)
+
+[node name="Visual" type="Polygon2D" parent="Stations/IngredientDisplay" unique_id=1220405146]
 color = Color(0.3, 0.9, 0.55, 1)
-polygon = PackedVector2Array(-85, -42, 85, -42, 85, 42, -85, 42)
+polygon = PackedVector2Array(-72, -36, 72, -36, 72, 36, -72, 36)
 
-[node name="Label" type="Label" parent="Stations/IngredientDisplay"]
+[node name="Label" type="Label" parent="Stations/IngredientDisplay" unique_id=1300660575]
 offset_left = -70.0
 offset_top = -12.0
 offset_right = 70.0
 offset_bottom = 12.0
-text = "IngredientDisplay"
+text = "Ingredients"
 horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="Counter" type="Node2D" parent="Stations"]
-position = Vector2(355, 220)
+[node name="Counter" type="Node2D" parent="Stations" unique_id=1835225298]
+position = Vector2(420, 192)
 
-[node name="Visual" type="Polygon2D" parent="Stations/Counter"]
+[node name="Visual" type="Polygon2D" parent="Stations/Counter" unique_id=108012546]
 color = Color(0.95, 0.28, 0.22, 1)
-polygon = PackedVector2Array(-72, -34, 72, -34, 72, 34, -72, 34)
+polygon = PackedVector2Array(-72, -36, 72, -36, 72, 36, -72, 36)
 
-[node name="InteractionArea" type="Area2D" parent="Stations/Counter"]
+[node name="InteractionArea" type="Area2D" parent="Stations/Counter" unique_id=1207304361]
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "Counter"
 station_label = "Counter"
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/Counter/InteractionArea"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/Counter/InteractionArea" unique_id=922012960]
 shape = SubResource("Shape_counter")
 
-[node name="DiningTables" type="Node2D" parent="Stations"]
+[node name="DiningTables" type="Node2D" parent="Stations" unique_id=311525306]
 
-[node name="DiningTable1" type="Node2D" parent="Stations/DiningTables"]
-position = Vector2(675, 150)
+[node name="DiningTable1" type="Node2D" parent="Stations/DiningTables" unique_id=1173495587]
+position = Vector2(660, 192)
 
-[node name="Visual" type="Polygon2D" parent="Stations/DiningTables/DiningTable1"]
+[node name="Visual" type="Polygon2D" parent="Stations/DiningTables/DiningTable1" unique_id=372210023]
 color = Color(0.65, 0.45, 0.28, 1)
-polygon = PackedVector2Array(-44, -30, 44, -30, 44, 30, -44, 30)
+polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
 
-[node name="InteractionArea" type="Area2D" parent="Stations/DiningTables/DiningTable1"]
+[node name="InteractionArea" type="Area2D" parent="Stations/DiningTables/DiningTable1" unique_id=282859460]
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "DiningTable1"
 station_label = "Table 1"
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/DiningTables/DiningTable1/InteractionArea"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/DiningTables/DiningTable1/InteractionArea" unique_id=115667252]
 shape = SubResource("Shape_table")
 
-[node name="DiningTable2" type="Node2D" parent="Stations/DiningTables"]
-position = Vector2(760, 150)
+[node name="DiningTable2" type="Node2D" parent="Stations/DiningTables" unique_id=1920965117]
+position = Vector2(744, 192)
 
-[node name="Visual" type="Polygon2D" parent="Stations/DiningTables/DiningTable2"]
+[node name="Visual" type="Polygon2D" parent="Stations/DiningTables/DiningTable2" unique_id=363618524]
 color = Color(0.65, 0.45, 0.28, 1)
-polygon = PackedVector2Array(-44, -30, 44, -30, 44, 30, -44, 30)
+polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
 
-[node name="InteractionArea" type="Area2D" parent="Stations/DiningTables/DiningTable2"]
+[node name="InteractionArea" type="Area2D" parent="Stations/DiningTables/DiningTable2" unique_id=1347649656]
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "DiningTable2"
 station_label = "Table 2"
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/DiningTables/DiningTable2/InteractionArea"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/DiningTables/DiningTable2/InteractionArea" unique_id=62898324]
 shape = SubResource("Shape_table")
 
-[node name="DiningTable3" type="Node2D" parent="Stations/DiningTables"]
-position = Vector2(845, 150)
+[node name="DiningTable3" type="Node2D" parent="Stations/DiningTables" unique_id=1310986220]
+position = Vector2(828, 192)
 
-[node name="Visual" type="Polygon2D" parent="Stations/DiningTables/DiningTable3"]
+[node name="Visual" type="Polygon2D" parent="Stations/DiningTables/DiningTable3" unique_id=1619132387]
 color = Color(0.65, 0.45, 0.28, 1)
-polygon = PackedVector2Array(-44, -30, 44, -30, 44, 30, -44, 30)
+polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
 
-[node name="InteractionArea" type="Area2D" parent="Stations/DiningTables/DiningTable3"]
+[node name="InteractionArea" type="Area2D" parent="Stations/DiningTables/DiningTable3" unique_id=155493676]
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "DiningTable3"
 station_label = "Table 3"
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/DiningTables/DiningTable3/InteractionArea"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/DiningTables/DiningTable3/InteractionArea" unique_id=1115253783]
 shape = SubResource("Shape_table")
 
-[node name="DrinksFridge" type="Node2D" parent="Stations"]
-position = Vector2(80, 218)
+[node name="DrinksFridge" type="Node2D" parent="Stations" unique_id=1323037078]
+position = Vector2(84, 240)
 
-[node name="Visual" type="Polygon2D" parent="Stations/DrinksFridge"]
+[node name="Visual" type="Polygon2D" parent="Stations/DrinksFridge" unique_id=2091366647]
 color = Color(0.38, 0.8, 0.95, 1)
-polygon = PackedVector2Array(-45, -42, 45, -42, 45, 42, -45, 42)
+polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
 
-[node name="Label" type="Label" parent="Stations/DrinksFridge"]
+[node name="Label" type="Label" parent="Stations/DrinksFridge" unique_id=1953434554]
 offset_left = -48.0
 offset_top = -10.0
 offset_right = 48.0
 offset_bottom = 12.0
 text = "Drinks"
 horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="TrashBin" type="Node2D" parent="Stations"]
-position = Vector2(900, 242)
+[node name="TrashBin" type="Node2D" parent="Stations" unique_id=824497239]
+position = Vector2(924, 324)
 
-[node name="Visual" type="Polygon2D" parent="Stations/TrashBin"]
+[node name="Visual" type="Polygon2D" parent="Stations/TrashBin" unique_id=1625411317]
 color = Color(0.18, 0.19, 0.2, 1)
-polygon = PackedVector2Array(-34, -34, 34, -34, 34, 34, -34, 34)
+polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
 
-[node name="InteractionArea" type="Area2D" parent="Stations/TrashBin"]
+[node name="InteractionArea" type="Area2D" parent="Stations/TrashBin" unique_id=1125502087]
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "TrashBin"
-station_label = "TrashBin"
+station_label = "Trash"
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/TrashBin/InteractionArea"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/TrashBin/InteractionArea" unique_id=1461633622]
 shape = SubResource("Shape_bin")
 
-[node name="WaitingOrderArea" type="Node2D" parent="Stations"]
-position = Vector2(230, 365)
+[node name="WaitingOrderArea" type="Node2D" parent="Stations" unique_id=1186483271]
+position = Vector2(180, 360)
 script = ExtResource("4_waiting_area")
 
-[node name="Visual" type="Polygon2D" parent="Stations/WaitingOrderArea"]
+[node name="Visual" type="Polygon2D" parent="Stations/WaitingOrderArea" unique_id=1740216462]
 color = Color(0.98, 0.86, 0.28, 1)
-polygon = PackedVector2Array(-94, -42, 94, -42, 94, 42, -94, 42)
+polygon = PackedVector2Array(-72, -36, 72, -36, 72, 36, -72, 36)
 
-[node name="InteractionArea" type="Area2D" parent="Stations/WaitingOrderArea"]
+[node name="InteractionArea" type="Area2D" parent="Stations/WaitingOrderArea" unique_id=975516962]
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "WaitingOrderArea"
-station_label = "WaitingOrderArea"
+station_label = "Waiting"
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/WaitingOrderArea/InteractionArea"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/WaitingOrderArea/InteractionArea" unique_id=2025070693]
 shape = SubResource("Shape_wide")
 
-[node name="CookerStations" type="Node2D" parent="Stations"]
+[node name="CookerStations" type="Node2D" parent="Stations" unique_id=1237152360]
 
-[node name="CookerStation1" type="Node2D" parent="Stations/CookerStations"]
-position = Vector2(430, 365)
+[node name="CookerStation1" type="Node2D" parent="Stations/CookerStations" unique_id=1314630666]
+position = Vector2(396, 360)
 script = ExtResource("5_cooker")
-station_id = "CookerStation1"
 
-[node name="Visual" type="Polygon2D" parent="Stations/CookerStations/CookerStation1"]
+[node name="Visual" type="Polygon2D" parent="Stations/CookerStations/CookerStation1" unique_id=1004674883]
 color = Color(0.85, 0.38, 0.92, 1)
-polygon = PackedVector2Array(-55, -42, 55, -42, 55, 42, -55, 42)
+polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
 
-[node name="InteractionArea" type="Area2D" parent="Stations/CookerStations/CookerStation1"]
+[node name="InteractionArea" type="Area2D" parent="Stations/CookerStations/CookerStation1" unique_id=889581367]
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "CookerStation1"
 station_label = "Cooker 1"
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/CookerStations/CookerStation1/InteractionArea"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/CookerStations/CookerStation1/InteractionArea" unique_id=1768455128]
 shape = SubResource("Shape_station")
 
-[node name="CookerStation2" type="Node2D" parent="Stations/CookerStations"]
-position = Vector2(560, 365)
+[node name="CookerStation2" type="Node2D" parent="Stations/CookerStations" unique_id=954863779]
+position = Vector2(480, 360)
 script = ExtResource("5_cooker")
 station_id = "CookerStation2"
 
-[node name="Visual" type="Polygon2D" parent="Stations/CookerStations/CookerStation2"]
+[node name="Visual" type="Polygon2D" parent="Stations/CookerStations/CookerStation2" unique_id=1533149281]
 color = Color(0.85, 0.38, 0.92, 1)
-polygon = PackedVector2Array(-55, -42, 55, -42, 55, 42, -55, 42)
+polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
 
-[node name="InteractionArea" type="Area2D" parent="Stations/CookerStations/CookerStation2"]
+[node name="InteractionArea" type="Area2D" parent="Stations/CookerStations/CookerStation2" unique_id=1612143307]
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "CookerStation2"
 station_label = "Cooker 2"
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/CookerStations/CookerStation2/InteractionArea"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/CookerStations/CookerStation2/InteractionArea" unique_id=328261164]
 shape = SubResource("Shape_station")
 
-[node name="StapleArea" type="Node2D" parent="Stations"]
-position = Vector2(82, 390)
+[node name="StapleArea" type="Node2D" parent="Stations" unique_id=333902453]
+position = Vector2(84, 432)
 
-[node name="Visual" type="Polygon2D" parent="Stations/StapleArea"]
+[node name="Visual" type="Polygon2D" parent="Stations/StapleArea" unique_id=210109443]
 color = Color(0.92, 0.92, 0.72, 1)
-polygon = PackedVector2Array(-54, -44, 54, -44, 54, 44, -54, 44)
+polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
 
-[node name="Label" type="Label" parent="Stations/StapleArea"]
+[node name="Label" type="Label" parent="Stations/StapleArea" unique_id=2061329552]
 offset_left = -48.0
 offset_top = -12.0
 offset_right = 48.0
 offset_bottom = 12.0
-text = "StapleArea"
+text = "Staple"
 horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="SauceStation" type="Node2D" parent="Stations"]
-position = Vector2(700, 365)
+[node name="SauceStation" type="Node2D" parent="Stations" unique_id=1637437452]
+position = Vector2(612, 360)
 
-[node name="Visual" type="Polygon2D" parent="Stations/SauceStation"]
+[node name="Visual" type="Polygon2D" parent="Stations/SauceStation" unique_id=524411179]
 color = Color(0.95, 0.62, 0.25, 1)
-polygon = PackedVector2Array(-55, -42, 55, -42, 55, 42, -55, 42)
+polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
 
-[node name="InteractionArea" type="Area2D" parent="Stations/SauceStation"]
+[node name="InteractionArea" type="Area2D" parent="Stations/SauceStation" unique_id=850135875]
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "SauceStation"
-station_label = "SauceStation"
+station_label = "Sauce"
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/SauceStation/InteractionArea"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/SauceStation/InteractionArea" unique_id=1992422832]
 shape = SubResource("Shape_station")
 
-[node name="PackingArea" type="Node2D" parent="Stations"]
-position = Vector2(830, 365)
+[node name="PackingArea" type="Node2D" parent="Stations" unique_id=347290668]
+position = Vector2(684, 420)
 
-[node name="Visual" type="Polygon2D" parent="Stations/PackingArea"]
+[node name="Visual" type="Polygon2D" parent="Stations/PackingArea" unique_id=1144966961]
 color = Color(0.92, 0.92, 0.92, 1)
-polygon = PackedVector2Array(-55, -42, 55, -42, 55, 42, -55, 42)
+polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
 
-[node name="InteractionArea" type="Area2D" parent="Stations/PackingArea"]
+[node name="InteractionArea" type="Area2D" parent="Stations/PackingArea" unique_id=891184948]
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "PackingArea"
-station_label = "PackingArea"
+station_label = "Packing"
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/PackingArea/InteractionArea"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/PackingArea/InteractionArea" unique_id=888270006]
 shape = SubResource("Shape_station")
 
-[node name="TakeoutPickup" type="Node2D" parent="Stations"]
-position = Vector2(824, 240)
+[node name="TakeoutPickup" type="Node2D" parent="Stations" unique_id=1314360886]
+position = Vector2(828, 420)
 
-[node name="Visual" type="Polygon2D" parent="Stations/TakeoutPickup"]
+[node name="Visual" type="Polygon2D" parent="Stations/TakeoutPickup" unique_id=1073639037]
 color = Color(0.45, 0.95, 0.95, 1)
-polygon = PackedVector2Array(-58, -28, 58, -28, 58, 28, -58, 28)
+polygon = PackedVector2Array(-72, -36, 72, -36, 72, 36, -72, 36)
 
-[node name="InteractionArea" type="Area2D" parent="Stations/TakeoutPickup"]
+[node name="InteractionArea" type="Area2D" parent="Stations/TakeoutPickup" unique_id=1818914218]
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "TakeoutPickup"
-station_label = "TakeoutPickup"
+station_label = "Pickup"
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/TakeoutPickup/InteractionArea"]
-shape = SubResource("Shape_station")
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/TakeoutPickup/InteractionArea" unique_id=221813387]
+shape = SubResource("Shape_wide")
 
-[node name="StorageArea" type="Node2D" parent="Stations"]
-position = Vector2(82, 480)
+[node name="StorageArea" type="Node2D" parent="Stations" unique_id=456919696]
+position = Vector2(84, 504)
 
-[node name="Visual" type="Polygon2D" parent="Stations/StorageArea"]
+[node name="Visual" type="Polygon2D" parent="Stations/StorageArea" unique_id=656454809]
 color = Color(0.42, 0.58, 0.92, 1)
-polygon = PackedVector2Array(-54, -34, 54, -34, 54, 34, -54, 34)
+polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
 
-[node name="Label" type="Label" parent="Stations/StorageArea"]
+[node name="Label" type="Label" parent="Stations/StorageArea" unique_id=872511054]
 offset_left = -48.0
 offset_top = -12.0
 offset_right = 48.0
 offset_bottom = 12.0
-text = "StorageArea"
+text = "Storage"
 horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="Characters" type="Node2D" parent="."]
+[node name="Characters" type="Node2D" parent="." unique_id=1072830422]
 
-[node name="Player" parent="Characters" instance=ExtResource("1_player")]
-position = Vector2(490, 470)
+[node name="Player" parent="Characters" unique_id=1935726974 instance=ExtResource("1_player")]
+position = Vector2(516, 456)
 
-[node name="Bowls" type="Node2D" parent="."]
+[node name="Bowls" type="Node2D" parent="." unique_id=252471390]
 
-[node name="UI" type="CanvasLayer" parent="."]
+[node name="UI" type="CanvasLayer" parent="." unique_id=288923523]
 script = ExtResource("6_ui")
 
-[node name="RestaurantGameManager" type="Node" parent="." groups=["restaurant_game_manager"]]
+[node name="RestaurantGameManager" type="Node" parent="." unique_id=758556794 groups=["restaurant_game_manager"]]
 script = ExtResource("2_manager")
+max_customers = 3
+spawn_interval_seconds = 6.0

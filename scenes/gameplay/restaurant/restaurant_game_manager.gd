@@ -4,8 +4,8 @@ extends Node
 const RestaurantCustomerScene = preload("res://scenes/gameplay/restaurant/restaurant_customer.tscn")
 const ItemIds = preload("res://gameplay/models/item_ids.gd")
 
-@export var max_customers: int = 5
-@export var spawn_interval_seconds: float = 3.5
+@export var max_customers: int = 3
+@export var spawn_interval_seconds: float = 6.0
 
 var queued_customers: Array[RestaurantCustomer] = []
 var waiting_customers_by_order_id: Dictionary = {}
@@ -41,7 +41,6 @@ var checkout_table_id: int = 1
 func _ready() -> void:
 	add_to_group("restaurant_game_manager")
 	randomize()
-	spawn_customer()
 	spawn_customer()
 	_refresh_ui("Restaurant test loop started.")
 

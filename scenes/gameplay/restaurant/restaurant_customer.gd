@@ -139,7 +139,12 @@ func _ensure_visuals() -> void:
 		add_child(visual)
 		var body: Polygon2D = Polygon2D.new()
 		body.color = Color(0.35, 0.95, 0.45, 1.0)
-		body.polygon = PackedVector2Array(-18, -24, 18, -24, 18, 24, -18, 24)
+		body.polygon = PackedVector2Array([
+			Vector2(-18, -24),
+			Vector2(18, -24),
+			Vector2(18, 24),
+			Vector2(-18, 24)
+		])
 		visual.add_child(body)
 
 	if status_label == null:

@@ -52,15 +52,15 @@ func _create_label() -> void:
 		return
 	debug_label = Label.new()
 	debug_label.name = "RestaurantStationLabel"
-	debug_label.position = Vector2(-70, -52)
-	debug_label.size = Vector2(140, 24)
+	debug_label.position = Vector2(-72, -52)
+	debug_label.size = Vector2(144, 22)
 	debug_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	debug_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	debug_label.add_theme_font_size_override("font_size", 13)
 	debug_label.add_theme_color_override("font_color", Color.BLACK)
 	debug_label.add_theme_color_override("font_outline_color", Color.WHITE)
 	debug_label.add_theme_constant_override("outline_size", 3)
-		get_parent().call_deferred("add_child", debug_label)
+	get_parent().call_deferred("add_child", debug_label)
 
 
 func _update_label() -> void:

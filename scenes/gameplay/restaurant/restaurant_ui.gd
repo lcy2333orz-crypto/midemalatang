@@ -5,6 +5,7 @@ var status_label: Label
 var orders_label: Label
 var prompt_label: Label
 var hand_label: Label
+var help_label: Label
 
 
 func _ready() -> void:
@@ -52,10 +53,21 @@ func _ensure_widgets() -> void:
 
 	status_label = Label.new()
 	status_label.name = "RestaurantStatusLabel"
-	status_label.position = Vector2(18, 14)
-	status_label.size = Vector2(520, 64)
+	status_label.position = Vector2(18, 122)
+	status_label.size = Vector2(520, 54)
 	status_label.add_theme_font_size_override("font_size", 15)
 	add_child(status_label)
+
+	help_label = Label.new()
+	help_label.name = "RestaurantHelpLabel"
+	help_label.position = Vector2(18, 10)
+	help_label.size = Vector2(610, 106)
+	help_label.text = "E: interact\nCounter: press E several times to create order\nWaitingArea: take bowl\nCooker: cook / take cooked bowl\nSauce: add sauce\nPacking/Table/Pickup: finish order"
+	help_label.add_theme_font_size_override("font_size", 13)
+	help_label.add_theme_color_override("font_color", Color(0.08, 0.07, 0.05, 1.0))
+	help_label.add_theme_color_override("font_outline_color", Color(1.0, 0.98, 0.88, 0.95))
+	help_label.add_theme_constant_override("outline_size", 2)
+	add_child(help_label)
 
 	orders_label = Label.new()
 	orders_label.name = "RestaurantOrdersLabel"
@@ -78,7 +90,7 @@ func _ensure_widgets() -> void:
 
 	hand_label = Label.new()
 	hand_label.name = "HandStateLabel"
-	hand_label.position = Vector2(18, 82)
+	hand_label.position = Vector2(18, 178)
 	hand_label.size = Vector2(360, 30)
 	hand_label.add_theme_font_size_override("font_size", 15)
 	add_child(hand_label)

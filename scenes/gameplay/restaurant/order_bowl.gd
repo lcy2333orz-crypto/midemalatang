@@ -168,13 +168,25 @@ func _ensure_visuals() -> void:
 	if bowl_rect == null:
 		bowl_rect = Polygon2D.new()
 		bowl_rect.name = "BowlVisual"
-		bowl_rect.polygon = PackedVector2Array(-24, -14, 24, -14, 30, 8, 18, 20, -18, 20, -30, 8)
+		bowl_rect.polygon = PackedVector2Array([
+			Vector2(-24, -14),
+			Vector2(24, -14),
+			Vector2(30, 8),
+			Vector2(18, 20),
+			Vector2(-18, 20),
+			Vector2(-30, 8)
+		])
 		add_child(bowl_rect)
 
 	if clip_rect == null:
 		clip_rect = Polygon2D.new()
 		clip_rect.name = "OrderClip"
-		clip_rect.polygon = PackedVector2Array(-13, -26, 13, -26, 13, -12, -13, -12)
+		clip_rect.polygon = PackedVector2Array([
+			Vector2(-13, -26),
+			Vector2(13, -26),
+			Vector2(13, -12),
+			Vector2(-13, -12)
+		])
 		add_child(clip_rect)
 
 	if label == null:
