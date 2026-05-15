@@ -4,13 +4,26 @@ extends Node
 const RestaurantCustomerScene = preload("res://scenes/gameplay/restaurant/restaurant_customer.tscn")
 const OrderBowlScene = preload("res://scenes/gameplay/restaurant/order_bowl.tscn")
 const ItemIds = preload("res://gameplay/models/item_ids.gd")
+const NIGHT_SUMMARY_SCENE_PATH = "res://scenes/restaurant_summary/restaurant_night_summary.tscn"
 
 @export var max_customers: int = 3
 @export var spawn_interval_seconds: float = 6.0
+@export var day_time_seconds: float = 90.0
+@export var auto_change_to_summary: bool = true
 
 var queued_customers: Array[RestaurantCustomer] = []
 var waiting_customers_by_order_id: Dictionary = {}
 var completed_orders: int = 0
+var failed_orders: int = 0
+var money_today: int = 0
+var score_today: int = 0
+var queue_lost_customers_today: int = 0
+var current_day: int = 1
+var max_days: int = 3
+var day_time_remaining: float = 90.0
+var is_day_open: bool = true
+var is_ending_day: bool = false
+var summary_transition_requested: bool = false
 var next_order_id: int = 1
 var spawn_count: int = 0
 var spawn_elapsed: float = 0.0
@@ -37,21 +50,51 @@ var held_dirty_pot_visual: Node2D = null
 func _ready() -> void:
 	add_to_group("restaurant_game_manager")
 	randomize()
-	spawn_customer()
-	_refresh_ui("Restaurant test loop started.")
+	_initialize_day_state()
+	if is_day_open:
+		spawn_customer()
+	_refresh_ui("Restaurant day started.")
+
+
+func _initialize_day_state() -> void:
+	current_day = int(RestaurantRunState.current_day)
+	max_days = int(RestaurantRunState.max_days)
+	day_time_remaining = day_time_seconds
+	is_day_open = day_time_remaining > 0.0
+	is_ending_day = false
+	summary_transition_requested = false
+	completed_orders = 0
+	failed_orders = 0
+	money_today = 0
+	score_today = 0
+	queue_lost_customers_today = 0
+
+
+func _update_day_timer(delta: float) -> void:
+	if not is_day_open:
+		return
+	day_time_remaining = max(day_time_remaining - delta, 0.0)
+	if day_time_remaining <= 0.0:
+		is_day_open = false
+		spawn_elapsed = 0.0
 
 
 func _process(delta: float) -> void:
-	spawn_elapsed += delta
-	if spawn_count < max_customers and spawn_elapsed >= spawn_interval_seconds:
+	_update_day_timer(delta)
+	if is_day_open:
+		spawn_elapsed += delta
+	if is_day_open and spawn_count < max_customers and spawn_elapsed >= spawn_interval_seconds:
 		spawn_elapsed = 0.0
 		spawn_customer()
 	_update_order_patience(delta)
+	_handle_queue_patience_failures()
+	_update_score()
+	_check_day_end()
 	_refresh_ui()
 
 
 func spawn_customer() -> RestaurantCustomer:
-	if spawn_count >= max_customers:
+	if not is_day_open or spawn_count >= max_customers:
 		return null
 
 	var customer: RestaurantCustomer = RestaurantCustomerScene.instantiate() as RestaurantCustomer
@@ -320,6 +363,7 @@ func interact_trash_bin() -> void:
 	_clear_waiting_customer_for_order(discarded_order_id)
 	held_bowl.queue_free()
 	held_bowl = null
+	_record_failed_order()
 	_refresh_ui("丢弃订单 #%03d" % discarded_order_id)
 
 
@@ -379,6 +423,8 @@ func _complete_held_order() -> void:
 	bowl.queue_free()
 	held_bowl = null
 	completed_orders += 1
+	money_today += 10
+	_update_score()
 	_refresh_ui("完成订单 #%03d +1" % completed_order_id)
 
 
@@ -407,6 +453,7 @@ func _clear_held_dirty_cooker() -> void:
 		cleared_order_id = cleared_bowl.order_id
 		_clear_waiting_customer_for_order(cleared_order_id)
 		cleared_bowl.queue_free()
+		_record_failed_order()
 
 	held_dirty_cooker = null
 	_clear_dirty_pot_visual()
@@ -515,9 +562,16 @@ func _get_table_spot(table_id: int) -> Vector2:
 
 
 func _update_order_patience(delta: float) -> void:
+	var bowls_to_fail: Array[OrderBowl] = []
 	for bowl in _get_tracked_order_bowls():
 		if bowl != null and is_instance_valid(bowl):
 			bowl.update_order_patience(delta)
+			if bowl.order_patience_current <= 0.0:
+				bowls_to_fail.append(bowl)
+
+	for failed_bowl in bowls_to_fail:
+		if failed_bowl != null and is_instance_valid(failed_bowl):
+			_fail_order_bowl(failed_bowl, "订单 #%03d 等太久，顾客离开" % failed_bowl.order_id)
 
 
 func _get_tracked_order_bowls() -> Array[OrderBowl]:
@@ -531,6 +585,111 @@ func _get_tracked_order_bowls() -> Array[OrderBowl]:
 		if cooker != null and cooker.active_bowl != null and cooker.active_bowl not in bowls:
 			bowls.append(cooker.active_bowl)
 	return bowls
+
+
+func _handle_queue_patience_failures() -> void:
+	var lost_customers: Array[RestaurantCustomer] = []
+	for customer in queued_customers:
+		if customer == null or not is_instance_valid(customer):
+			continue
+		if customer.queue_patience_current <= 0.0:
+			lost_customers.append(customer)
+
+	for customer in lost_customers:
+		if customer == null or not is_instance_valid(customer):
+			continue
+		queued_customers.erase(customer)
+		queue_lost_customers_today += 1
+		customer.complete_order(exit_point.global_position)
+		_refresh_ui("排队顾客等太久离开")
+
+	if not lost_customers.is_empty():
+		refresh_queue_positions()
+		_update_score()
+
+
+func _fail_order_bowl(bowl: OrderBowl, message: String) -> void:
+	if bowl == null or not is_instance_valid(bowl):
+		return
+
+	var order_id: int = bowl.order_id
+	if held_bowl == bowl:
+		held_bowl = null
+
+	waiting_area.remove_bowl(bowl)
+
+	for cooker in [cooker_1, cooker_2]:
+		if cooker != null and cooker.active_bowl == bowl:
+			cooker.clear_active_bowl()
+			if held_dirty_cooker == cooker:
+				held_dirty_cooker = null
+				_clear_dirty_pot_visual()
+
+	_clear_waiting_customer_for_order(order_id)
+	bowl.queue_free()
+	_record_failed_order()
+	_refresh_ui(message)
+
+
+func _record_failed_order() -> void:
+	failed_orders += 1
+	_update_score()
+
+
+func _update_score() -> void:
+	score_today = max(0, completed_orders * 10 - failed_orders * 8 - queue_lost_customers_today * 5)
+
+
+func _check_day_end() -> void:
+	if is_day_open or is_ending_day:
+		return
+	if _has_active_restaurant_work():
+		return
+	_finish_day_and_show_summary()
+
+
+func _has_active_restaurant_work() -> bool:
+	if held_bowl != null or held_dirty_cooker != null:
+		return true
+	if not _get_tracked_order_bowls().is_empty():
+		return true
+	for customer_node in get_tree().get_nodes_in_group("restaurant_customers"):
+		var customer: RestaurantCustomer = customer_node as RestaurantCustomer
+		if customer != null and is_instance_valid(customer) and customer.current_state != RestaurantCustomer.CustomerState.LEAVING:
+			return true
+	return false
+
+
+func _finish_day_and_show_summary() -> void:
+	is_ending_day = true
+	_update_score()
+	var summary: Dictionary = {
+		"day": current_day,
+		"max_days": max_days,
+		"completed_orders": completed_orders,
+		"failed_orders": failed_orders,
+		"queue_lost_customers": queue_lost_customers_today,
+		"money_today": money_today,
+		"score_today": score_today,
+		"review_text": _get_review_text(score_today)
+	}
+	RestaurantRunState.record_day(summary)
+	summary_transition_requested = true
+	_refresh_ui("营业结束，进入夜间总结。")
+	if auto_change_to_summary:
+		call_deferred("_change_to_summary_scene")
+
+
+func _change_to_summary_scene() -> void:
+	get_tree().change_scene_to_file(NIGHT_SUMMARY_SCENE_PATH)
+
+
+func _get_review_text(score: int) -> String:
+	if score >= 30:
+		return "评价：今天很顺。"
+	if score >= 10:
+		return "评价：还能再稳一点。"
+	return "评价：明天先把节奏找回来。"
 
 
 func _get_bowl_location_text(target_bowl: OrderBowl) -> String:
@@ -550,9 +709,14 @@ func _refresh_ui(message: String = "") -> void:
 	if ui == null:
 		return
 
-	var line: String = "Completed: %d | Queue: %d | Spawned: %d/%d" % [
+	var line: String = "Day %d/%d | Time: %ds | Completed: %d | Failed: %d | Queue Lost: %d | Money: %d | Spawned: %d/%d" % [
+		current_day,
+		max_days,
+		int(ceil(day_time_remaining)),
 		completed_orders,
-		queued_customers.size(),
+		failed_orders,
+		queue_lost_customers_today,
+		money_today,
 		spawn_count,
 		max_customers
 	]

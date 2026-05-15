@@ -8,6 +8,7 @@ This file only tracks unfinished work. Current project status belongs in `README
 - Improve top order cards for fast scanning: clearer cooked / overcooked / packed states, stronger patience readability, and better card sizing when several orders are active.
 - Add clearer greybox feedback for successful delivery, wrong station, wrong table, and blocked dirty-pot actions without adding audio or animation systems yet.
 - Review station interaction priorities after the next map pass so nearby counter/table/packing interactions choose the expected target.
+- Tune the first day-end loop: summary wording, total-run visibility, and whether queue walkouts should count as order failures later.
 - Keep restaurant smoke coverage current as the delivery rules and station flow change.
 
 ## Restaurant Systems To Add Later
@@ -17,7 +18,7 @@ This file only tracks unfinished work. Current project status belongs in `README
 - Add drinks only after the core food order loop is stable.
 - Add storage / restocking only after the kitchen layout and order pressure feel right.
 - Add washing / cleanup only if dirty-pot handling remains fun and needs more depth.
-- Add economy, scoring, tips, or penalties after delivery and failure rules are stable.
+- Add formal economy, tips, or penalties after delivery and failure rules are stable.
 
 ## Legacy Cart Archive
 

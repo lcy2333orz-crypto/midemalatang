@@ -61,6 +61,13 @@ func clear_overcooked_bowl() -> OrderBowl:
 	if active_bowl == null or not active_bowl.is_overcooked():
 		return null
 
+	return clear_active_bowl()
+
+
+func clear_active_bowl() -> OrderBowl:
+	if active_bowl == null:
+		return null
+
 	var result: OrderBowl = active_bowl
 	active_bowl = null
 	holder_bowl = null

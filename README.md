@@ -25,12 +25,14 @@ Current playable loop:
 8. Dine-in orders are delivered to the assigned table.
 9. Takeout orders are packed at the packing area, then handed back at the counter.
 10. Overcooked orders stay in the cooker; the player carries the dirty pot to the trash bin to clear that cooker.
+11. When the day timer ends, no new customers spawn; remaining orders can still be resolved before the night summary.
 
 Greybox restaurant modules live under `res://scenes/gameplay/restaurant/`:
 
 - `OrderBowl`: order data, visible order clip, cooking state, patience, sauce, packing, and status text.
 - `RestaurantCustomer`: entrance, ingredient selection, queueing, waiting, patience bar, and leaving.
 - `RestaurantGameManager`: restaurant-only flow orchestration, station interactions, held bowl / dirty pot state, UI refresh, and smoke helper.
+- `RestaurantRunState`: lightweight restaurant run state for current day, totals, and last night summary.
 - `WaitingOrderArea`: holds waiting order bowls.
 - `CookerStation`: one active order per cooker, empty-bowl holder display, cooker countdown, cooked / overcooked state, dirty-pot clearing.
 - `RestaurantStationArea`: interaction routing and greybox highlight behavior.
@@ -44,6 +46,8 @@ Greybox restaurant modules live under `res://scenes/gameplay/restaurant/`:
 - Order patience drains over about 80 seconds.
 - Cooker timing is 8 seconds to cooked, then a 6 second cooked window, then overcooked.
 - Overcooked orders cannot be served. They must be cleared by carrying the dirty pot to the trash bin.
+- Each day currently lasts 90 seconds, then resolves into a greybox night summary once all active customers and orders are clear.
+- Completed orders add 10 money. Failed orders, queue walkouts, and overcooked trash clears feed the simple day score.
 
 ## Legacy Cart Archive
 
@@ -57,6 +61,7 @@ The archive includes the former cart entry scene, old `GameManager`, cooked stoc
 - `scenes/menus/`: title, home, and stage-select entry points. Current entry paths route to `test_restaurant.tscn`.
 - `scenes/gameplay/test_restaurant.tscn`: active greybox restaurant map.
 - `scenes/gameplay/restaurant/`: restaurant-specific runtime scripts and scenes.
+- `scenes/restaurant_summary/`: greybox night summary scene for day-end results and next-day flow.
 - `scenes/gameplay/player.gd`: shared player movement and restaurant interaction handling.
 - `gameplay/models/item_ids.gd`: shared item identifiers still used by the restaurant loop.
 - `tools/run_static_checks.ps1`: lightweight static checks.
@@ -100,6 +105,7 @@ git diff --check
 8. For dine-in, deliver to the matching table.
 9. For takeout, pack at the packing area, then hand it back at the counter.
 10. Let a separate order overcook, pick up the dirty pot from that cooker, and clear it at the trash bin.
+11. Let the day timer expire, finish or fail remaining work, then verify the night summary can continue to the next day or return home.
 
 ## Current Development Rule
 

@@ -19,9 +19,11 @@ func _ready() -> void:
 	message_label.text = "两个入口当前都进入餐厅灰盒"
 
 func _on_stage1_button_pressed() -> void:
+	RestaurantRunState.start_new_run(3)
 	get_tree().change_scene_to_file("res://scenes/gameplay/test_restaurant.tscn")
 
 func _on_stage2_button_pressed() -> void:
+	RestaurantRunState.start_new_run(3)
 	get_tree().change_scene_to_file("res://scenes/gameplay/test_restaurant.tscn")
 
 func _on_back_button_pressed() -> void:

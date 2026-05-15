@@ -28,6 +28,7 @@ func _on_stage_select_button_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/menus/stage_select.tscn")
 
 func _on_tutorial_button_pressed() -> void:
+	RestaurantRunState.start_new_run(3)
 	get_tree().change_scene_to_file("res://scenes/gameplay/test_restaurant.tscn")
 
 func _on_notebook_button_pressed() -> void:
