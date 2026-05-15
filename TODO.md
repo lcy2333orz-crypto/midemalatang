@@ -1,28 +1,40 @@
 # TODO
 
-- Gate the legacy emergency-restock system behind stage configuration so Stage 1 and the tutorial do not expose the old emergency shop flow.
+This file only tracks unfinished work. Current project status belongs in `README.md`.
 
-这个文件只记录仍然要做、尚未完成的事项；当前状态说明请看 `README.md`。
+## Current Priority: Restaurant Greybox
 
-## 架构拆分
+- Tune the restaurant map after the current timing pass: counter access, waiting area distance, cooker spacing, sauce / packing path, trash-bin reach, and dining-table delivery paths.
+- Improve top order cards for fast scanning: clearer cooked / overcooked / packed states, stronger patience readability, and better card sizing when several orders are active.
+- Add clearer greybox feedback for successful delivery, wrong station, wrong table, and blocked dirty-pot actions without adding audio or animation systems yet.
+- Review station interaction priorities after the next map pass so nearby counter/table/packing interactions choose the expected target.
+- Keep restaurant smoke coverage current as the delivery rules and station flow change.
 
-- 把更多脚本化 UI controller 固化为独立 `.tscn` 场景，优先处理大锅面板和结算页剩余流程 UI。
-- 继续正式化顾客动态字段：减少 `CustomerOrderState` fallback 中的动态 `get/set`，最终统一通过 `customer.gd` 明确 getter/setter 访问。
-- 将关卡配置数据从代码常量迁到数据文件，必要时新增 `data/stage_db.json`。
-- 将特殊顾客池、每日出现规则、订单偏好和耐心差异配置化。
+## Restaurant Systems To Add Later
 
-## 玩法功能
+- Add a real local multiplayer input model after the single-player greybox loop feels good.
+- Add an external delivery / pickup-order system later. Current takeout is counter handoff; pickup area is reserved for a future delivery flow.
+- Add drinks only after the core food order loop is stable.
+- Add storage / restocking only after the kitchen layout and order pressure feel right.
+- Add washing / cleanup only if dirty-pot handling remains fun and needs more depth.
+- Add economy, scoring, tips, or penalties after delivery and failure rules are stable.
 
-- 做关卡差异化：第二关需要明确区别于第一关的天数、初始库存、站点布局、价格或事件。
-- 做卡牌随机、权重和稀有度：当前夜间卡牌选择仍偏固定。
-- 增加更多食材和主食，并检查库存、订单、烹饪、补货是否都按 item id 通用处理。
-- 完善升级系统：二号锅、订单面板等级等字段需要更完整的解锁、展示和持久化流程。
-- 实现主页的地图、手账、设置页和开发名单入口。
-- 增加存档系统，保存 `ProgressData` 和必要 run 信息。
-- 增加新手提示和站点反馈，减少依赖 `print()` 的玩家可见反馈。
+## Legacy Cart Prototype
 
-## 设计待定
+- Keep the old cart scene and systems loadable for reference and smoke tests.
+- Do not extend cooked-stock cart gameplay while restaurant flow is the active mainline.
+- If old systems are touched, keep changes compatibility-focused and avoid deleting preserved prototype code.
 
-- 特殊顾客是否每天固定出现。
-- 熟食不过夜、主食/生食可继承的规则如何在 UI 中更清楚表达。
-- 是否需要失败条件、胜利条件、目标利润或声望目标。
+## Data And Architecture
+
+- Move restaurant tuning values toward explicit configuration once the feel is less volatile.
+- Keep restaurant-specific code modular: `OrderBowl`, `RestaurantCustomer`, `RestaurantGameManager`, `WaitingOrderArea`, `CookerStation`, and `RestaurantStationArea`.
+- Avoid wiring new restaurant gameplay into the legacy `GameManager` systems.
+- Continue replacing accidental hardcoded debug text with intentional UI text only when the text is no longer temporary greybox feedback.
+
+## Checks To Maintain
+
+- `tools/run_static_checks.ps1`
+- `tools/run_godot_checks.ps1` when `GODOT_BIN` is configured
+- `tools/restaurant_smoke_test.gd`
+- `tools/smoke_test.gd` for the preserved legacy prototype

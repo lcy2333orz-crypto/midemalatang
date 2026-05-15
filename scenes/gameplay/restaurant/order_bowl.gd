@@ -27,10 +27,10 @@ var ingredients: Dictionary = {}
 var sauces: Array[String] = []
 var is_empty_holder: bool = false
 var cook_time: float = 0.0
-var ingredient_time_required: float = 4.0
-var ready_window_seconds: float = 3.0
-var staple_perfect_time: float = 4.0
-var staple_overcook_time: float = 7.0
+var ingredient_time_required: float = 8.0
+var ready_window_seconds: float = 6.0
+var staple_perfect_time: float = 8.0
+var staple_overcook_time: float = 14.0
 var order_patience_max: float = 100.0
 var order_patience_current: float = 100.0
 
@@ -106,7 +106,7 @@ func update_cooking(delta: float) -> void:
 func update_order_patience(delta: float) -> void:
 	if order_id <= 0 or status == STATUS_DONE:
 		return
-	order_patience_current = max(order_patience_current - delta * 3.0, 0.0)
+	order_patience_current = max(order_patience_current - delta * 1.25, 0.0)
 
 
 func get_order_patience_ratio() -> float:

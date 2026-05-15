@@ -186,7 +186,7 @@ func _check_overcooked_trash_rule() -> void:
 		scene.queue_free()
 		return
 
-	manager.cooker_1.active_bowl.update_cooking(7.2)
+	manager.cooker_1.active_bowl.update_cooking(14.2)
 	if not manager.cooker_1.active_bowl.is_overcooked():
 		_fail("overcooked trash", "order did not overcook")
 		scene.queue_free()
@@ -234,8 +234,8 @@ func _check_overcooked_trash_rule() -> void:
 	bowl_2.setup_order(302, {"spinach": 1}, "noodle", "hot", "takeout", 0)
 	manager.cooker_1.add_bowl(bowl_1)
 	manager.cooker_2.add_bowl(bowl_2)
-	manager.cooker_1.active_bowl.update_cooking(7.2)
-	manager.cooker_2.active_bowl.update_cooking(7.2)
+	manager.cooker_1.active_bowl.update_cooking(14.2)
+	manager.cooker_2.active_bowl.update_cooking(14.2)
 	manager.interact_cooker(manager.cooker_2)
 	if manager.held_dirty_cooker != manager.cooker_2:
 		_fail("overcooked trash", "player should hold the overcooked cooker they interacted with")
@@ -313,17 +313,17 @@ func _check_staple_timing() -> void:
 		_fail("staple timing", "new staple should start raw")
 		return
 
-	bowl.update_cooking(3.2)
+	bowl.update_cooking(7.2)
 	if bowl.staple_state != OrderBowl.STAPLE_RAW:
 		_fail("staple timing", "staple should still be raw before the cooking time")
 		return
 
 	bowl.update_cooking(1.0)
 	if bowl.status != OrderBowl.STATUS_COOKED or bowl.staple_state != OrderBowl.STAPLE_PERFECT:
-		_fail("staple timing", "staple should be cooked after four seconds")
+		_fail("staple timing", "staple should be cooked after eight seconds")
 		return
 
-	bowl.update_cooking(3.1)
+	bowl.update_cooking(6.1)
 	if not bowl.is_overcooked():
 		_fail("staple timing", "staple should overcook after the ready window")
 		return

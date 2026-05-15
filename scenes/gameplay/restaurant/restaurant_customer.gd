@@ -13,7 +13,7 @@ enum CustomerState {
 	LEAVING
 }
 
-@export var move_speed: float = 115.0
+@export var move_speed: float = 140.0
 
 var manager: Node = null
 var current_state: CustomerState = CustomerState.ENTERING
@@ -175,7 +175,7 @@ func _set_status(text: String) -> void:
 
 func _update_queue_patience(delta: float) -> void:
 	if current_state == CustomerState.QUEUEING or current_state == CustomerState.AT_COUNTER:
-		queue_patience_current = max(queue_patience_current - delta * 5.0, 0.0)
+		queue_patience_current = max(queue_patience_current - delta * 2.0, 0.0)
 	if patience_bar != null:
 		patience_bar.value = queue_patience_current
 	_update_patience_bar_visibility()

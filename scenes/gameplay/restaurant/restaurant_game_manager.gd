@@ -340,7 +340,7 @@ func force_complete_one_order_for_smoke() -> bool:
 	if not bool(cooker_1.holder_bowl.is_empty_holder):
 		return false
 
-	cooker_1.active_bowl.update_cooking(4.2)
+	cooker_1.active_bowl.update_cooking(8.2)
 	if cooker_1.active_bowl.status != OrderBowl.STATUS_COOKED:
 		return false
 	interact_cooker(cooker_1)
