@@ -6,6 +6,8 @@ var orders_bar: HBoxContainer
 var time_label: Label
 var prompt_label: Label
 var hand_label: Label
+var toast_label: Label
+var toast_token: int = 0
 
 
 func _ready() -> void:
@@ -55,14 +57,33 @@ func hide_interaction_prompt() -> void:
 
 func update_hand_state(hand_text: String) -> void:
 	_ensure_widgets()
-	hand_label.visible = hand_text.strip_edges() != ""
 	hand_label.text = hand_text
+	hand_label.visible = false
 
 
 func hide_hand_state() -> void:
 	_ensure_widgets()
 	hand_label.visible = false
 	hand_label.text = ""
+
+
+func show_toast(text: String, seconds: float = 1.8) -> void:
+	_ensure_widgets()
+	toast_token += 1
+	var current_token: int = toast_token
+	toast_label.text = text
+	toast_label.visible = text.strip_edges() != ""
+	if toast_label.visible:
+		get_tree().create_timer(seconds).timeout.connect(_hide_toast.bind(current_token))
+
+
+func _hide_toast(token: int) -> void:
+	if token != toast_token:
+		return
+	if toast_label == null:
+		return
+	toast_label.visible = false
+	toast_label.text = ""
 
 
 func _ensure_widgets() -> void:
@@ -110,10 +131,24 @@ func _ensure_widgets() -> void:
 
 	hand_label = Label.new()
 	hand_label.name = "HandStateLabel"
+	hand_label.visible = false
 	hand_label.position = Vector2(18, 72)
 	hand_label.size = Vector2(360, 30)
 	hand_label.add_theme_font_size_override("font_size", 15)
 	add_child(hand_label)
+
+	toast_label = Label.new()
+	toast_label.name = "ToastLabel"
+	toast_label.visible = false
+	toast_label.position = Vector2(260, 430)
+	toast_label.size = Vector2(440, 42)
+	toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	toast_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	toast_label.add_theme_font_size_override("font_size", 20)
+	toast_label.add_theme_color_override("font_color", Color(1.0, 0.96, 0.72, 1.0))
+	toast_label.add_theme_color_override("font_outline_color", Color(0.05, 0.04, 0.03, 1.0))
+	toast_label.add_theme_constant_override("outline_size", 4)
+	add_child(toast_label)
 
 
 func _create_order_card(card_text: String) -> Panel:

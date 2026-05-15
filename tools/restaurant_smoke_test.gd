@@ -343,7 +343,9 @@ func _check_restaurant_hud_layout() -> void:
 	var orders_bar: HBoxContainer = ui.get("orders_bar") as HBoxContainer
 	var time_label: Label = ui.get("time_label") as Label
 	var status_label: Label = ui.get("status_label") as Label
-	if orders_bar == null or time_label == null or status_label == null:
+	var hand_label: Label = ui.get("hand_label") as Label
+	var toast_label: Label = ui.get("toast_label") as Label
+	if orders_bar == null or time_label == null or status_label == null or hand_label == null or toast_label == null:
 		_fail("hud layout", "restaurant HUD widgets were not created")
 		ui.queue_free()
 		return
@@ -360,6 +362,21 @@ func _check_restaurant_hud_layout() -> void:
 	ui.update_status("debug status should stay hidden")
 	if bool(status_label.visible):
 		_fail("hud layout", "status label should be hidden in the simplified HUD")
+		ui.queue_free()
+		return
+	ui.update_hand_state("拿着 #001")
+	if bool(hand_label.visible):
+		_fail("hud layout", "hand label should stay hidden in the simplified HUD")
+		ui.queue_free()
+		return
+	if not hand_label.text.contains("#001"):
+		_fail("hud layout", "hidden hand label should keep text for compatibility")
+		ui.queue_free()
+		return
+
+	ui.show_toast("已打烊：不会再来新顾客", 1.8)
+	if not bool(toast_label.visible) or not toast_label.text.contains("已打烊"):
+		_fail("hud layout", "toast should show manual close feedback")
 		ui.queue_free()
 		return
 

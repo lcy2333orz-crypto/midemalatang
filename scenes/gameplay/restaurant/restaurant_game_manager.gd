@@ -107,11 +107,15 @@ func spawn_customer() -> RestaurantCustomer:
 func request_close_day() -> void:
 	if is_ending_day:
 		_refresh_ui("已在进入夜间总结。")
+		if ui != null and ui.has_method("show_toast"):
+			ui.show_toast("已在进入夜间总结。", 1.8)
 		return
 	is_day_open = false
 	day_time_remaining = 0.0
 	spawn_elapsed = 0.0
 	_refresh_ui("已打烊：不会再来新顾客，请处理剩余订单。")
+	if ui != null and ui.has_method("show_toast"):
+		ui.show_toast("已打烊：不会再来新顾客", 1.8)
 	_check_day_end()
 
 
