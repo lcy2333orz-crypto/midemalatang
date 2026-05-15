@@ -3,6 +3,7 @@ extends CanvasLayer
 
 var status_label: Label
 var orders_bar: HBoxContainer
+var time_label: Label
 var prompt_label: Label
 var hand_label: Label
 
@@ -15,6 +16,13 @@ func _ready() -> void:
 func update_status(text: String) -> void:
 	_ensure_widgets()
 	status_label.text = text
+	status_label.visible = false
+
+
+func update_time(seconds_remaining: float) -> void:
+	_ensure_widgets()
+	var display_seconds: int = max(0, int(ceil(seconds_remaining)))
+	time_label.text = "剩余 %ds" % display_seconds
 
 
 func update_orders(text: String) -> void:
@@ -63,17 +71,30 @@ func _ensure_widgets() -> void:
 
 	status_label = Label.new()
 	status_label.name = "RestaurantStatusLabel"
-	status_label.position = Vector2(18, 14)
+	status_label.visible = false
+	status_label.position = Vector2(8, 132)
 	status_label.size = Vector2(520, 50)
 	status_label.add_theme_font_size_override("font_size", 15)
 	add_child(status_label)
 
 	orders_bar = HBoxContainer.new()
 	orders_bar.name = "RestaurantOrdersBar"
-	orders_bar.position = Vector2(210, 12)
-	orders_bar.size = Vector2(730, 112)
+	orders_bar.position = Vector2(8, 8)
+	orders_bar.size = Vector2(764, 124)
 	orders_bar.add_theme_constant_override("separation", 8)
 	add_child(orders_bar)
+
+	time_label = Label.new()
+	time_label.name = "TimeLabel"
+	time_label.position = Vector2(780, 8)
+	time_label.size = Vector2(168, 34)
+	time_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	time_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	time_label.add_theme_font_size_override("font_size", 20)
+	time_label.add_theme_color_override("font_color", Color(1.0, 0.96, 0.72, 1.0))
+	time_label.add_theme_color_override("font_outline_color", Color(0.05, 0.04, 0.03, 1.0))
+	time_label.add_theme_constant_override("outline_size", 3)
+	add_child(time_label)
 
 	prompt_label = Label.new()
 	prompt_label.name = "InteractionPromptLabel"

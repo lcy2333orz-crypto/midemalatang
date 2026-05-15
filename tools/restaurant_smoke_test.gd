@@ -33,7 +33,17 @@ func _run() -> void:
 		_finish()
 		return
 
+	await _check_restaurant_hud_layout()
+	if not failures.is_empty():
+		_finish()
+		return
+
 	await _check_day_timer_and_summary()
+	if not failures.is_empty():
+		_finish()
+		return
+
+	await _check_manual_close_day()
 	if not failures.is_empty():
 		_finish()
 		return
@@ -325,6 +335,77 @@ func _check_order_card_destination() -> void:
 	_pass("order card destination")
 
 
+func _check_restaurant_hud_layout() -> void:
+	var ui: RestaurantUI = RestaurantUI.new()
+	get_root().add_child(ui)
+	await process_frame
+
+	var orders_bar: HBoxContainer = ui.get("orders_bar") as HBoxContainer
+	var time_label: Label = ui.get("time_label") as Label
+	var status_label: Label = ui.get("status_label") as Label
+	if orders_bar == null or time_label == null or status_label == null:
+		_fail("hud layout", "restaurant HUD widgets were not created")
+		ui.queue_free()
+		return
+
+	if orders_bar.position.x > 12.0 or orders_bar.position.y > 12.0:
+		_fail("hud layout", "orders bar should start at the top-left")
+		ui.queue_free()
+		return
+	if time_label.position.x < 760.0 or time_label.position.y > 12.0:
+		_fail("hud layout", "time label should sit at the top-right")
+		ui.queue_free()
+		return
+
+	ui.update_status("debug status should stay hidden")
+	if bool(status_label.visible):
+		_fail("hud layout", "status label should be hidden in the simplified HUD")
+		ui.queue_free()
+		return
+
+	ui.update_time(12.4)
+	if not time_label.text.contains("13s"):
+		_fail("hud layout", "time label should round up remaining seconds")
+		ui.queue_free()
+		return
+
+	ui.update_order_cards(["#001\nA\n100%", "#002\nB\n80%", "#003\nC\n60%"])
+	if orders_bar.get_child_count() != 3:
+		_fail("hud layout", "order cards should be added horizontally")
+		ui.queue_free()
+		return
+	var first_card_text: String = _get_card_label_text(orders_bar.get_child(0))
+	if not first_card_text.contains("#001"):
+		_fail("hud layout", "first order card should stay at the left")
+		ui.queue_free()
+		return
+
+	ui.update_order_cards(["#002\nB\n80%", "#003\nC\n60%"])
+	if orders_bar.get_child_count() != 2:
+		_fail("hud layout", "removed order should compact the row")
+		ui.queue_free()
+		return
+	var compacted_first_text: String = _get_card_label_text(orders_bar.get_child(0))
+	if not compacted_first_text.contains("#002"):
+		_fail("hud layout", "remaining orders should shift left after removal")
+		ui.queue_free()
+		return
+
+	ui.queue_free()
+	_pass("hud layout")
+
+
+func _get_card_label_text(card: Node) -> String:
+	if card == null:
+		return ""
+	var labels: Array[Node] = card.find_children("*", "Label", true, false)
+	for label_node in labels:
+		var label: Label = label_node as Label
+		if label != null and label.text.strip_edges() != "":
+			return label.text
+	return ""
+
+
 func _check_day_timer_and_summary() -> void:
 	RestaurantRunState.start_new_run(3)
 	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
@@ -387,6 +468,75 @@ func _check_day_timer_and_summary() -> void:
 
 	scene.queue_free()
 	_pass("day timer")
+
+
+func _check_manual_close_day() -> void:
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("manual close", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	manager.auto_change_to_summary = false
+	manager.spawn_elapsed = 999.0
+	var spawned_before_close: int = int(manager.spawn_count)
+	manager.request_close_day()
+
+	if bool(manager.is_day_open):
+		_fail("manual close", "request_close_day did not close the day")
+		scene.queue_free()
+		return
+	if float(manager.day_time_remaining) != 0.0:
+		_fail("manual close", "request_close_day did not clear remaining time")
+		scene.queue_free()
+		return
+	if float(manager.spawn_elapsed) != 0.0:
+		_fail("manual close", "request_close_day did not clear spawn timer")
+		scene.queue_free()
+		return
+
+	manager.spawn_elapsed = 999.0
+	await process_frame
+	if int(manager.spawn_count) != spawned_before_close:
+		_fail("manual close", "manual close allowed another customer to spawn")
+		scene.queue_free()
+		return
+
+	manager.queued_customers.clear()
+	manager.waiting_customers_by_order_id.clear()
+	for customer_node in get_nodes_in_group("restaurant_customers"):
+		if customer_node != null and is_instance_valid(customer_node):
+			customer_node.queue_free()
+	manager.held_bowl = null
+	manager.held_dirty_cooker = null
+	manager.waiting_area.bowls.clear()
+	for cooker in [manager.cooker_1, manager.cooker_2]:
+		if cooker != null:
+			var cleared_bowl: OrderBowl = cooker.clear_active_bowl()
+			if cleared_bowl != null:
+				cleared_bowl.queue_free()
+
+	await process_frame
+	await process_frame
+
+	if not bool(manager.summary_transition_requested):
+		_fail("manual close", "empty manually closed day did not request summary")
+		scene.queue_free()
+		return
+	if RestaurantRunState.last_day_summary.is_empty():
+		_fail("manual close", "manual close did not record summary data")
+		scene.queue_free()
+		return
+
+	scene.queue_free()
+	_pass("manual close")
 
 
 func _check_summary_scene() -> void:

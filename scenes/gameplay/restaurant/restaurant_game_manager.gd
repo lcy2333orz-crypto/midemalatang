@@ -104,6 +104,17 @@ func spawn_customer() -> RestaurantCustomer:
 	return customer
 
 
+func request_close_day() -> void:
+	if is_ending_day:
+		_refresh_ui("已在进入夜间总结。")
+		return
+	is_day_open = false
+	day_time_remaining = 0.0
+	spawn_elapsed = 0.0
+	_refresh_ui("已打烊：不会再来新顾客，请处理剩余订单。")
+	_check_day_end()
+
+
 func enqueue_customer(customer: RestaurantCustomer) -> void:
 	if customer == null or queued_customers.has(customer):
 		return
@@ -709,20 +720,9 @@ func _refresh_ui(message: String = "") -> void:
 	if ui == null:
 		return
 
-	var line: String = "Day %d/%d | Time: %ds | Completed: %d | Failed: %d | Queue Lost: %d | Money: %d | Spawned: %d/%d" % [
-		current_day,
-		max_days,
-		int(ceil(day_time_remaining)),
-		completed_orders,
-		failed_orders,
-		queue_lost_customers_today,
-		money_today,
-		spawn_count,
-		max_customers
-	]
-	if message != "":
-		line += "\n%s" % message
-	ui.update_status(line)
+	ui.update_status(message)
+	if ui.has_method("update_time"):
+		ui.update_time(day_time_remaining)
 
 	var order_cards: Array[String] = []
 	for bowl in _get_tracked_order_bowls():
