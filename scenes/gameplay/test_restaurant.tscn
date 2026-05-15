@@ -28,6 +28,12 @@ size = Vector2(90, 90)
 [sub_resource type="RectangleShape2D" id="Shape_interact_front_small"]
 size = Vector2(55, 55)
 
+[sub_resource type="RectangleShape2D" id="Shape_interact_front_right"]
+size = Vector2(28, 34)
+
+[sub_resource type="RectangleShape2D" id="Shape_interact_surface"]
+size = Vector2(60, 60)
+
 [sub_resource type="RectangleShape2D" id="Shape_solid_table"]
 size = Vector2(44, 44)
 
@@ -315,6 +321,15 @@ theme_override_font_sizes/font_size = 8
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/IngredientDisplay2/SolidBody"]
 shape = SubResource("Shape_solid_square")
+
+[node name="InteractionArea" type="Area2D" parent="LockedPlaceholders/IngredientDisplay2"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "IngredientDisplay2"
+station_label = "ING 2"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/IngredientDisplay2/InteractionArea"]
+shape = SubResource("Shape_interact_square")
 [node name="IngredientDisplay3" type="Node2D" parent="LockedPlaceholders"]
 position = Vector2(255, 152.5)
 
@@ -338,6 +353,15 @@ theme_override_font_sizes/font_size = 8
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/IngredientDisplay3/SolidBody"]
 shape = SubResource("Shape_solid_square")
+
+[node name="InteractionArea" type="Area2D" parent="LockedPlaceholders/IngredientDisplay3"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "IngredientDisplay3"
+station_label = "ING 3"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/IngredientDisplay3/InteractionArea"]
+shape = SubResource("Shape_interact_square")
 [node name="IngredientDisplay4Locked" type="Node2D" parent="LockedPlaceholders"]
 position = Vector2(300, 152.5)
 
@@ -361,6 +385,15 @@ theme_override_font_sizes/font_size = 8
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/IngredientDisplay4Locked/SolidBody"]
 shape = SubResource("Shape_solid_square")
+
+[node name="InteractionArea" type="Area2D" parent="LockedPlaceholders/IngredientDisplay4Locked"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "IngredientDisplayLocked"
+station_label = "ING LOCK"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/IngredientDisplay4Locked/InteractionArea"]
+shape = SubResource("Shape_interact_square")
 [node name="DrinkFridge2Locked" type="Node2D" parent="LockedPlaceholders"]
 position = Vector2(390, 152.5)
 
@@ -384,6 +417,15 @@ theme_override_font_sizes/font_size = 8
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/DrinkFridge2Locked/SolidBody"]
 shape = SubResource("Shape_solid_square")
+
+[node name="InteractionArea" type="Area2D" parent="LockedPlaceholders/DrinkFridge2Locked"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "DrinkFridgeLocked"
+station_label = "DRINK LOCK"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/DrinkFridge2Locked/InteractionArea"]
+shape = SubResource("Shape_interact_square")
 [node name="Cooker3Locked" type="Node2D" parent="LockedPlaceholders"]
 position = Vector2(795, 422.5)
 
@@ -407,6 +449,15 @@ theme_override_font_sizes/font_size = 8
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/Cooker3Locked/SolidBody"]
 shape = SubResource("Shape_solid_square")
+
+[node name="InteractionArea" type="Area2D" parent="LockedPlaceholders/Cooker3Locked"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "CookerStationLocked"
+station_label = "POT LOCK"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/Cooker3Locked/InteractionArea"]
+shape = SubResource("Shape_interact_square")
 [node name="SauceStationMixed" type="Node2D" parent="LockedPlaceholders"]
 position = Vector2(750, 512.5)
 
@@ -430,6 +481,15 @@ theme_override_font_sizes/font_size = 8
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/SauceStationMixed/SolidBody"]
 shape = SubResource("Shape_solid_square")
+
+[node name="InteractionArea" type="Area2D" parent="LockedPlaceholders/SauceStationMixed"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "SauceStationMixed"
+station_label = "SAUCE MIX"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/SauceStationMixed/InteractionArea"]
+shape = SubResource("Shape_interact_square")
 [node name="PackingBagArea" type="Node2D" parent="LockedPlaceholders"]
 position = Vector2(705, 152.5)
 
@@ -453,6 +513,15 @@ theme_override_font_sizes/font_size = 8
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/PackingBagArea/SolidBody"]
 shape = SubResource("Shape_solid_square")
+
+[node name="InteractionArea" type="Area2D" parent="LockedPlaceholders/PackingBagArea"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "PackingBagArea"
+station_label = "BAG AREA"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/PackingBagArea/InteractionArea"]
+shape = SubResource("Shape_interact_square")
 [node name="CustomerTrashBin" type="Node2D" parent="LockedPlaceholders"]
 position = Vector2(165, 512.5)
 
@@ -476,6 +545,15 @@ theme_override_font_sizes/font_size = 8
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/CustomerTrashBin/SolidBody"]
 shape = SubResource("Shape_solid_square")
+
+[node name="InteractionArea" type="Area2D" parent="LockedPlaceholders/CustomerTrashBin"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "CustomerTrashBin"
+station_label = "TRASH C"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/CustomerTrashBin/InteractionArea"]
+shape = SubResource("Shape_interact_square")
 [node name="DrinkStorage" type="Node2D" parent="LockedPlaceholders"]
 position = Vector2(615, 512.5)
 
@@ -499,6 +577,15 @@ theme_override_font_sizes/font_size = 8
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/DrinkStorage/SolidBody"]
 shape = SubResource("Shape_solid_square")
+
+[node name="InteractionArea" type="Area2D" parent="LockedPlaceholders/DrinkStorage"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "DrinkStorage"
+station_label = "DRINK BOX"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/DrinkStorage/InteractionArea"]
+shape = SubResource("Shape_interact_square")
 [node name="SurfaceSlot_r1c8" type="Node2D" parent="SurfaceSlots"]
 position = Vector2(480, 152.5)
 script = ExtResource("7_surface_slot")
@@ -844,7 +931,7 @@ station_label = "SURF r1c8"
 interaction_priority = 70
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r1c8/InteractionArea"]
-shape = SubResource("Shape_interact_square")
+shape = SubResource("Shape_interact_surface")
 
 
 [node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r1c9"]
@@ -860,7 +947,7 @@ station_label = "SURF r1c9"
 interaction_priority = 70
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r1c9/InteractionArea"]
-shape = SubResource("Shape_interact_square")
+shape = SubResource("Shape_interact_surface")
 
 
 [node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r1c10"]
@@ -876,7 +963,7 @@ station_label = "SURF r1c10"
 interaction_priority = 70
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r1c10/InteractionArea"]
-shape = SubResource("Shape_interact_square")
+shape = SubResource("Shape_interact_surface")
 
 
 [node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r1c11"]
@@ -892,7 +979,7 @@ station_label = "SURF r1c11"
 interaction_priority = 70
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r1c11/InteractionArea"]
-shape = SubResource("Shape_interact_square")
+shape = SubResource("Shape_interact_surface")
 
 
 [node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r2c10"]
@@ -908,7 +995,7 @@ station_label = "SURF r2c10"
 interaction_priority = 70
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r2c10/InteractionArea"]
-shape = SubResource("Shape_interact_square")
+shape = SubResource("Shape_interact_surface")
 
 
 [node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r3c10"]
@@ -924,7 +1011,7 @@ station_label = "SURF r3c10"
 interaction_priority = 70
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r3c10/InteractionArea"]
-shape = SubResource("Shape_interact_square")
+shape = SubResource("Shape_interact_surface")
 
 
 [node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r4c10"]
@@ -940,7 +1027,7 @@ station_label = "SURF r4c10"
 interaction_priority = 70
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r4c10/InteractionArea"]
-shape = SubResource("Shape_interact_square")
+shape = SubResource("Shape_interact_surface")
 
 
 [node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r5c10"]
@@ -956,7 +1043,7 @@ station_label = "SURF r5c10"
 interaction_priority = 70
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r5c10/InteractionArea"]
-shape = SubResource("Shape_interact_square")
+shape = SubResource("Shape_interact_surface")
 
 
 [node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r6c10"]
@@ -972,7 +1059,7 @@ station_label = "SURF r6c10"
 interaction_priority = 70
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r6c10/InteractionArea"]
-shape = SubResource("Shape_interact_square")
+shape = SubResource("Shape_interact_surface")
 
 
 [node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r1c15"]
@@ -988,7 +1075,7 @@ station_label = "SURF r1c15"
 interaction_priority = 70
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r1c15/InteractionArea"]
-shape = SubResource("Shape_interact_square")
+shape = SubResource("Shape_interact_surface")
 
 
 [node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r2c15"]
@@ -1004,7 +1091,7 @@ station_label = "SURF r2c15"
 interaction_priority = 70
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r2c15/InteractionArea"]
-shape = SubResource("Shape_interact_square")
+shape = SubResource("Shape_interact_surface")
 
 
 [node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r4c15"]
@@ -1020,7 +1107,7 @@ station_label = "SURF r4c15"
 interaction_priority = 70
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r4c15/InteractionArea"]
-shape = SubResource("Shape_interact_square")
+shape = SubResource("Shape_interact_surface")
 
 
 [node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r6c15"]
@@ -1036,7 +1123,7 @@ station_label = "SURF r6c15"
 interaction_priority = 70
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r6c15/InteractionArea"]
-shape = SubResource("Shape_interact_square")
+shape = SubResource("Shape_interact_surface")
 
 
 [node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r8c15"]
@@ -1052,7 +1139,7 @@ station_label = "SURF r8c15"
 interaction_priority = 70
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r8c15/InteractionArea"]
-shape = SubResource("Shape_interact_square")
+shape = SubResource("Shape_interact_surface")
 
 
 [node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r9c15"]
@@ -1068,7 +1155,7 @@ station_label = "SURF r9c15"
 interaction_priority = 70
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r9c15/InteractionArea"]
-shape = SubResource("Shape_interact_square")
+shape = SubResource("Shape_interact_surface")
 
 
 [node name="TakeoutPickupSlot1" type="Node2D" parent="SurfaceSlots"]
@@ -1106,7 +1193,7 @@ station_label = "TAKEOUT 1"
 interaction_priority = 75
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/TakeoutPickupSlot1/InteractionArea"]
-shape = SubResource("Shape_interact_square")
+shape = SubResource("Shape_interact_surface")
 
 [node name="TakeoutPickupSlot2" type="Node2D" parent="SurfaceSlots"]
 position = Vector2(480, 287.5)
@@ -1143,7 +1230,7 @@ station_label = "TAKEOUT 2"
 interaction_priority = 75
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/TakeoutPickupSlot2/InteractionArea"]
-shape = SubResource("Shape_interact_square")
+shape = SubResource("Shape_interact_surface")
 [node name="Markers" type="Node2D" parent="."]
 
 [node name="Entrance" type="Marker2D" parent="Markers"]
@@ -1205,15 +1292,6 @@ horizontal_alignment = 1
 vertical_alignment = 1
 theme_override_font_sizes/font_size = 8
 
-[node name="InteractionArea" type="Area2D" parent="Stations/EntranceZone"]
-collision_layer = 2
-script = ExtResource("3_station_area")
-station_name = "EntranceZone"
-station_label = "DOOR"
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/EntranceZone/InteractionArea"]
-shape = SubResource("Shape_interact_square")
-
 [node name="IngredientDisplay" type="Node2D" parent="Stations"]
 position = Vector2(165, 152.5)
 
@@ -1243,7 +1321,7 @@ station_name = "IngredientDisplay"
 station_label = "ING 1"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/IngredientDisplay/InteractionArea"]
-shape = SubResource("Shape_interact_wide")
+shape = SubResource("Shape_interact_square")
 
 [node name="Counter" type="Node2D" parent="Stations"]
 position = Vector2(480, 377.5)
@@ -1275,8 +1353,8 @@ station_label = "COUNTER"
 interaction_priority = 120
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/Counter/InteractionArea"]
-position = Vector2(28, 0)
-shape = SubResource("Shape_interact_front_small")
+position = Vector2(35, 0)
+shape = SubResource("Shape_interact_front_right")
 
 [node name="DiningTables" type="Node2D" parent="Stations"]
 
@@ -1596,8 +1674,8 @@ station_label = "STAPLE"
 interaction_priority = 125
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/StapleArea/InteractionArea"]
-position = Vector2(28, 0)
-shape = SubResource("Shape_interact_front_small")
+position = Vector2(35, 0)
+shape = SubResource("Shape_interact_front_right")
 
 [node name="SauceStation" type="Node2D" parent="Stations"]
 position = Vector2(705, 512.5)
@@ -1682,16 +1760,6 @@ theme_override_font_sizes/font_size = 8
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/TakeoutPickup/SolidBody"]
 shape = SubResource("Shape_solid_wide")
-
-[node name="InteractionArea" type="Area2D" parent="Stations/TakeoutPickup"]
-collision_layer = 2
-script = ExtResource("3_station_area")
-station_name = "TakeoutPickup"
-station_label = "TAKEOUT 1"
-interaction_priority = 10
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/TakeoutPickup/InteractionArea"]
-shape = SubResource("Shape_interact_wide")
 
 [node name="StorageArea" type="Node2D" parent="Stations"]
 position = Vector2(570, 512.5)

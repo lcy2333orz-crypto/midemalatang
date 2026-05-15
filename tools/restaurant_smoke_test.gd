@@ -53,6 +53,11 @@ func _run() -> void:
 		_finish()
 		return
 
+	await _check_placeholder_interactions_do_not_mutate()
+	if not failures.is_empty():
+		_finish()
+		return
+
 	await _check_takeout_pickup_slot_completion()
 	if not failures.is_empty():
 		_finish()
@@ -141,10 +146,13 @@ func _check_scene_loads() -> void:
 	_assert_node_position(scene, "Stations/DiningTables/DiningTable1", _grid(9, 4), "grid table 1")
 	_assert_node_position(scene, "Stations/DiningTables/DiningTable2", _grid(9, 6), "grid table 2")
 	_assert_small_shared_interaction_shape(scene)
+	_assert_removed_station_interaction_areas(scene)
+	_assert_required_interaction_areas(scene)
 	_assert_greybox_labels(scene)
 	_assert_independent_cell_bodies(scene)
 	_assert_removed_duplicate_cells(scene)
 	_assert_character_scale(scene)
+	_assert_single_highlight(scene)
 
 	scene.free()
 	_pass("scene load")
@@ -257,7 +265,7 @@ func _assert_independent_cell_bodies(scene: Node) -> void:
 		"LockedPlaceholders/DrinkStorage",
 	]
 	for path in placeholders:
-		_assert_solid_independent_cell(scene, path, false)
+		_assert_solid_independent_cell(scene, path, true)
 
 
 func _assert_solid_independent_cell(scene: Node, path: String, requires_interaction: bool) -> void:
@@ -301,43 +309,152 @@ func _assert_solid_independent_cell(scene: Node, path: String, requires_interact
 
 
 func _assert_small_shared_interaction_shape(scene: Node) -> void:
-	var sample_shape: CollisionShape2D = scene.get_node_or_null("SurfaceSlots/SurfaceSlot_r1c8/InteractionArea/CollisionShape2D") as CollisionShape2D
-	if sample_shape == null:
-		_fail("interaction shape", "missing SurfaceSlot_r1c8 interaction shape")
+	var normal_shape: CollisionShape2D = scene.get_node_or_null("Stations/CookerStations/CookerStation1/InteractionArea/CollisionShape2D") as CollisionShape2D
+	if normal_shape == null:
+		_fail("interaction shape", "missing cooker interaction shape")
 		return
 
-	var rect: RectangleShape2D = sample_shape.shape as RectangleShape2D
-	if rect == null:
-		_fail("interaction shape", "SurfaceSlot interaction shape is not RectangleShape2D")
+	var normal_rect: RectangleShape2D = normal_shape.shape as RectangleShape2D
+	if normal_rect == null:
+		_fail("interaction shape", "normal interaction shape is not RectangleShape2D")
 		return
-	if rect.size.x > 55.0 or rect.size.y > 55.0:
-		_fail("interaction shape", "shared interaction shape too large: %s" % rect.size)
+	if normal_rect.size.x > 55.0 or normal_rect.size.y > 55.0:
+		_fail("interaction shape", "normal interaction shape too large: %s" % normal_rect.size)
 
-	var paths: Array[String] = [
-		"SurfaceSlots/SurfaceSlot_r1c8/InteractionArea/CollisionShape2D",
-		"SurfaceSlots/SurfaceSlot_r1c9/InteractionArea/CollisionShape2D",
-		"SurfaceSlots/TakeoutPickupSlot1/InteractionArea/CollisionShape2D",
-		"SurfaceSlots/TakeoutPickupSlot2/InteractionArea/CollisionShape2D",
+	var normal_paths: Array[String] = [
 		"Stations/CookerStations/CookerStation1/InteractionArea/CollisionShape2D",
+		"Stations/CookerStations/CookerStation2/InteractionArea/CollisionShape2D",
 		"Stations/SauceStation/InteractionArea/CollisionShape2D",
 		"Stations/PackingArea/InteractionArea/CollisionShape2D",
 		"Stations/TrashBin/InteractionArea/CollisionShape2D",
 		"Stations/DiningTables/DiningTable1/InteractionArea/CollisionShape2D",
+		"Stations/DiningTables/DiningTable2/InteractionArea/CollisionShape2D",
+		"Stations/DiningTables/DiningTable3/InteractionArea/CollisionShape2D",
+		"Stations/IngredientDisplay/InteractionArea/CollisionShape2D",
+		"Stations/DrinksFridge/InteractionArea/CollisionShape2D",
+		"Stations/StorageArea/InteractionArea/CollisionShape2D",
+		"LockedPlaceholders/IngredientDisplay2/InteractionArea/CollisionShape2D",
+		"LockedPlaceholders/IngredientDisplay3/InteractionArea/CollisionShape2D",
+		"LockedPlaceholders/IngredientDisplay4Locked/InteractionArea/CollisionShape2D",
+		"LockedPlaceholders/DrinkFridge2Locked/InteractionArea/CollisionShape2D",
+		"LockedPlaceholders/Cooker3Locked/InteractionArea/CollisionShape2D",
+		"LockedPlaceholders/SauceStationMixed/InteractionArea/CollisionShape2D",
+		"LockedPlaceholders/PackingBagArea/InteractionArea/CollisionShape2D",
+		"LockedPlaceholders/CustomerTrashBin/InteractionArea/CollisionShape2D",
+		"LockedPlaceholders/DrinkStorage/InteractionArea/CollisionShape2D",
 	]
-	for path in paths:
+	for path in normal_paths:
 		var shape_node: CollisionShape2D = scene.get_node_or_null(path) as CollisionShape2D
 		if shape_node == null:
 			_fail("interaction shape", "missing %s" % path)
 			continue
-		if shape_node.shape != sample_shape.shape:
-			_fail("interaction shape", "%s does not use shared small shape" % path)
+		if shape_node.shape != normal_shape.shape:
+			_fail("interaction shape", "%s does not use shared normal shape" % path)
+
+	var surface_shape: CollisionShape2D = scene.get_node_or_null("SurfaceSlots/SurfaceSlot_r1c8/InteractionArea/CollisionShape2D") as CollisionShape2D
+	if surface_shape == null:
+		_fail("interaction shape", "missing SurfaceSlot_r1c8 interaction shape")
+		return
+	var surface_rect: RectangleShape2D = surface_shape.shape as RectangleShape2D
+	if surface_rect == null:
+		_fail("interaction shape", "surface interaction shape is not RectangleShape2D")
+		return
+	if surface_rect.size.x < 56.0 or surface_rect.size.x > 62.0 or surface_rect.size.y < 56.0 or surface_rect.size.y > 62.0:
+		_fail("interaction shape", "surface interaction shape expected about 60x60 but was %s" % surface_rect.size)
+
+	var surface_paths: Array[String] = [
+		"SurfaceSlots/SurfaceSlot_r1c8/InteractionArea/CollisionShape2D",
+		"SurfaceSlots/SurfaceSlot_r1c9/InteractionArea/CollisionShape2D",
+		"SurfaceSlots/SurfaceSlot_r1c10/InteractionArea/CollisionShape2D",
+		"SurfaceSlots/SurfaceSlot_r1c11/InteractionArea/CollisionShape2D",
+		"SurfaceSlots/SurfaceSlot_r2c10/InteractionArea/CollisionShape2D",
+		"SurfaceSlots/SurfaceSlot_r3c10/InteractionArea/CollisionShape2D",
+		"SurfaceSlots/SurfaceSlot_r4c10/InteractionArea/CollisionShape2D",
+		"SurfaceSlots/SurfaceSlot_r5c10/InteractionArea/CollisionShape2D",
+		"SurfaceSlots/SurfaceSlot_r6c10/InteractionArea/CollisionShape2D",
+		"SurfaceSlots/SurfaceSlot_r1c15/InteractionArea/CollisionShape2D",
+		"SurfaceSlots/SurfaceSlot_r2c15/InteractionArea/CollisionShape2D",
+		"SurfaceSlots/SurfaceSlot_r4c15/InteractionArea/CollisionShape2D",
+		"SurfaceSlots/SurfaceSlot_r6c15/InteractionArea/CollisionShape2D",
+		"SurfaceSlots/SurfaceSlot_r8c15/InteractionArea/CollisionShape2D",
+		"SurfaceSlots/SurfaceSlot_r9c15/InteractionArea/CollisionShape2D",
+		"SurfaceSlots/TakeoutPickupSlot1/InteractionArea/CollisionShape2D",
+		"SurfaceSlots/TakeoutPickupSlot2/InteractionArea/CollisionShape2D",
+	]
+	for path in surface_paths:
+		var shape_node: CollisionShape2D = scene.get_node_or_null(path) as CollisionShape2D
+		if shape_node == null:
+			_fail("interaction shape", "missing %s" % path)
+			continue
+		if shape_node.shape != surface_shape.shape:
+			_fail("interaction shape", "%s does not use shared surface shape" % path)
 
 	var counter_shape: CollisionShape2D = scene.get_node_or_null("Stations/Counter/InteractionArea/CollisionShape2D") as CollisionShape2D
 	var staple_shape: CollisionShape2D = scene.get_node_or_null("Stations/StapleArea/InteractionArea/CollisionShape2D") as CollisionShape2D
-	if counter_shape != null and counter_shape.shape == sample_shape.shape:
-		_fail("interaction shape", "Counter should keep its front interaction shape")
-	if staple_shape != null and staple_shape.shape == sample_shape.shape:
-		_fail("interaction shape", "StapleArea should keep its front interaction shape")
+	_assert_front_right_shape(counter_shape, "Counter")
+	_assert_front_right_shape(staple_shape, "StapleArea")
+
+
+func _assert_front_right_shape(shape_node: CollisionShape2D, label: String) -> void:
+	if shape_node == null:
+		_fail("interaction shape", "%s missing front interaction shape" % label)
+		return
+	var rect: RectangleShape2D = shape_node.shape as RectangleShape2D
+	if rect == null:
+		_fail("interaction shape", "%s front shape is not RectangleShape2D" % label)
+		return
+	if rect.size.x > 32.0 or rect.size.y > 36.0:
+		_fail("interaction shape", "%s front shape too large: %s" % [label, rect.size])
+	if shape_node.position.x <= 25.0:
+		_fail("interaction shape", "%s front shape should be offset right" % label)
+
+
+func _assert_removed_station_interaction_areas(scene: Node) -> void:
+	var removed_paths: Array[String] = [
+		"Stations/EntranceZone/InteractionArea",
+		"Stations/TakeoutPickup/InteractionArea",
+	]
+	for path in removed_paths:
+		if scene.get_node_or_null(path) != null:
+			_fail("interaction cleanup", "%s should not exist" % path)
+
+
+func _assert_required_interaction_areas(scene: Node) -> void:
+	var required_paths: Array[String] = [
+		"Stations/Counter/InteractionArea",
+		"Stations/StapleArea/InteractionArea",
+		"Stations/CookerStations/CookerStation1/InteractionArea",
+		"Stations/CookerStations/CookerStation2/InteractionArea",
+		"Stations/SauceStation/InteractionArea",
+		"Stations/PackingArea/InteractionArea",
+		"Stations/TrashBin/InteractionArea",
+		"Stations/DiningTables/DiningTable1/InteractionArea",
+		"Stations/DiningTables/DiningTable2/InteractionArea",
+		"Stations/DiningTables/DiningTable3/InteractionArea",
+		"Stations/IngredientDisplay/InteractionArea",
+		"Stations/DrinksFridge/InteractionArea",
+		"Stations/StorageArea/InteractionArea",
+		"LockedPlaceholders/IngredientDisplay2/InteractionArea",
+		"LockedPlaceholders/IngredientDisplay3/InteractionArea",
+		"LockedPlaceholders/IngredientDisplay4Locked/InteractionArea",
+		"LockedPlaceholders/DrinkFridge2Locked/InteractionArea",
+		"LockedPlaceholders/Cooker3Locked/InteractionArea",
+		"LockedPlaceholders/SauceStationMixed/InteractionArea",
+		"LockedPlaceholders/PackingBagArea/InteractionArea",
+		"LockedPlaceholders/CustomerTrashBin/InteractionArea",
+		"LockedPlaceholders/DrinkStorage/InteractionArea",
+		"SurfaceSlots/SurfaceSlot_r1c8/InteractionArea",
+		"SurfaceSlots/TakeoutPickupSlot1/InteractionArea",
+		"SurfaceSlots/TakeoutPickupSlot2/InteractionArea",
+	]
+	for path in required_paths:
+		var area: Area2D = scene.get_node_or_null(path) as Area2D
+		if area == null:
+			_fail("required interaction", "missing %s" % path)
+			continue
+		var shape_node: CollisionShape2D = area.get_node_or_null("CollisionShape2D") as CollisionShape2D
+		if shape_node == null:
+			_fail("required interaction", "%s missing CollisionShape2D" % path)
 
 
 func _assert_removed_duplicate_cells(scene: Node) -> void:
@@ -349,6 +466,41 @@ func _assert_removed_duplicate_cells(scene: Node) -> void:
 		_fail("duplicate cells", "DoorCell1 should not have SolidBody")
 	if scene.get_node_or_null("LockedPlaceholders/DoorCell2/SolidBody") != null:
 		_fail("duplicate cells", "DoorCell2 should not have SolidBody")
+
+
+func _assert_single_highlight(scene: Node) -> void:
+	var player: Node = scene.get_node_or_null("Characters/Player")
+	var counter_area: Area2D = scene.get_node_or_null("Stations/Counter/InteractionArea") as Area2D
+	var staple_area: Area2D = scene.get_node_or_null("Stations/StapleArea/InteractionArea") as Area2D
+	var counter_visual: Polygon2D = scene.get_node_or_null("Stations/Counter/Visual") as Polygon2D
+	var staple_visual: Polygon2D = scene.get_node_or_null("Stations/StapleArea/Visual") as Polygon2D
+	if player == null or counter_area == null or staple_area == null or counter_visual == null or staple_visual == null:
+		_fail("single highlight", "missing player or station highlight nodes")
+		return
+
+	var counter_base: Color = counter_visual.color
+	var staple_base: Color = staple_visual.color
+	player.call("_update_highlighted_station", counter_area)
+	if _colors_equal(counter_visual.color, counter_base):
+		_fail("single highlight", "counter should be highlighted")
+	if not _colors_equal(staple_visual.color, staple_base):
+		_fail("single highlight", "staple should not be highlighted yet")
+
+	player.call("_update_highlighted_station", staple_area)
+	if not _colors_equal(counter_visual.color, counter_base):
+		_fail("single highlight", "counter should be restored when staple is highlighted")
+	if _colors_equal(staple_visual.color, staple_base):
+		_fail("single highlight", "staple should be highlighted")
+
+	player.call("_update_highlighted_station", null)
+	if not _colors_equal(counter_visual.color, counter_base):
+		_fail("single highlight", "counter should remain restored after clearing highlight")
+	if not _colors_equal(staple_visual.color, staple_base):
+		_fail("single highlight", "staple should be restored after clearing highlight")
+
+
+func _colors_equal(a: Color, b: Color) -> bool:
+	return is_equal_approx(a.r, b.r) and is_equal_approx(a.g, b.g) and is_equal_approx(a.b, b.b) and is_equal_approx(a.a, b.a)
 
 
 func _assert_character_scale(scene: Node) -> void:
@@ -662,15 +814,15 @@ func _check_staple_interaction_not_blocked_by_counter() -> void:
 		scene.queue_free()
 		return
 
-	if counter_shape.position.x <= 0.0 or staple_shape.position.x <= 0.0:
+	if counter_shape.position.x <= 25.0 or staple_shape.position.x <= 25.0:
 		_fail("staple interaction", "counter and staple interaction shapes should be offset to the right")
 		scene.queue_free()
 		return
 
 	var counter_rect: RectangleShape2D = counter_shape.shape as RectangleShape2D
 	var staple_rect: RectangleShape2D = staple_shape.shape as RectangleShape2D
-	if counter_rect == null or staple_rect == null or counter_rect.size.x > 60.0 or staple_rect.size.x > 60.0:
-		_fail("staple interaction", "counter and staple interaction shapes should be small")
+	if counter_rect == null or staple_rect == null or counter_rect.size.x > 32.0 or counter_rect.size.y > 36.0 or staple_rect.size.x > 32.0 or staple_rect.size.y > 36.0:
+		_fail("staple interaction", "counter and staple interaction shapes should be narrow")
 		scene.queue_free()
 		return
 	if counter_area.get_interaction_priority() != 120 or staple_area.get_interaction_priority() != 125:
@@ -772,6 +924,44 @@ func _check_visible_text_is_ascii() -> void:
 	ui.queue_free()
 	scene.queue_free()
 	_pass("ascii text")
+
+
+func _check_placeholder_interactions_do_not_mutate() -> void:
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("placeholder interaction", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	manager.completed_orders = 2
+	manager.failed_orders = 1
+	manager.money_today = 30
+	var completed_before: int = manager.completed_orders
+	var failed_before: int = manager.failed_orders
+	var money_before: int = manager.money_today
+
+	var placeholder_names: Array[String] = [
+		"IngredientDisplay2",
+		"DrinkStorage",
+		"CookerStationLocked",
+		"DiningTable3",
+	]
+	for station_name in placeholder_names:
+		manager.interact_with_station(station_name)
+		if manager.completed_orders != completed_before or manager.failed_orders != failed_before or manager.money_today != money_before:
+			_fail("placeholder interaction", "%s changed core state" % station_name)
+			scene.queue_free()
+			return
+
+	scene.queue_free()
+	_pass("placeholder interaction")
 
 
 func _check_takeout_pickup_slot_completion() -> void:

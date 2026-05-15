@@ -167,13 +167,45 @@ func interact_with_station(station_name: String) -> void:
 		"DiningTable2":
 			interact_delivery_table(2)
 		"DiningTable3":
-			interact_delivery_table(3)
+			_interact_placeholder(station_name)
 		"TakeoutPickup":
 			interact_takeout_pickup()
 		"TrashBin":
 			interact_trash_bin()
+		"IngredientDisplay", "IngredientDisplay2", "IngredientDisplay3", "IngredientDisplayLocked", "DrinksFridge", "DrinkFridgeLocked", "PackingBagArea", "SauceStationMixed", "CustomerTrashBin", "StorageArea", "DrinkStorage", "CookerStationLocked":
+			_interact_placeholder(station_name)
 		_:
 			_refresh_ui("No restaurant action for %s." % station_name)
+
+
+func _interact_placeholder(station_name: String) -> void:
+	var message: String = "Placeholder: %s." % station_name
+	match station_name:
+		"IngredientDisplay", "IngredientDisplay2", "IngredientDisplay3":
+			message = "Customers pick ingredients here."
+		"IngredientDisplayLocked":
+			message = "Ingredient slot locked."
+		"DrinksFridge":
+			message = "Drink flow not available yet."
+		"DrinkFridgeLocked":
+			message = "Drink slot locked."
+		"PackingBagArea":
+			message = "Bag area placeholder."
+		"SauceStationMixed":
+			message = "Sauce mix controls not available yet."
+		"CustomerTrashBin":
+			message = "Customer trash placeholder."
+		"StorageArea":
+			message = "Restock flow not available yet."
+		"DrinkStorage":
+			message = "Drink storage placeholder."
+		"CookerStationLocked":
+			message = "Pot locked."
+		"DiningTable3":
+			message = "DINE 3 is not used in this stage."
+	_refresh_ui(message)
+	if ui != null and ui.has_method("show_toast"):
+		ui.show_toast(message, 1.4)
 
 
 func interact_counter() -> void:
