@@ -570,6 +570,9 @@ func interact_trash_bin() -> void:
 		_refresh_ui("Nothing to discard.")
 		return
 	if held_bowl.is_empty_holder:
+		if _has_active_content_for_order(held_bowl.order_id):
+			_refresh_ui("Keep this empty bowl for the active order.")
+			return
 		held_bowl.queue_free()
 		held_bowl = null
 		_refresh_ui("Discarded empty bowl.")
@@ -930,6 +933,46 @@ func _get_tracked_order_bowls() -> Array[OrderBowl]:
 	return bowls
 
 
+func _has_active_content_for_order(order_id: int) -> bool:
+	if order_id <= 0:
+		return false
+
+	if _bowl_is_active_content_for_order(held_bowl, order_id):
+		return true
+	if _pot_has_content_for_order(held_pot, order_id):
+		return true
+
+	for waiting_bowl in waiting_area.bowls:
+		if _bowl_is_active_content_for_order(waiting_bowl, order_id):
+			return true
+
+	for cooker in [cooker_1, cooker_2]:
+		if cooker != null and _pot_has_content_for_order(cooker.active_pot, order_id):
+			return true
+
+	for slot in surface_slots_by_id.values():
+		var surface_slot: SurfaceSlot = slot as SurfaceSlot
+		if surface_slot == null or not is_instance_valid(surface_slot):
+			continue
+		if _bowl_is_active_content_for_order(surface_slot.get_stored_bowl(), order_id):
+			return true
+		if _pot_has_content_for_order(surface_slot.get_stored_pot(), order_id):
+			return true
+
+	return false
+
+
+func _bowl_is_active_content_for_order(bowl: OrderBowl, order_id: int) -> bool:
+	return bowl != null and is_instance_valid(bowl) and not bowl.is_empty_holder and bowl.order_id == order_id
+
+
+func _pot_has_content_for_order(pot: CookingPot, order_id: int) -> bool:
+	if pot == null or not is_instance_valid(pot):
+		return false
+	var content: OrderBowl = pot.content_bowl
+	return content != null and is_instance_valid(content) and content.order_id == order_id
+
+
 func _handle_queue_patience_failures() -> void:
 	var lost_customers: Array[RestaurantCustomer] = []
 	for customer in queued_customers:
@@ -996,7 +1039,11 @@ func _check_day_end() -> void:
 
 
 func _has_active_restaurant_work() -> bool:
-	if held_bowl != null or held_pot != null or held_dirty_cooker != null:
+	if held_dirty_cooker != null:
+		return true
+	if held_bowl != null and is_instance_valid(held_bowl) and not held_bowl.is_empty_holder:
+		return true
+	if held_pot != null and is_instance_valid(held_pot) and held_pot.has_content():
 		return true
 	if not _get_tracked_order_bowls().is_empty():
 		return true

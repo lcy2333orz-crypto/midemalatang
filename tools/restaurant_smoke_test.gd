@@ -58,6 +58,16 @@ func _run() -> void:
 		_finish()
 		return
 
+	await _check_empty_bowl_not_discarded_while_pot_has_content()
+	if not failures.is_empty():
+		_finish()
+		return
+
+	await _check_empty_pot_and_empty_bowl_do_not_block_day_end()
+	if not failures.is_empty():
+		_finish()
+		return
+
 	await _check_staple_interaction_not_blocked_by_counter()
 	if not failures.is_empty():
 		_finish()
@@ -901,14 +911,18 @@ func _check_pot_heats_only_on_stove() -> void:
 	manager._hold_bowl(bowl)
 	manager.interact_cooker(manager.cooker_1)
 	var pot: CookingPot = manager.cooker_1.active_pot
+	var pot_label: Label = pot.get_node_or_null("Label") as Label
+	if pot_label != null and pot_label.text != "POT COOK":
+		_fail("pot heat", "cooking pot should show POT COOK without order id")
+		scene.queue_free()
+		return
 	pot.call("_process", 8.2)
 	if pot.content_bowl == null or pot.content_bowl.status != OrderBowl.STATUS_COOKED:
 		_fail("pot heat", "pot content should become READY on stove")
 		scene.queue_free()
 		return
-	var pot_label: Label = pot.get_node_or_null("Label") as Label
-	if pot_label != null and (pot_label.text.contains("#") or pot_label.text.contains("701")):
-		_fail("pot heat", "pot label should not display order id")
+	if pot_label != null and pot_label.text != "POT READY":
+		_fail("pot heat", "ready pot should show POT READY without order id")
 		scene.queue_free()
 		return
 	var holder: OrderBowl = manager.held_bowl
@@ -959,6 +973,135 @@ func _check_scoop_from_pot() -> void:
 
 	scene.queue_free()
 	_pass("pot scoop")
+
+
+func _check_empty_bowl_not_discarded_while_pot_has_content() -> void:
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("empty bowl trash guard", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	var bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(bowl)
+	bowl.setup_order(703, {"spinach": 1}, "none", "mild", "dine_in", 1)
+	manager._hold_bowl(bowl)
+	manager.interact_cooker(manager.cooker_1)
+
+	var holder: OrderBowl = manager.held_bowl
+	if holder == null or not holder.is_empty_holder:
+		_fail("empty bowl trash guard", "order entering pot should leave an empty holder bowl")
+		scene.queue_free()
+		return
+	if manager.cooker_1.active_pot == null or manager.cooker_1.active_pot.content_bowl == null:
+		_fail("empty bowl trash guard", "order content should be in the pot")
+		scene.queue_free()
+		return
+
+	var failed_before: int = int(manager.failed_orders)
+	manager.interact_trash_bin()
+	if manager.held_bowl != holder or not is_instance_valid(holder) or not holder.is_empty_holder:
+		_fail("empty bowl trash guard", "trash should keep empty holder for active order content")
+		scene.queue_free()
+		return
+	if manager.cooker_1.active_pot.content_bowl == null:
+		_fail("empty bowl trash guard", "trash should not clear pot content when guarding empty holder")
+		scene.queue_free()
+		return
+	if int(manager.failed_orders) != failed_before:
+		_fail("empty bowl trash guard", "guarded empty holder should not count as failed")
+		scene.queue_free()
+		return
+
+	var status_label: Label = manager.ui.get("status_label") as Label
+	var status_text: String = status_label.text if status_label != null else ""
+	if status_text.contains("#") or status_text.contains("703"):
+		_fail("empty bowl trash guard", "empty holder guard prompt should not reveal order id")
+		scene.queue_free()
+		return
+
+	scene.queue_free()
+	_pass("empty bowl trash guard")
+
+
+func _check_empty_pot_and_empty_bowl_do_not_block_day_end() -> void:
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("empty hand day end", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	manager.is_day_open = false
+	manager.queued_customers.clear()
+	manager.waiting_customers_by_order_id.clear()
+	for customer_node in get_nodes_in_group("restaurant_customers"):
+		if customer_node != null and is_instance_valid(customer_node):
+			customer_node.queue_free()
+	await process_frame
+
+	manager.held_dirty_cooker = null
+	manager.held_bowl = null
+	manager.held_pot = null
+	manager.waiting_area.bowls.clear()
+	for cooker in [manager.cooker_1, manager.cooker_2]:
+		if cooker != null and cooker.active_pot != null:
+			var cleared_bowl: OrderBowl = cooker.clear_active_bowl()
+			if cleared_bowl != null:
+				cleared_bowl.queue_free()
+
+	manager.held_pot = manager.cooker_1.active_pot
+	if manager._has_active_restaurant_work():
+		_fail("empty hand day end", "empty held pot should not block day end")
+		scene.queue_free()
+		return
+
+	manager.held_pot = null
+	var holder: OrderBowl = OrderBowl.new()
+	scene.add_child(holder)
+	holder.setup_order(704, {"spinach": 1}, "none", "mild", "dine_in", 1)
+	holder.set_empty_holder_visual()
+	manager.held_bowl = holder
+	if manager._has_active_restaurant_work():
+		_fail("empty hand day end", "empty holder bowl should not block day end")
+		scene.queue_free()
+		return
+
+	holder.is_empty_holder = false
+	holder.status = OrderBowl.STATUS_WAITING
+	if not manager._has_active_restaurant_work():
+		_fail("empty hand day end", "non-empty held bowl should count as active work")
+		scene.queue_free()
+		return
+
+	manager.held_bowl = null
+	holder.queue_free()
+	var content_bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(content_bowl)
+	content_bowl.setup_order(705, {"spinach": 1}, "none", "mild", "takeout", 0)
+	var pot: CookingPot = manager.cooker_1.active_pot
+	pot.content_bowl = content_bowl
+	manager.held_pot = pot
+	if not manager._has_active_restaurant_work():
+		_fail("empty hand day end", "held pot with content should count as active work")
+		scene.queue_free()
+		return
+
+	scene.queue_free()
+	_pass("empty hand day end")
 
 
 func _check_staple_interaction_not_blocked_by_counter() -> void:
@@ -1219,6 +1362,11 @@ func _check_overcooked_trash_rule() -> void:
 	manager.cooker_1.active_bowl.update_cooking(14.2)
 	if not manager.cooker_1.active_bowl.is_overcooked():
 		_fail("overcooked trash", "order did not overcook")
+		scene.queue_free()
+		return
+	var over_pot_label: Label = manager.cooker_1.active_pot.get_node_or_null("Label") as Label
+	if over_pot_label != null and over_pot_label.text != "POT OVER":
+		_fail("overcooked trash", "overcooked pot should show POT OVER without order id")
 		scene.queue_free()
 		return
 

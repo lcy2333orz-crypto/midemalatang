@@ -19,33 +19,41 @@ Current playable loop:
 2. Customer chooses ingredients at the ingredient display.
 3. Customer queues outside the counter.
 4. Player interacts with the counter once to create an `OrderBowl`.
-5. The order bowl appears in the waiting order area.
-6. Player picks up the bowl, places it into a cooker station, and watches the cooker timer.
-7. Cooked orders can be taken from the cooker, sauced, then delivered.
-8. Dine-in orders are delivered to the assigned table.
-9. Takeout orders are packed at the packing area, then handed back at the counter.
-10. Overcooked orders stay in the cooker; the player carries the dirty pot to the trash bin to clear that cooker.
-11. When the day timer ends, no new customers spawn; remaining orders can still be resolved before the night summary.
+5. The player receives the order bowl directly, adds the required staple, then loads the food into a pot.
+6. The empty bowl / order clip stays with the player or on a surface slot while the pot cooks.
+7. Pots can sit on stove stations, be carried by the player, or be placed on surface slots.
+8. Food only heats while its pot is on a stove. Ready food taken off heat does not keep overcooking.
+9. The player uses the matching empty bowl to scoop ready food from a pot, then adds sauce and delivers.
+10. Dine-in orders are delivered to the assigned table. Takeout orders are packed, then placed on TAKEOUT 1 or TAKEOUT 2.
+11. Overcooked pot contents cannot be served. The player carries the pot to the trash bin and clears it.
+12. When the day timer ends, no new customers spawn; remaining orders can still be resolved before the night summary.
 
 Greybox restaurant modules live under `res://scenes/gameplay/restaurant/`:
 
 - `OrderBowl`: order data, visible order clip, cooking state, patience, sauce, packing, and status text.
 - `RestaurantCustomer`: entrance, ingredient selection, queueing, waiting, patience bar, and leaving.
-- `RestaurantGameManager`: restaurant-only flow orchestration, station interactions, held bowl / dirty pot state, UI refresh, and smoke helper.
+- `RestaurantGameManager`: restaurant-only flow orchestration, station interactions, held bowl / held pot state, UI refresh, and smoke helper.
 - `RestaurantRunState`: lightweight restaurant run state for current day, totals, and last night summary.
-- `WaitingOrderArea`: holds waiting order bowls.
-- `CookerStation`: one active order per cooker, empty-bowl holder display, cooker countdown, cooked / overcooked state, dirty-pot clearing.
+- `WaitingOrderArea`: legacy-compatible waiting bowl holder; the current main flow gives new orders directly to the player.
+- `CookingPot`: movable pot container for raw, ready, and overcooked food. Pot labels intentionally do not show order numbers.
+- `CookerStation`: fixed stove slot that holds a movable pot and heats it only while the pot is on the station.
 - `RestaurantStationArea`: interaction routing and greybox highlight behavior.
 - `RestaurantUI`: top horizontal order cards, status text, hand state, and bottom station prompt.
+
+## Movable Pot Design Note
+
+Pot labels are intentionally limited to `POT EMPTY`, `POT COOK`, `POT READY`, and `POT OVER`.
+
+The pot's contents still keep their internal order data for timers, order tracking, patience, and validation, but the pot never displays `#001` or any other order number in the scene. The order number stays on the empty bowl / order clip. This is by design, not a bug: players must manage which empty bowl belongs near which pot, creating memory and coordination pressure in the kitchen.
 
 ## Current Tuning
 
 - Customer spawn pressure is intentionally low for loop testing: `max_customers = 3`, `spawn_interval_seconds = 6.0`, and the scene starts with one customer.
-- Customer movement is `140.0`, about `0.7x` of the default player movement speed.
+- Customer movement is `80.0`, about `0.4x` of the default player movement speed.
 - Queue patience drains over about 50 seconds.
 - Order patience drains over about 80 seconds.
 - Cooker timing is 8 seconds to cooked, then a 6 second cooked window, then overcooked.
-- Overcooked orders cannot be served. They must be cleared by carrying the dirty pot to the trash bin.
+- Overcooked orders cannot be served. They must be cleared by carrying the pot to the trash bin.
 - Each day currently lasts 90 seconds, then resolves into a greybox night summary once all active customers and orders are clear.
 - Completed orders add 10 money. Failed orders, queue walkouts, and overcooked trash clears feed the simple day score.
 
@@ -98,14 +106,15 @@ git diff --check
 1. Start from the title/menu flow and enter the restaurant.
 2. Let a customer choose ingredients and queue at the counter.
 3. Press `E` at the counter once to create an order.
-4. Pick up the order from the waiting area.
-5. Put it into a cooker.
-6. Take it out while cooked, before it overcooks.
-7. Add sauce.
-8. For dine-in, deliver to the matching table.
-9. For takeout, pack at the packing area, then hand it back at the counter.
-10. Let a separate order overcook, pick up the dirty pot from that cooker, and clear it at the trash bin.
-11. Let the day timer expire, finish or fail remaining work, then verify the night summary can continue to the next day or return home.
+4. Add the required staple at STAPLE if the order needs one.
+5. Put the order contents into an empty pot on a stove; keep the empty bowl / order clip.
+6. Optionally place the empty bowl or pot on a SURF slot while managing other work.
+7. When the pot is ready, use the matching empty bowl to scoop the food out.
+8. Add sauce.
+9. For dine-in, deliver to the matching table.
+10. For takeout, pack at the packing area, then place it on TAKEOUT 1 or TAKEOUT 2.
+11. Let a separate pot overcook, pick up that pot, and clear it at the trash bin.
+12. Let the day timer expire, finish or fail remaining work, then verify the night summary can continue to the next day or return home.
 
 ## Current Development Rule
 
