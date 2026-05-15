@@ -110,16 +110,16 @@ func spawn_customer() -> RestaurantCustomer:
 
 func request_close_day() -> void:
 	if is_ending_day:
-		_refresh_ui("已在进入夜间总结。")
+		_refresh_ui("Entering summary.")
 		if ui != null and ui.has_method("show_toast"):
-			ui.show_toast("已在进入夜间总结。", 1.8)
+			ui.show_toast("Entering summary.", 1.8)
 		return
 	is_day_open = false
 	day_time_remaining = 0.0
 	spawn_elapsed = 0.0
-	_refresh_ui("已打烊：不会再来新顾客，请处理剩余订单。")
+	_refresh_ui("Closed: no new customers. Finish remaining orders.")
 	if ui != null and ui.has_method("show_toast"):
-		ui.show_toast("已打烊：不会再来新顾客", 1.8)
+		ui.show_toast("Closed: no new customers.", 1.8)
 	_check_day_end()
 
 
@@ -178,7 +178,7 @@ func interact_with_station(station_name: String) -> void:
 
 func interact_counter() -> void:
 	if held_dirty_cooker != null:
-		_refresh_ui("先把脏锅倒进垃圾桶。")
+		_refresh_ui("Clear dirty pot first.")
 		return
 	var customer: RestaurantCustomer = _get_counter_customer()
 	if held_bowl != null:
@@ -243,7 +243,7 @@ func _create_order_from_customer(customer: RestaurantCustomer) -> void:
 
 func interact_waiting_order_area() -> void:
 	if held_dirty_cooker != null:
-		_refresh_ui("先把脏锅倒进垃圾桶。")
+		_refresh_ui("Clear dirty pot first.")
 		return
 
 	if held_bowl == null:
@@ -302,7 +302,7 @@ func interact_cooker(cooker: CookerStation) -> void:
 		return
 
 	if held_dirty_cooker != null:
-		_refresh_ui("先把脏锅倒进垃圾桶。")
+		_refresh_ui("Clear dirty pot first.")
 		return
 
 	if held_bowl != null:
@@ -321,7 +321,7 @@ func interact_cooker(cooker: CookerStation) -> void:
 
 	if cooker.active_bowl != null and cooker.active_bowl.is_overcooked():
 		_hold_dirty_cooker(cooker)
-		_refresh_ui("拿起脏锅 #%03d，去垃圾桶清理。" % cooker.get_active_order_id())
+		_refresh_ui("Dirty pot #%03d. Take it to trash." % cooker.get_active_order_id())
 		return
 
 	var bowl: OrderBowl = cooker.take_bowl()
@@ -357,7 +357,7 @@ func interact_staple_cabinet() -> void:
 
 func interact_sauce_station() -> void:
 	if held_dirty_cooker != null:
-		_refresh_ui("先把脏锅倒进垃圾桶。")
+		_refresh_ui("Clear dirty pot first.")
 		return
 	if held_bowl == null:
 		_refresh_ui("Hold a cooked bowl before adding sauces.")
@@ -373,7 +373,7 @@ func interact_sauce_station() -> void:
 
 func interact_packing_area() -> void:
 	if held_dirty_cooker != null:
-		_refresh_ui("先把脏锅倒进垃圾桶。")
+		_refresh_ui("Clear dirty pot first.")
 		return
 	if held_bowl == null:
 		_refresh_ui("Hold a takeout bowl to pack.")
@@ -392,7 +392,7 @@ func interact_packing_area() -> void:
 
 func interact_delivery_table(table_id: int) -> void:
 	if held_dirty_cooker != null:
-		_refresh_ui("先把脏锅倒进垃圾桶。")
+		_refresh_ui("Clear dirty pot first.")
 		return
 	if held_bowl == null:
 		_refresh_ui("Hold a dine-in bowl to serve.")
@@ -410,7 +410,7 @@ func interact_delivery_table(table_id: int) -> void:
 
 func interact_takeout_pickup() -> void:
 	if held_dirty_cooker != null:
-		_refresh_ui("先把脏锅倒进垃圾桶。")
+		_refresh_ui("Clear dirty pot first.")
 		return
 	if held_bowl == null:
 		_refresh_ui("Hold a packed takeout bowl.")
@@ -429,10 +429,10 @@ func interact_takeout_counter_delivery() -> void:
 	if _reject_overcooked_held_order():
 		return
 	if held_bowl.service_mode != "takeout":
-		_refresh_ui("堂食订单送到对应堂食桌。")
+		_refresh_ui("Dine-in order goes to assigned table.")
 		return
 	if held_bowl.status != OrderBowl.STATUS_PACKED:
-		_refresh_ui("外带订单需要先去打包台。")
+		_refresh_ui("Pack takeout order first.")
 		return
 	_complete_held_order()
 
@@ -451,7 +451,7 @@ func interact_trash_bin() -> void:
 	held_bowl.queue_free()
 	held_bowl = null
 	_record_failed_order()
-	_refresh_ui("丢弃订单 #%03d" % discarded_order_id)
+	_refresh_ui("Discarded order #%03d" % discarded_order_id)
 
 
 func force_complete_one_order_for_smoke() -> bool:
@@ -492,10 +492,10 @@ func force_complete_one_order_for_smoke() -> bool:
 
 func get_hand_text() -> String:
 	if held_dirty_cooker != null:
-		return "拿着脏锅 #%03d" % held_dirty_cooker.get_active_order_id()
+		return "Holding dirty pot #%03d" % held_dirty_cooker.get_active_order_id()
 	if held_bowl == null:
 		return ""
-	return "拿着 #%03d" % held_bowl.order_id
+	return "Holding #%03d" % held_bowl.order_id
 
 
 func _complete_held_order() -> void:
@@ -515,7 +515,7 @@ func _complete_held_order() -> void:
 	completed_orders += 1
 	money_today += 10
 	_update_score()
-	_refresh_ui("完成订单 #%03d +1" % completed_order_id)
+	_refresh_ui("Completed order #%03d +1" % completed_order_id)
 
 
 func _hold_bowl(bowl: OrderBowl) -> void:
@@ -550,9 +550,9 @@ func _clear_held_dirty_cooker() -> void:
 	_clear_dirty_pot_visual()
 
 	if cleared_order_id > 0:
-		_refresh_ui("订单 #%03d 煮烂，顾客生气离开" % cleared_order_id)
+		_refresh_ui("Order #%03d overcooked. Customer left." % cleared_order_id)
 	else:
-		_refresh_ui("脏锅已经清空。")
+		_refresh_ui("Dirty pot cleared.")
 
 
 func _attach_dirty_pot_visual(order_id: int) -> void:
@@ -583,7 +583,7 @@ func _attach_dirty_pot_visual(order_id: int) -> void:
 	label.size = Vector2(84, 24)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.text = "脏锅 #%03d" % order_id
+	label.text = "Dirty pot #%03d" % order_id
 	label.add_theme_font_size_override("font_size", 12)
 	label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.5, 1.0))
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
@@ -682,8 +682,7 @@ func _random_service_mode() -> String:
 
 
 func _next_table_id() -> int:
-	var next_table: int = ((next_order_id - 1) % 3) + 1
-	return next_table
+	return ((next_order_id - 1) % 2) + 1
 
 
 func _service_text(mode: String, table_id: int) -> String:
@@ -717,7 +716,7 @@ func _update_order_patience(delta: float) -> void:
 
 	for failed_bowl in bowls_to_fail:
 		if failed_bowl != null and is_instance_valid(failed_bowl):
-			_fail_order_bowl(failed_bowl, "订单 #%03d 等太久，顾客离开" % failed_bowl.order_id)
+			_fail_order_bowl(failed_bowl, "Order #%03d waited too long. Customer left." % failed_bowl.order_id)
 
 
 func _get_tracked_order_bowls() -> Array[OrderBowl]:
@@ -754,7 +753,7 @@ func _handle_queue_patience_failures() -> void:
 		queued_customers.erase(customer)
 		queue_lost_customers_today += 1
 		customer.complete_order(exit_point.global_position)
-		_refresh_ui("排队顾客等太久离开")
+		_refresh_ui("Queue customer waited too long and left.")
 
 	if not lost_customers.is_empty():
 		refresh_queue_positions()
@@ -829,7 +828,7 @@ func _finish_day_and_show_summary() -> void:
 	}
 	RestaurantRunState.record_day(summary)
 	summary_transition_requested = true
-	_refresh_ui("营业结束，进入夜间总结。")
+	_refresh_ui("Day ended. Entering summary.")
 	if auto_change_to_summary:
 		call_deferred("_change_to_summary_scene")
 
@@ -840,10 +839,10 @@ func _change_to_summary_scene() -> void:
 
 func _get_review_text(score: int) -> String:
 	if score >= 30:
-		return "评价：今天很顺。"
+		return "Review: smooth day."
 	if score >= 10:
-		return "评价：还能再稳一点。"
-	return "评价：明天先把节奏找回来。"
+		return "Review: keep the pace steadier."
+	return "Review: recover the rhythm tomorrow."
 
 
 func _get_bowl_location_text(target_bowl: OrderBowl) -> String:

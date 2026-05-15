@@ -166,34 +166,34 @@ func is_overcooked() -> bool:
 
 func get_order_status_text() -> String:
 	if is_overcooked():
-		return "煮烂"
+		return "OVER"
 	match status:
 		STATUS_WAITING:
-			return "等待中"
+			return "WAIT"
 		STATUS_COOKING:
-			return "烹饪中"
+			return "COOK"
 		STATUS_COOKED:
-			return "已熟"
+			return "READY"
 		STATUS_SAUCED:
-			return "可出餐"
+			return "READY"
 		STATUS_PACKED:
-			return "已打包"
+			return "PACKED"
 		STATUS_READY:
-			return "可出餐"
+			return "READY"
 		STATUS_DONE:
-			return "完成"
+			return "DONE"
 		_:
-			return "等待中"
+			return "WAIT"
 
 
 func get_cooker_timer_text() -> String:
 	if is_overcooked():
-		return "煮烂"
+		return "OVER"
 	if status == STATUS_COOKED:
-		return "已熟 %.1fs" % max(staple_overcook_time - cook_time, 0.0)
+		return "READY %.1fs" % max(staple_overcook_time - cook_time, 0.0)
 	if status == STATUS_COOKING:
-		return "烹饪中 %.1fs" % max(ingredient_time_required - cook_time, 0.0)
-	return "空锅"
+		return "COOK %.1fs" % max(ingredient_time_required - cook_time, 0.0)
+	return "EMPTY"
 
 
 func _sync_cooking_thresholds() -> void:

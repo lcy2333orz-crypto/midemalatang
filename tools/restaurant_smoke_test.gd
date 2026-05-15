@@ -38,6 +38,21 @@ func _run() -> void:
 		_finish()
 		return
 
+	await _check_staple_interaction_not_blocked_by_counter()
+	if not failures.is_empty():
+		_finish()
+		return
+
+	await _check_two_table_assignment()
+	if not failures.is_empty():
+		_finish()
+		return
+
+	await _check_visible_text_is_ascii()
+	if not failures.is_empty():
+		_finish()
+		return
+
 	await _check_takeout_pickup_slot_completion()
 	if not failures.is_empty():
 		_finish()
@@ -212,6 +227,13 @@ func _assert_node_position(scene: Node, path: String, expected: Vector2, step_na
 		return
 	if node.position.distance_to(expected) > 1.0:
 		_fail(step_name, "%s expected %s but was %s" % [path, expected, node.position])
+
+
+func _is_ascii(text: String) -> bool:
+	for i in range(text.length()):
+		if text.unicode_at(i) > 127:
+			return false
+	return true
 
 
 func _check_order_loop() -> void:
@@ -411,6 +433,141 @@ func _check_staple_required_before_cooking() -> void:
 
 	scene.queue_free()
 	_pass("staple gate")
+
+
+func _check_staple_interaction_not_blocked_by_counter() -> void:
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("staple interaction", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	var counter_area: RestaurantStationArea = scene.get_node_or_null("Stations/Counter/InteractionArea") as RestaurantStationArea
+	var staple_area: RestaurantStationArea = scene.get_node_or_null("Stations/StapleArea/InteractionArea") as RestaurantStationArea
+	var counter_shape: CollisionShape2D = scene.get_node_or_null("Stations/Counter/InteractionArea/CollisionShape2D") as CollisionShape2D
+	var staple_shape: CollisionShape2D = scene.get_node_or_null("Stations/StapleArea/InteractionArea/CollisionShape2D") as CollisionShape2D
+	if counter_area == null or staple_area == null or counter_shape == null or staple_shape == null:
+		_fail("staple interaction", "missing counter or staple interaction area")
+		scene.queue_free()
+		return
+
+	if counter_shape.position.x <= 0.0 or staple_shape.position.x <= 0.0:
+		_fail("staple interaction", "counter and staple interaction shapes should be offset to the right")
+		scene.queue_free()
+		return
+
+	var counter_rect: RectangleShape2D = counter_shape.shape as RectangleShape2D
+	var staple_rect: RectangleShape2D = staple_shape.shape as RectangleShape2D
+	if counter_rect == null or staple_rect == null or counter_rect.size.x > 60.0 or staple_rect.size.x > 60.0:
+		_fail("staple interaction", "counter and staple interaction shapes should be small")
+		scene.queue_free()
+		return
+	if counter_area.get_interaction_priority() != 120 or staple_area.get_interaction_priority() != 125:
+		_fail("staple interaction", "counter and staple priorities should be 120/125")
+		scene.queue_free()
+		return
+
+	var bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(bowl)
+	bowl.setup_order(604, {"spinach": 1}, "noodle", "mild", "takeout", 0)
+	manager._hold_bowl(bowl)
+	manager.interact_staple_cabinet()
+	if not bool(bowl.staple_added):
+		_fail("staple interaction", "staple cabinet did not add required staple")
+		scene.queue_free()
+		return
+
+	scene.queue_free()
+	_pass("staple interaction")
+
+
+func _check_two_table_assignment() -> void:
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("table assignment", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	var seen: Dictionary = {}
+	for id in range(1, 8):
+		manager.next_order_id = id
+		var table_id: int = manager._next_table_id()
+		seen[table_id] = true
+		if table_id < 1 or table_id > 2:
+			_fail("table assignment", "table assignment returned %d" % table_id)
+			scene.queue_free()
+			return
+	if not seen.has(1) or not seen.has(2) or seen.has(3):
+		_fail("table assignment", "table assignment should use only tables 1 and 2")
+		scene.queue_free()
+		return
+
+	scene.queue_free()
+	_pass("table assignment")
+
+
+func _check_visible_text_is_ascii() -> void:
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("ascii text", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	var bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(bowl)
+	bowl.setup_order(605, {"spinach": 1}, "noodle", "mild", "takeout", 0)
+	manager._hold_bowl(bowl)
+	var ui: RestaurantUI = RestaurantUI.new()
+	get_root().add_child(ui)
+	await process_frame
+	ui.update_time(12.4)
+	var time_label: Label = ui.get("time_label") as Label
+
+	var texts: Array[String] = [
+		bowl.get_order_status_text(),
+		bowl.get_cooker_timer_text(),
+		manager.get_hand_text(),
+		time_label.text if time_label != null else ""
+	]
+	bowl.status = OrderBowl.STATUS_COOKING
+	bowl.update_cooking(8.2)
+	texts.append(bowl.get_order_status_text())
+	texts.append(bowl.get_cooker_timer_text())
+	bowl.update_cooking(6.2)
+	texts.append(bowl.get_order_status_text())
+	texts.append(bowl.get_cooker_timer_text())
+
+	for text in texts:
+		if not _is_ascii(text):
+			_fail("ascii text", "visible text should be ASCII: %s" % text)
+			ui.queue_free()
+			scene.queue_free()
+			return
+
+	ui.queue_free()
+	scene.queue_free()
+	_pass("ascii text")
 
 
 func _check_takeout_pickup_slot_completion() -> void:
@@ -640,7 +797,7 @@ func _check_restaurant_hud_layout() -> void:
 		_fail("hud layout", "status label should be hidden in the simplified HUD")
 		ui.queue_free()
 		return
-	ui.update_hand_state("拿着 #001")
+	ui.update_hand_state("Holding #001")
 	if bool(hand_label.visible):
 		_fail("hud layout", "hand label should stay hidden in the simplified HUD")
 		ui.queue_free()
@@ -650,8 +807,8 @@ func _check_restaurant_hud_layout() -> void:
 		ui.queue_free()
 		return
 
-	ui.show_toast("已打烊：不会再来新顾客", 1.8)
-	if not bool(toast_label.visible) or not toast_label.text.contains("已打烊"):
+	ui.show_toast("Closed: no new customers.", 1.8)
+	if not bool(toast_label.visible) or not toast_label.text.contains("Closed"):
 		_fail("hud layout", "toast should show manual close feedback")
 		ui.queue_free()
 		return

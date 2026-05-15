@@ -24,7 +24,7 @@ func update_status(text: String) -> void:
 func update_time(seconds_remaining: float) -> void:
 	_ensure_widgets()
 	var display_seconds: int = max(0, int(ceil(seconds_remaining)))
-	time_label.text = "剩余 %ds" % display_seconds
+	time_label.text = "Time %ds" % display_seconds
 
 
 func update_orders(text: String) -> void:

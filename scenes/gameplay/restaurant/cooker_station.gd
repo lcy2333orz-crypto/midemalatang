@@ -84,7 +84,7 @@ func get_active_order_id() -> int:
 
 func get_status_text() -> String:
 	if active_bowl == null:
-		return "空锅"
+		return "EMPTY"
 	return active_bowl.get_cooker_timer_text()
 
 
