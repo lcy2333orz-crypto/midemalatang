@@ -41,30 +41,6 @@ Invoke-Check "git whitespace diff check" {
     & git diff --check
 }
 
-Invoke-Check "text database parses as UTF-8 JSON" {
-    Get-Content data/text_db.json -Encoding UTF8 | ConvertFrom-Json | Out-Null
-}
-
-Invoke-Check "settlement hardcoded run UI text is absent" {
-    $patterns = @(
-        "Stage Complete",
-        "Total sales",
-        "Total expense",
-        "Net profit this run",
-        "Final cash",
-        "You earned money",
-        "Carried stock",
-        "Final day reputation",
-        "Current reputation",
-        'retry_button.text = "Confirm"'
-    )
-    $pattern = ($patterns | ForEach-Object { [regex]::Escape($_) }) -join "|"
-    & rg -n $pattern scenes/settlement/settlement_result.gd
-    if ($LASTEXITCODE -eq 1) {
-        $global:LASTEXITCODE = 0
-    }
-}
-
 Invoke-Check "TODO contains only pending work" {
     $todoPath = Join-Path $RepoRoot "TODO.md"
     $todoText = [System.IO.File]::ReadAllText($todoPath, [System.Text.Encoding]::UTF8)

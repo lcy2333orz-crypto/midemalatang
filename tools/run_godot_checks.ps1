@@ -49,13 +49,6 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-Write-Host "[check] Godot gameplay smoke"
-& $godot --headless --path $RepoRoot --script res://tools/smoke_test.gd
-if ($LASTEXITCODE -ne 0) {
-    Pop-Location
-    exit $LASTEXITCODE
-}
-
 Write-Host "[check] Godot restaurant smoke"
 & $godot --headless --path $RepoRoot --script res://tools/restaurant_smoke_test.gd
 $exitCode = $LASTEXITCODE

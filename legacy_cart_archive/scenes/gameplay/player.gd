@@ -1,4 +1,4 @@
-extends CharacterBody2D
+﻿extends CharacterBody2D
 
 
 
@@ -64,9 +64,30 @@ func _physics_process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 
+	if event.is_action_pressed("close_cart_pot_lid"):
+
+		if try_close_cart_pot_lid():
+
+			get_viewport().set_input_as_handled()
+
+			return
+
+
+
 	if event.is_action_pressed("interact"):
 
 		try_interact()
+
+
+	if event.is_action_pressed("serve_or_announce"):
+
+		try_serve_or_announce_ready_food()
+
+
+
+	if event.is_action_pressed("toggle_business"):
+
+		try_toggle_business()
 
 
 
@@ -149,6 +170,116 @@ func try_interact() -> void:
 	_update_interaction_prompt()
 
 	_update_hand_state_prompt()
+
+
+
+
+
+func try_toggle_business() -> void:
+
+	if not _can_interact_now():
+
+		return
+
+
+
+	print("Nearby stations count for toggle: ", nearby_stations.size())
+
+
+
+	if nearby_stations.is_empty():
+
+		print("No station nearby for toggle")
+
+		return
+
+
+
+	var target_station = get_best_station()
+
+	if target_station == null:
+
+		print("No valid station nearby for toggle")
+
+		return
+
+
+
+	last_interact_time_msec = Time.get_ticks_msec()
+
+
+
+	print("Trying to toggle business with: ", target_station.name)
+
+
+
+	if target_station.has_method("toggle_business"):
+
+		target_station.toggle_business()
+
+	else:
+
+		print("Target station cannot toggle business.")
+
+
+
+	_update_interaction_prompt()
+
+	_update_hand_state_prompt()
+
+	_update_held_order_label()
+
+
+func try_serve_or_announce_ready_food() -> void:
+
+	if not _can_interact_now():
+
+		return
+
+	var game_manager = get_tree().get_first_node_in_group("game_manager")
+
+	if game_manager == null:
+
+		return
+
+	if not game_manager.has_method("serve_or_announce_ready_food"):
+
+		return
+
+	last_interact_time_msec = Time.get_ticks_msec()
+	game_manager.serve_or_announce_ready_food()
+	_update_interaction_prompt()
+	_update_hand_state_prompt()
+
+
+
+
+
+func try_close_cart_pot_lid() -> bool:
+
+	var game_manager = get_tree().get_first_node_in_group("game_manager")
+
+	if game_manager == null:
+
+		return false
+
+
+
+	if game_manager.cooking_system == null:
+
+		return false
+
+
+
+	if not game_manager.cooking_system.panel_controller.is_open():
+
+		return false
+
+
+
+	game_manager.cooking_system.close_cart_pot_panel_and_auto_start()
+
+	return true
 
 
 
@@ -281,6 +412,32 @@ func get_current_carry_state() -> String:
 		if restaurant_manager.get("held_bowl") != null or restaurant_manager.get("held_dirty_cooker") != null:
 			return "heavy"
 
+	var game_manager = get_tree().get_first_node_in_group("game_manager")
+
+	if game_manager == null:
+
+		return "none"
+
+
+
+	if game_manager.cooking_system != null:
+
+		if str(game_manager.cooking_system.held_staple_food_id) != "":
+
+			return "small"
+
+
+
+		if str(game_manager.cooking_system.held_raw_staple_food_id) != "":
+
+			return "small"
+
+		if bool(game_manager.cooking_system.held_disposable_plate):
+
+			return "small"
+
+
+
 	return "none"
 
 
@@ -293,7 +450,45 @@ func get_current_hand_text() -> String:
 	if restaurant_manager != null and restaurant_manager.has_method("get_hand_text"):
 		return str(restaurant_manager.get_hand_text())
 
-	return ""
+	var game_manager = get_tree().get_first_node_in_group("game_manager")
+
+	if game_manager == null:
+
+		return ""
+
+
+
+	if game_manager.cooking_system == null:
+
+		return ""
+
+
+
+	var held_cooked: String = str(game_manager.cooking_system.held_staple_food_id)
+
+	var held_raw: String = str(game_manager.cooking_system.held_raw_staple_food_id)
+
+	var held_plate: bool = bool(game_manager.cooking_system.held_disposable_plate)
+
+
+
+	if held_cooked != "":
+
+		return TextDB.get_text("UI_HAND_COOKED") % game_manager.get_ingredient_display_name(held_cooked)
+
+
+
+	if held_raw != "":
+
+		return TextDB.get_text("UI_HAND_RAW") % game_manager.get_ingredient_display_name(held_raw)
+
+	if held_plate:
+
+		return TextDB.get_text("UI_HAND_DISPOSABLE_PLATE")
+
+
+
+	return TextDB.get_text("UI_HAND_EMPTY")
 
 
 
@@ -324,7 +519,7 @@ func _update_interaction_prompt() -> void:
 
 
 
-	var prompt_text: String = "[E]"
+	var prompt_text: String = TextDB.get_text("UI_PROMPT_INTERACT")
 
 	if target_station.has_method("get_interaction_prompt"):
 

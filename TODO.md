@@ -19,17 +19,17 @@ This file only tracks unfinished work. Current project status belongs in `README
 - Add washing / cleanup only if dirty-pot handling remains fun and needs more depth.
 - Add economy, scoring, tips, or penalties after delivery and failure rules are stable.
 
-## Legacy Cart Prototype
+## Legacy Cart Archive
 
-- Keep the old cart scene and systems loadable for reference and smoke tests.
-- Do not extend cooked-stock cart gameplay while restaurant flow is the active mainline.
-- If old systems are touched, keep changes compatibility-focused and avoid deleting preserved prototype code.
+- Treat `legacy_cart_archive/` as a cold archive, not as current project code.
+- If the old cart prototype is revived, create a separate single-player cart project from the archive and repair paths/autoloads there.
+- Do not wire new restaurant gameplay into archived cart systems.
 
 ## Data And Architecture
 
 - Move restaurant tuning values toward explicit configuration once the feel is less volatile.
 - Keep restaurant-specific code modular: `OrderBowl`, `RestaurantCustomer`, `RestaurantGameManager`, `WaitingOrderArea`, `CookerStation`, and `RestaurantStationArea`.
-- Avoid wiring new restaurant gameplay into the legacy `GameManager` systems.
+- Avoid wiring new restaurant gameplay into the archived cart `GameManager` systems.
 - Continue replacing accidental hardcoded debug text with intentional UI text only when the text is no longer temporary greybox feedback.
 
 ## Checks To Maintain
@@ -37,4 +37,3 @@ This file only tracks unfinished work. Current project status belongs in `README
 - `tools/run_static_checks.ps1`
 - `tools/run_godot_checks.ps1` when `GODOT_BIN` is configured
 - `tools/restaurant_smoke_test.gd`
-- `tools/smoke_test.gd` for the preserved legacy prototype

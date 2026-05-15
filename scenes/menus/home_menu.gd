@@ -16,26 +16,25 @@ func _ready() -> void:
 	back_button.pressed.connect(_on_back_button_pressed)
 
 	title_label.text = ""
-	stage_select_button.text = TextDB.get_text("UI_HOME_ENTER_STAGE")
-	tutorial_button.text = TextDB.get_text("UI_HOME_TUTORIAL")
-	notebook_button.text = TextDB.get_text("UI_HOME_NOTEBOOK")
-	map_button.text = TextDB.get_text("UI_HOME_MAP")
-	back_button.text = TextDB.get_text("UI_HOME_BACK")
+	stage_select_button.text = "选择关卡"
+	tutorial_button.text = "快速开始"
+	notebook_button.text = "手账"
+	map_button.text = "地图"
+	back_button.text = "返回"
 
-	message_label.text = TextDB.get_text("UI_HOME_MAIN_HINT")
+	message_label.text = "当前主线：餐厅灰盒测试"
 
 func _on_stage_select_button_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/menus/stage_select.tscn")
 
 func _on_tutorial_button_pressed() -> void:
-	RunSetupData.setup_tutorial_run("stage_1", 3)
 	get_tree().change_scene_to_file("res://scenes/gameplay/test_restaurant.tscn")
 
 func _on_notebook_button_pressed() -> void:
-	message_label.text = TextDB.get_text("UI_HOME_NOTEBOOK_NOT_READY")
+	message_label.text = "手账暂未开放"
 
 func _on_map_button_pressed() -> void:
-	message_label.text = TextDB.get_text("UI_HOME_MAP_NOT_READY")
+	message_label.text = "地图暂未开放"
 
 func _on_back_button_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/menus/title_menu.tscn")

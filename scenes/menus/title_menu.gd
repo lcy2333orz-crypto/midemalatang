@@ -13,11 +13,11 @@ func _ready() -> void:
 	credits_button.pressed.connect(_on_credits_button_pressed)
 	quit_button.pressed.connect(_on_quit_button_pressed)
 
-	title_label.text = TextDB.get_text("UI_GAME_TITLE")
-	start_button.text = TextDB.get_text("UI_TITLE_START")
-	settings_button.text = TextDB.get_text("UI_TITLE_SETTINGS")
-	credits_button.text = TextDB.get_text("UI_TITLE_CREDITS")
-	quit_button.text = TextDB.get_text("UI_TITLE_QUIT")
+	title_label.text = "麻辣烫"
+	start_button.text = "开始"
+	settings_button.text = "设置"
+	credits_button.text = "制作名单"
+	quit_button.text = "退出"
 
 	message_label.text = ""
 
@@ -25,10 +25,10 @@ func _on_start_button_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/menus/home_menu.tscn")
 
 func _on_settings_button_pressed() -> void:
-	message_label.text = TextDB.get_text("UI_TITLE_SETTINGS_NOT_READY")
+	message_label.text = "设置暂未开放"
 
 func _on_credits_button_pressed() -> void:
-	message_label.text = TextDB.get_text("UI_TITLE_CREDITS_NOT_READY")
+	message_label.text = "制作名单暂未开放"
 
 func _on_quit_button_pressed() -> void:
 	get_tree().quit()

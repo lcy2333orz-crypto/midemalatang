@@ -2,13 +2,13 @@
 
 Godot 4.6 prototype for a cooperative malatang restaurant game.
 
-The current playable direction is no longer the old cart-management loop. The active mainline is a greybox restaurant kitchen loop inspired by Overcooked / PlateUp, but built around malatang-specific flow: customers pick ingredients, checkout creates an order bowl, players cook the bowl at cooker stations, add sauce, then deliver dine-in orders to tables or hand packed takeout orders back to the counter.
+The active mainline is now the greybox restaurant kitchen loop. The old single-player cart-management prototype has been cold-archived under `legacy_cart_archive/` and is no longer part of the maintained current project path.
 
 ## Current Mainline
 
-- Normal menu and stage entry now load `res://scenes/gameplay/test_restaurant.tscn`.
-- The old cart prototype at `res://scenes/gameplay/main.tscn` is preserved for compatibility and smoke coverage, but it is not the current design focus.
-- The restaurant scene uses its own manager group, `restaurant_game_manager`, and does not depend on the old `GameManager.order_system`, `cooking_system`, `inventory_system`, cooked-stock flow, cards, night events, or story progression.
+- Normal menu and stage entry load `res://scenes/gameplay/test_restaurant.tscn`.
+- The restaurant scene uses its own manager group, `restaurant_game_manager`.
+- Current restaurant code does not depend on the old cart `GameManager`, cooked-stock inventory loop, cards, night events, or story progression.
 - Multiplayer is not implemented yet. Current work uses one player to validate order flow, station readability, timing pressure, and movement feel.
 
 ## Restaurant Loop
@@ -45,19 +45,11 @@ Greybox restaurant modules live under `res://scenes/gameplay/restaurant/`:
 - Cooker timing is 8 seconds to cooked, then a 6 second cooked window, then overcooked.
 - Overcooked orders cannot be served. They must be cleared by carrying the dirty pot to the trash bin.
 
-## Old Prototype Status
+## Legacy Cart Archive
 
-The old cart-management prototype is intentionally kept, not deleted.
+The old cart-management prototype has moved to `legacy_cart_archive/` as a cold archive. It is kept for future extraction into a separate single-player cart project, not for current restaurant development.
 
-It still contains:
-
-- cart business flow
-- cooked stock / inventory systems
-- supplier and emergency purchase code
-- old order and cooking systems
-- settlement, night, card, story-adjacent, and run progression systems
-
-These systems remain useful for reference and regression checks, but new restaurant work should not extend the old cart cooked-stock loop unless explicitly requested.
+The archive includes the former cart entry scene, old `GameManager`, cooked stock / inventory systems, supplier and emergency purchase code, settlement, night, card, text-data, UI, and old smoke test. It is not guaranteed to run from inside the current restaurant project. See `legacy_cart_archive/README.md` before moving or restoring it.
 
 ## Project Layout
 
@@ -65,14 +57,12 @@ These systems remain useful for reference and regression checks, but new restaur
 - `scenes/menus/`: title, home, and stage-select entry points. Current entry paths route to `test_restaurant.tscn`.
 - `scenes/gameplay/test_restaurant.tscn`: active greybox restaurant map.
 - `scenes/gameplay/restaurant/`: restaurant-specific runtime scripts and scenes.
-- `scenes/gameplay/main.tscn`: preserved legacy cart prototype.
-- `scenes/gameplay/player.gd`: shared player movement and interaction handling, with small compatibility branches for the restaurant manager.
-- `gameplay/systems/` and `gameplay/models/`: legacy cart/run systems and shared model helpers.
-- `data/`: text and card data for the older systems.
+- `scenes/gameplay/player.gd`: shared player movement and restaurant interaction handling.
+- `gameplay/models/item_ids.gd`: shared item identifiers still used by the restaurant loop.
 - `tools/run_static_checks.ps1`: lightweight static checks.
-- `tools/run_godot_checks.ps1`: headless Godot parse and smoke checks when `GODOT_BIN` is configured.
-- `tools/smoke_test.gd`: legacy gameplay smoke.
+- `tools/run_godot_checks.ps1`: headless Godot parse plus restaurant smoke when `GODOT_BIN` is configured.
 - `tools/restaurant_smoke_test.gd`: restaurant loop smoke.
+- `legacy_cart_archive/`: cold archive of the old cart prototype.
 
 ## Checks
 
@@ -89,7 +79,7 @@ $env:GODOT_BIN="C:\Path\To\Godot.exe"
 tools/run_godot_checks.ps1
 ```
 
-`run_godot_checks.ps1` runs both the legacy gameplay smoke and the restaurant smoke. If Godot CLI is not installed or `GODOT_BIN` is not set, the script reports that clearly.
+`run_godot_checks.ps1` runs the current restaurant smoke only. If Godot CLI is not installed or `GODOT_BIN` is not set, the script reports that clearly.
 
 Useful quick checks:
 
