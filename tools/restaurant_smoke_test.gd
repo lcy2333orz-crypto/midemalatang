@@ -136,9 +136,14 @@ func _check_scene_loads() -> void:
 	_assert_node_position(scene, "Stations/CookerStations/CookerStation2", _grid(5, 15), "grid cooker 2")
 	_assert_node_position(scene, "Stations/SauceStation", _grid(9, 13), "grid sauce")
 	_assert_node_position(scene, "Stations/PackingArea", _grid(1, 12), "grid packing")
+	_assert_node_position(scene, "SurfaceSlots/TakeoutPickupSlot1", _grid(3, 8), "grid takeout slot 1")
+	_assert_node_position(scene, "SurfaceSlots/TakeoutPickupSlot2", _grid(4, 8), "grid takeout slot 2")
+	_assert_node_position(scene, "LockedPlaceholders/TakeoutPickupTable2", _grid(4, 8), "grid takeout placeholder 2")
 	_assert_node_position(scene, "Stations/DiningTables/DiningTable1", _grid(9, 4), "grid table 1")
 	_assert_node_position(scene, "Stations/DiningTables/DiningTable2", _grid(9, 6), "grid table 2")
 	_assert_greybox_labels(scene)
+	_assert_independent_cell_bodies(scene)
+	_assert_character_scale(scene)
 
 	scene.free()
 	_pass("scene load")
@@ -163,6 +168,7 @@ func _assert_greybox_labels(scene: Node) -> void:
 		"LockedPlaceholders/Cooker3Locked/Label": "POT LOCK r7c15",
 		"LockedPlaceholders/SauceStationMixed/Label": "SAUCE MIX r9c14",
 		"LockedPlaceholders/PackingBagArea/Label": "BAG AREA r1c13",
+		"LockedPlaceholders/TakeoutPickupTable2/Label": "TAKEOUT 2 r4c8",
 		"SurfaceSlots/TakeoutPickupSlot1/Label": "TAKEOUT 1",
 		"SurfaceSlots/TakeoutPickupSlot2/Label": "TAKEOUT 2",
 		"LockedPlaceholders/CustomerTrashBin/Label": "TRASH C r9c1",
@@ -214,6 +220,154 @@ func _assert_greybox_labels(scene: Node) -> void:
 			continue
 		if label.text != expected:
 			_fail("greybox labels", "%s expected '%s' but was '%s'" % [path, expected, label.text])
+
+
+func _assert_independent_cell_bodies(scene: Node) -> void:
+	var surface_slots: Array[String] = [
+		"SurfaceSlots/SurfaceSlot_r1c8",
+		"SurfaceSlots/SurfaceSlot_r1c9",
+		"SurfaceSlots/SurfaceSlot_r1c10",
+		"SurfaceSlots/SurfaceSlot_r1c11",
+		"SurfaceSlots/SurfaceSlot_r2c10",
+		"SurfaceSlots/SurfaceSlot_r3c10",
+		"SurfaceSlots/SurfaceSlot_r4c10",
+		"SurfaceSlots/SurfaceSlot_r5c10",
+		"SurfaceSlots/SurfaceSlot_r6c10",
+		"SurfaceSlots/SurfaceSlot_r1c15",
+		"SurfaceSlots/SurfaceSlot_r2c15",
+		"SurfaceSlots/SurfaceSlot_r4c15",
+		"SurfaceSlots/SurfaceSlot_r6c15",
+		"SurfaceSlots/SurfaceSlot_r8c15",
+		"SurfaceSlots/SurfaceSlot_r9c15",
+		"SurfaceSlots/TakeoutPickupSlot1",
+		"SurfaceSlots/TakeoutPickupSlot2",
+	]
+	for path in surface_slots:
+		_assert_solid_independent_cell(scene, path, true)
+
+	var placeholders: Array[String] = [
+		"LockedPlaceholders/IngredientDisplay2",
+		"LockedPlaceholders/IngredientDisplay3",
+		"LockedPlaceholders/IngredientDisplay4Locked",
+		"LockedPlaceholders/DrinkFridge2Locked",
+		"LockedPlaceholders/Cooker3Locked",
+		"LockedPlaceholders/SauceStationMixed",
+		"LockedPlaceholders/PackingBagArea",
+		"LockedPlaceholders/TakeoutPickupTable2",
+		"LockedPlaceholders/CustomerTrashBin",
+		"LockedPlaceholders/DrinkStorage",
+	]
+	for path in placeholders:
+		_assert_solid_independent_cell(scene, path, false)
+
+
+func _assert_solid_independent_cell(scene: Node, path: String, requires_interaction: bool) -> void:
+	var cell: Node = scene.get_node_or_null(path)
+	if cell == null:
+		_fail("independent cells", "missing %s" % path)
+		return
+
+	var visual: Polygon2D = cell.get_node_or_null("Visual") as Polygon2D
+	if visual == null:
+		_fail("independent cells", "%s missing Visual" % path)
+	elif visual.color.a < 0.8:
+		_fail("independent cells", "%s Visual alpha %.2f is too low" % [path, visual.color.a])
+
+	if cell.get_node_or_null("Label") == null:
+		_fail("independent cells", "%s missing Label" % path)
+
+	var solid_body: StaticBody2D = cell.get_node_or_null("SolidBody") as StaticBody2D
+	if solid_body == null:
+		_fail("independent cells", "%s missing SolidBody" % path)
+		return
+
+	var solid_shape: CollisionShape2D = solid_body.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if solid_shape == null:
+		_fail("independent cells", "%s missing SolidBody/CollisionShape2D" % path)
+	elif solid_shape.shape == null:
+		_fail("independent cells", "%s SolidBody shape is null" % path)
+	else:
+		var rect: RectangleShape2D = solid_shape.shape as RectangleShape2D
+		if rect != null and (rect.size.x > 48.0 or rect.size.y > 48.0):
+			_fail("independent cells", "%s SolidBody too large: %s" % [path, rect.size])
+
+	if requires_interaction:
+		var interaction_area: Area2D = cell.get_node_or_null("InteractionArea") as Area2D
+		if interaction_area == null:
+			_fail("independent cells", "%s missing InteractionArea" % path)
+			return
+		var interaction_shape: CollisionShape2D = interaction_area.get_node_or_null("CollisionShape2D") as CollisionShape2D
+		if interaction_shape == null or interaction_shape.shape == null:
+			_fail("independent cells", "%s missing InteractionArea/CollisionShape2D" % path)
+
+
+func _assert_character_scale(scene: Node) -> void:
+	var player_collision: CollisionShape2D = scene.get_node_or_null("Characters/Player/CollisionShape2D") as CollisionShape2D
+	_assert_capsule_shape(player_collision, "player collision", 8.0, 24.0)
+
+	var player_interaction: CollisionShape2D = scene.get_node_or_null("Characters/Player/InteractionArea/CollisionShape2D") as CollisionShape2D
+	var player_circle: CircleShape2D = null
+	if player_interaction != null:
+		player_circle = player_interaction.shape as CircleShape2D
+	if player_circle == null:
+		_fail("character scale", "player interaction shape is not a circle")
+	elif player_circle.radius > 22.0:
+		_fail("character scale", "player interaction radius %.1f is too large" % player_circle.radius)
+
+	var player_visual: Polygon2D = scene.get_node_or_null("Characters/Player/Visual/Polygon2D") as Polygon2D
+	_assert_polygon_size(player_visual, "player visual", Vector2(22.0, 26.0))
+
+	var customer_scene: PackedScene = load("res://scenes/gameplay/restaurant/restaurant_customer.tscn")
+	var customer: Node = customer_scene.instantiate()
+	customer.call("_ensure_visuals")
+
+	var customer_collision: CollisionShape2D = customer.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	_assert_capsule_shape(customer_collision, "customer collision", 8.0, 24.0)
+
+	var customer_speed: float = float(customer.get("move_speed"))
+	if not is_equal_approx(customer_speed, 80.0):
+		_fail("character scale", "customer move_speed expected 80.0 but was %.1f" % customer_speed)
+
+	var customer_visual_root: Node = customer.get_node_or_null("Visual")
+	var customer_visual: Polygon2D = null
+	if customer_visual_root != null and customer_visual_root.get_child_count() > 0:
+		customer_visual = customer_visual_root.get_child(0) as Polygon2D
+	_assert_polygon_size(customer_visual, "customer visual", Vector2(20.0, 26.0))
+	customer.free()
+
+
+func _assert_capsule_shape(collision_shape: CollisionShape2D, label: String, max_radius: float, max_height: float) -> void:
+	if collision_shape == null:
+		_fail("character scale", "%s missing CollisionShape2D" % label)
+		return
+	var capsule: CapsuleShape2D = collision_shape.shape as CapsuleShape2D
+	if capsule == null:
+		_fail("character scale", "%s is not a CapsuleShape2D" % label)
+		return
+	if capsule.radius > max_radius or capsule.height > max_height:
+		_fail("character scale", "%s too large: radius %.1f height %.1f" % [label, capsule.radius, capsule.height])
+
+
+func _assert_polygon_size(polygon_node: Polygon2D, label: String, max_size: Vector2) -> void:
+	if polygon_node == null:
+		_fail("character scale", "%s missing Polygon2D" % label)
+		return
+	var size: Vector2 = _get_polygon_size(polygon_node.polygon)
+	if size.x > max_size.x or size.y > max_size.y:
+		_fail("character scale", "%s too large: %s" % [label, size])
+
+
+func _get_polygon_size(points: PackedVector2Array) -> Vector2:
+	if points.is_empty():
+		return Vector2.ZERO
+	var min_point: Vector2 = points[0]
+	var max_point: Vector2 = points[0]
+	for point in points:
+		min_point.x = min(min_point.x, point.x)
+		min_point.y = min(min_point.y, point.y)
+		max_point.x = max(max_point.x, point.x)
+		max_point.y = max(max_point.y, point.y)
+	return max_point - min_point
 
 
 func _grid(row: int, col: int) -> Vector2:

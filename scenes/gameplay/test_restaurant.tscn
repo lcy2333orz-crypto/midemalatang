@@ -296,7 +296,7 @@ theme_override_font_sizes/font_size = 8
 position = Vector2(210, 152.5)
 
 [node name="Visual" type="Polygon2D" parent="LockedPlaceholders/IngredientDisplay2"]
-color = Color(0.3, 0.9, 0.55, 0.45)
+color = Color(0.3, 0.9, 0.55, 0.9)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="LockedPlaceholders/IngredientDisplay2"]
@@ -310,11 +310,16 @@ vertical_alignment = 1
 theme_override_font_sizes/font_size = 8
 
 
+
+[node name="SolidBody" type="StaticBody2D" parent="LockedPlaceholders/IngredientDisplay2"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/IngredientDisplay2/SolidBody"]
+shape = SubResource("Shape_solid_square")
 [node name="IngredientDisplay3" type="Node2D" parent="LockedPlaceholders"]
 position = Vector2(255, 152.5)
 
 [node name="Visual" type="Polygon2D" parent="LockedPlaceholders/IngredientDisplay3"]
-color = Color(0.3, 0.9, 0.55, 0.45)
+color = Color(0.3, 0.9, 0.55, 0.9)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="LockedPlaceholders/IngredientDisplay3"]
@@ -328,11 +333,16 @@ vertical_alignment = 1
 theme_override_font_sizes/font_size = 8
 
 
+
+[node name="SolidBody" type="StaticBody2D" parent="LockedPlaceholders/IngredientDisplay3"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/IngredientDisplay3/SolidBody"]
+shape = SubResource("Shape_solid_square")
 [node name="IngredientDisplay4Locked" type="Node2D" parent="LockedPlaceholders"]
 position = Vector2(300, 152.5)
 
 [node name="Visual" type="Polygon2D" parent="LockedPlaceholders/IngredientDisplay4Locked"]
-color = Color(0.18, 0.18, 0.18, 0.45)
+color = Color(0.18, 0.18, 0.18, 0.95)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="LockedPlaceholders/IngredientDisplay4Locked"]
@@ -346,11 +356,16 @@ vertical_alignment = 1
 theme_override_font_sizes/font_size = 8
 
 
+
+[node name="SolidBody" type="StaticBody2D" parent="LockedPlaceholders/IngredientDisplay4Locked"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/IngredientDisplay4Locked/SolidBody"]
+shape = SubResource("Shape_solid_square")
 [node name="DrinkFridge2Locked" type="Node2D" parent="LockedPlaceholders"]
 position = Vector2(390, 152.5)
 
 [node name="Visual" type="Polygon2D" parent="LockedPlaceholders/DrinkFridge2Locked"]
-color = Color(0.18, 0.18, 0.18, 0.45)
+color = Color(0.18, 0.18, 0.18, 0.95)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="LockedPlaceholders/DrinkFridge2Locked"]
@@ -364,11 +379,16 @@ vertical_alignment = 1
 theme_override_font_sizes/font_size = 8
 
 
+
+[node name="SolidBody" type="StaticBody2D" parent="LockedPlaceholders/DrinkFridge2Locked"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/DrinkFridge2Locked/SolidBody"]
+shape = SubResource("Shape_solid_square")
 [node name="Cooker3Locked" type="Node2D" parent="LockedPlaceholders"]
 position = Vector2(795, 422.5)
 
 [node name="Visual" type="Polygon2D" parent="LockedPlaceholders/Cooker3Locked"]
-color = Color(0.18, 0.18, 0.18, 0.45)
+color = Color(0.18, 0.18, 0.18, 0.95)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="LockedPlaceholders/Cooker3Locked"]
@@ -382,11 +402,16 @@ vertical_alignment = 1
 theme_override_font_sizes/font_size = 8
 
 
+
+[node name="SolidBody" type="StaticBody2D" parent="LockedPlaceholders/Cooker3Locked"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/Cooker3Locked/SolidBody"]
+shape = SubResource("Shape_solid_square")
 [node name="SauceStationMixed" type="Node2D" parent="LockedPlaceholders"]
 position = Vector2(750, 512.5)
 
 [node name="Visual" type="Polygon2D" parent="LockedPlaceholders/SauceStationMixed"]
-color = Color(0.95, 0.62, 0.25, 0.45)
+color = Color(0.95, 0.62, 0.25, 0.9)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="LockedPlaceholders/SauceStationMixed"]
@@ -400,11 +425,16 @@ vertical_alignment = 1
 theme_override_font_sizes/font_size = 8
 
 
+
+[node name="SolidBody" type="StaticBody2D" parent="LockedPlaceholders/SauceStationMixed"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/SauceStationMixed/SolidBody"]
+shape = SubResource("Shape_solid_square")
 [node name="PackingBagArea" type="Node2D" parent="LockedPlaceholders"]
 position = Vector2(705, 152.5)
 
 [node name="Visual" type="Polygon2D" parent="LockedPlaceholders/PackingBagArea"]
-color = Color(0.92, 0.92, 0.92, 0.45)
+color = Color(0.92, 0.92, 0.92, 0.9)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="LockedPlaceholders/PackingBagArea"]
@@ -418,11 +448,16 @@ vertical_alignment = 1
 theme_override_font_sizes/font_size = 8
 
 
+
+[node name="SolidBody" type="StaticBody2D" parent="LockedPlaceholders/PackingBagArea"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/PackingBagArea/SolidBody"]
+shape = SubResource("Shape_solid_square")
 [node name="TakeoutPickupTable2" type="Node2D" parent="LockedPlaceholders"]
-position = Vector2(525, 242.5)
+position = Vector2(480, 287.5)
 
 [node name="Visual" type="Polygon2D" parent="LockedPlaceholders/TakeoutPickupTable2"]
-color = Color(0.45, 0.95, 0.95, 0.45)
+color = Color(0.45, 0.95, 0.95, 0.9)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="LockedPlaceholders/TakeoutPickupTable2"]
@@ -430,17 +465,22 @@ offset_left = -44.0
 offset_top = -12.0
 offset_right = 44.0
 offset_bottom = 12.0
-text = "TAKEOUT 2 r3c9"
+text = "TAKEOUT 2 r4c8"
 horizontal_alignment = 1
 vertical_alignment = 1
 theme_override_font_sizes/font_size = 8
 
 
+
+[node name="SolidBody" type="StaticBody2D" parent="LockedPlaceholders/TakeoutPickupTable2"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/TakeoutPickupTable2/SolidBody"]
+shape = SubResource("Shape_solid_square")
 [node name="CustomerTrashBin" type="Node2D" parent="LockedPlaceholders"]
 position = Vector2(165, 512.5)
 
 [node name="Visual" type="Polygon2D" parent="LockedPlaceholders/CustomerTrashBin"]
-color = Color(0.18, 0.19, 0.2, 0.45)
+color = Color(0.18, 0.19, 0.2, 0.95)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="LockedPlaceholders/CustomerTrashBin"]
@@ -454,11 +494,16 @@ vertical_alignment = 1
 theme_override_font_sizes/font_size = 8
 
 
+
+[node name="SolidBody" type="StaticBody2D" parent="LockedPlaceholders/CustomerTrashBin"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/CustomerTrashBin/SolidBody"]
+shape = SubResource("Shape_solid_square")
 [node name="DrinkStorage" type="Node2D" parent="LockedPlaceholders"]
 position = Vector2(615, 512.5)
 
 [node name="Visual" type="Polygon2D" parent="LockedPlaceholders/DrinkStorage"]
-color = Color(0.42, 0.58, 0.92, 0.45)
+color = Color(0.42, 0.58, 0.92, 0.9)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="LockedPlaceholders/DrinkStorage"]
@@ -472,6 +517,11 @@ vertical_alignment = 1
 theme_override_font_sizes/font_size = 8
 
 
+
+[node name="SolidBody" type="StaticBody2D" parent="LockedPlaceholders/DrinkStorage"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LockedPlaceholders/DrinkStorage/SolidBody"]
+shape = SubResource("Shape_solid_square")
 [node name="SurfaceSlot_r1c8" type="Node2D" parent="SurfaceSlots"]
 position = Vector2(480, 152.5)
 script = ExtResource("7_surface_slot")
@@ -480,7 +530,7 @@ slot_label = "SURF r1c8"
 is_takeout_pickup_slot = false
 
 [node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r1c8"]
-color = Color(0.55, 0.55, 0.5, 0.32)
+color = Color(0.55, 0.55, 0.5, 0.9)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r1c8"]
@@ -502,7 +552,7 @@ slot_label = "SURF r1c9"
 is_takeout_pickup_slot = false
 
 [node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r1c9"]
-color = Color(0.55, 0.55, 0.5, 0.32)
+color = Color(0.55, 0.55, 0.5, 0.9)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r1c9"]
@@ -524,7 +574,7 @@ slot_label = "SURF r1c10"
 is_takeout_pickup_slot = false
 
 [node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r1c10"]
-color = Color(0.55, 0.55, 0.5, 0.32)
+color = Color(0.55, 0.55, 0.5, 0.9)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r1c10"]
@@ -546,7 +596,7 @@ slot_label = "SURF r1c11"
 is_takeout_pickup_slot = false
 
 [node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r1c11"]
-color = Color(0.55, 0.55, 0.5, 0.32)
+color = Color(0.55, 0.55, 0.5, 0.9)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r1c11"]
@@ -568,7 +618,7 @@ slot_label = "SURF r2c10"
 is_takeout_pickup_slot = false
 
 [node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r2c10"]
-color = Color(0.55, 0.55, 0.5, 0.32)
+color = Color(0.55, 0.55, 0.5, 0.9)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r2c10"]
@@ -590,7 +640,7 @@ slot_label = "SURF r3c10"
 is_takeout_pickup_slot = false
 
 [node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r3c10"]
-color = Color(0.55, 0.55, 0.5, 0.32)
+color = Color(0.55, 0.55, 0.5, 0.9)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r3c10"]
@@ -612,7 +662,7 @@ slot_label = "SURF r4c10"
 is_takeout_pickup_slot = false
 
 [node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r4c10"]
-color = Color(0.55, 0.55, 0.5, 0.32)
+color = Color(0.55, 0.55, 0.5, 0.9)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r4c10"]
@@ -634,7 +684,7 @@ slot_label = "SURF r5c10"
 is_takeout_pickup_slot = false
 
 [node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r5c10"]
-color = Color(0.55, 0.55, 0.5, 0.32)
+color = Color(0.55, 0.55, 0.5, 0.9)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r5c10"]
@@ -656,7 +706,7 @@ slot_label = "SURF r6c10"
 is_takeout_pickup_slot = false
 
 [node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r6c10"]
-color = Color(0.55, 0.55, 0.5, 0.32)
+color = Color(0.55, 0.55, 0.5, 0.9)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r6c10"]
@@ -678,7 +728,7 @@ slot_label = "SURF r1c15"
 is_takeout_pickup_slot = false
 
 [node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r1c15"]
-color = Color(0.55, 0.55, 0.5, 0.32)
+color = Color(0.55, 0.55, 0.5, 0.9)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r1c15"]
@@ -700,7 +750,7 @@ slot_label = "SURF r2c15"
 is_takeout_pickup_slot = false
 
 [node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r2c15"]
-color = Color(0.55, 0.55, 0.5, 0.32)
+color = Color(0.55, 0.55, 0.5, 0.9)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r2c15"]
@@ -722,7 +772,7 @@ slot_label = "SURF r4c15"
 is_takeout_pickup_slot = false
 
 [node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r4c15"]
-color = Color(0.55, 0.55, 0.5, 0.32)
+color = Color(0.55, 0.55, 0.5, 0.9)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r4c15"]
@@ -744,7 +794,7 @@ slot_label = "SURF r6c15"
 is_takeout_pickup_slot = false
 
 [node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r6c15"]
-color = Color(0.55, 0.55, 0.5, 0.32)
+color = Color(0.55, 0.55, 0.5, 0.9)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r6c15"]
@@ -766,7 +816,7 @@ slot_label = "SURF r8c15"
 is_takeout_pickup_slot = false
 
 [node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r8c15"]
-color = Color(0.55, 0.55, 0.5, 0.32)
+color = Color(0.55, 0.55, 0.5, 0.9)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r8c15"]
@@ -788,7 +838,7 @@ slot_label = "SURF r9c15"
 is_takeout_pickup_slot = false
 
 [node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r9c15"]
-color = Color(0.55, 0.55, 0.5, 0.32)
+color = Color(0.55, 0.55, 0.5, 0.9)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r9c15"]
@@ -803,6 +853,12 @@ theme_override_font_sizes/font_size = 8
 
 
 
+
+[node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r1c8"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r1c8/SolidBody"]
+shape = SubResource("Shape_solid_square")
+
 [node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r1c8"]
 collision_layer = 2
 script = ExtResource("3_station_area")
@@ -812,6 +868,12 @@ interaction_priority = 70
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r1c8/InteractionArea"]
 shape = SubResource("Shape_interact_square")
+
+
+[node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r1c9"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r1c9/SolidBody"]
+shape = SubResource("Shape_solid_square")
 
 [node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r1c9"]
 collision_layer = 2
@@ -823,6 +885,12 @@ interaction_priority = 70
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r1c9/InteractionArea"]
 shape = SubResource("Shape_interact_square")
 
+
+[node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r1c10"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r1c10/SolidBody"]
+shape = SubResource("Shape_solid_square")
+
 [node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r1c10"]
 collision_layer = 2
 script = ExtResource("3_station_area")
@@ -832,6 +900,12 @@ interaction_priority = 70
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r1c10/InteractionArea"]
 shape = SubResource("Shape_interact_square")
+
+
+[node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r1c11"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r1c11/SolidBody"]
+shape = SubResource("Shape_solid_square")
 
 [node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r1c11"]
 collision_layer = 2
@@ -843,6 +917,12 @@ interaction_priority = 70
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r1c11/InteractionArea"]
 shape = SubResource("Shape_interact_square")
 
+
+[node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r2c10"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r2c10/SolidBody"]
+shape = SubResource("Shape_solid_square")
+
 [node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r2c10"]
 collision_layer = 2
 script = ExtResource("3_station_area")
@@ -852,6 +932,12 @@ interaction_priority = 70
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r2c10/InteractionArea"]
 shape = SubResource("Shape_interact_square")
+
+
+[node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r3c10"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r3c10/SolidBody"]
+shape = SubResource("Shape_solid_square")
 
 [node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r3c10"]
 collision_layer = 2
@@ -863,6 +949,12 @@ interaction_priority = 70
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r3c10/InteractionArea"]
 shape = SubResource("Shape_interact_square")
 
+
+[node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r4c10"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r4c10/SolidBody"]
+shape = SubResource("Shape_solid_square")
+
 [node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r4c10"]
 collision_layer = 2
 script = ExtResource("3_station_area")
@@ -872,6 +964,12 @@ interaction_priority = 70
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r4c10/InteractionArea"]
 shape = SubResource("Shape_interact_square")
+
+
+[node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r5c10"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r5c10/SolidBody"]
+shape = SubResource("Shape_solid_square")
 
 [node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r5c10"]
 collision_layer = 2
@@ -883,6 +981,12 @@ interaction_priority = 70
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r5c10/InteractionArea"]
 shape = SubResource("Shape_interact_square")
 
+
+[node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r6c10"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r6c10/SolidBody"]
+shape = SubResource("Shape_solid_square")
+
 [node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r6c10"]
 collision_layer = 2
 script = ExtResource("3_station_area")
@@ -892,6 +996,12 @@ interaction_priority = 70
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r6c10/InteractionArea"]
 shape = SubResource("Shape_interact_square")
+
+
+[node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r1c15"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r1c15/SolidBody"]
+shape = SubResource("Shape_solid_square")
 
 [node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r1c15"]
 collision_layer = 2
@@ -903,6 +1013,12 @@ interaction_priority = 70
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r1c15/InteractionArea"]
 shape = SubResource("Shape_interact_square")
 
+
+[node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r2c15"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r2c15/SolidBody"]
+shape = SubResource("Shape_solid_square")
+
 [node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r2c15"]
 collision_layer = 2
 script = ExtResource("3_station_area")
@@ -912,6 +1028,12 @@ interaction_priority = 70
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r2c15/InteractionArea"]
 shape = SubResource("Shape_interact_square")
+
+
+[node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r4c15"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r4c15/SolidBody"]
+shape = SubResource("Shape_solid_square")
 
 [node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r4c15"]
 collision_layer = 2
@@ -923,6 +1045,12 @@ interaction_priority = 70
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r4c15/InteractionArea"]
 shape = SubResource("Shape_interact_square")
 
+
+[node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r6c15"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r6c15/SolidBody"]
+shape = SubResource("Shape_solid_square")
+
 [node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r6c15"]
 collision_layer = 2
 script = ExtResource("3_station_area")
@@ -933,6 +1061,12 @@ interaction_priority = 70
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r6c15/InteractionArea"]
 shape = SubResource("Shape_interact_square")
 
+
+[node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r8c15"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r8c15/SolidBody"]
+shape = SubResource("Shape_solid_square")
+
 [node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r8c15"]
 collision_layer = 2
 script = ExtResource("3_station_area")
@@ -942,6 +1076,12 @@ interaction_priority = 70
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r8c15/InteractionArea"]
 shape = SubResource("Shape_interact_square")
+
+
+[node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/SurfaceSlot_r9c15"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r9c15/SolidBody"]
+shape = SubResource("Shape_solid_square")
 
 [node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r9c15"]
 collision_layer = 2
@@ -962,7 +1102,7 @@ slot_label = "TAKEOUT 1"
 is_takeout_pickup_slot = true
 
 [node name="Visual" type="Polygon2D" parent="SurfaceSlots/TakeoutPickupSlot1"]
-color = Color(0.45, 0.95, 0.95, 0.52)
+color = Color(0.45, 0.95, 0.95, 1)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="SurfaceSlots/TakeoutPickupSlot1"]
@@ -975,6 +1115,12 @@ horizontal_alignment = 1
 vertical_alignment = 1
 theme_override_font_sizes/font_size = 8
 
+
+[node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/TakeoutPickupSlot1"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/TakeoutPickupSlot1/SolidBody"]
+shape = SubResource("Shape_solid_square")
+
 [node name="InteractionArea" type="Area2D" parent="SurfaceSlots/TakeoutPickupSlot1"]
 collision_layer = 2
 script = ExtResource("3_station_area")
@@ -986,14 +1132,14 @@ interaction_priority = 75
 shape = SubResource("Shape_interact_square")
 
 [node name="TakeoutPickupSlot2" type="Node2D" parent="SurfaceSlots"]
-position = Vector2(525, 242.5)
+position = Vector2(480, 287.5)
 script = ExtResource("7_surface_slot")
 slot_id = "TakeoutPickupSlot2"
 slot_label = "TAKEOUT 2"
 is_takeout_pickup_slot = true
 
 [node name="Visual" type="Polygon2D" parent="SurfaceSlots/TakeoutPickupSlot2"]
-color = Color(0.45, 0.95, 0.95, 0.52)
+color = Color(0.45, 0.95, 0.95, 1)
 polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
 
 [node name="Label" type="Label" parent="SurfaceSlots/TakeoutPickupSlot2"]
@@ -1005,6 +1151,12 @@ text = "TAKEOUT 2"
 horizontal_alignment = 1
 vertical_alignment = 1
 theme_override_font_sizes/font_size = 8
+
+
+[node name="SolidBody" type="StaticBody2D" parent="SurfaceSlots/TakeoutPickupSlot2"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/TakeoutPickupSlot2/SolidBody"]
+shape = SubResource("Shape_solid_square")
 
 [node name="InteractionArea" type="Area2D" parent="SurfaceSlots/TakeoutPickupSlot2"]
 collision_layer = 2

@@ -13,7 +13,7 @@ enum CustomerState {
 	LEAVING
 }
 
-@export var move_speed: float = 140.0
+@export var move_speed: float = 80.0
 
 var manager: Node = null
 var current_state: CustomerState = CustomerState.ENTERING
@@ -135,21 +135,21 @@ func _ensure_visuals() -> void:
 		var body: Polygon2D = Polygon2D.new()
 		body.color = Color(0.35, 0.95, 0.45, 1.0)
 		body.polygon = PackedVector2Array([
-			Vector2(-18, -24),
-			Vector2(18, -24),
-			Vector2(18, 24),
-			Vector2(-18, 24)
+			Vector2(-9, -12),
+			Vector2(9, -12),
+			Vector2(9, 12),
+			Vector2(-9, 12)
 		])
 		visual.add_child(body)
 
 	if status_label == null:
 		status_label = Label.new()
 		status_label.name = "RestaurantCustomerStatus"
-		status_label.position = Vector2(-42, -70)
-		status_label.size = Vector2(84, 24)
+		status_label.position = Vector2(-32, -44)
+		status_label.size = Vector2(64, 18)
 		status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		status_label.add_theme_font_size_override("font_size", 13)
+		status_label.add_theme_font_size_override("font_size", 10)
 		status_label.add_theme_color_override("font_color", Color(1.0, 0.96, 0.65, 1.0))
 		status_label.add_theme_color_override("font_outline_color", Color(0.05, 0.04, 0.03, 1.0))
 		status_label.add_theme_constant_override("outline_size", 3)
@@ -158,8 +158,8 @@ func _ensure_visuals() -> void:
 	if patience_bar == null:
 		patience_bar = ProgressBar.new()
 		patience_bar.name = "QueuePatienceBar"
-		patience_bar.position = Vector2(-24, -42)
-		patience_bar.size = Vector2(48, 8)
+		patience_bar.position = Vector2(-18, -28)
+		patience_bar.size = Vector2(36, 6)
 		patience_bar.min_value = 0.0
 		patience_bar.max_value = queue_patience_max
 		patience_bar.value = queue_patience_current

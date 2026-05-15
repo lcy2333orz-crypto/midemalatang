@@ -3,6 +3,8 @@
 [ext_resource type="Script" path="res://scenes/gameplay/restaurant/restaurant_customer.gd" id="1_customer"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_customer"]
+radius = 8.0
+height = 22.0
 
 [node name="RestaurantCustomer" type="CharacterBody2D" groups=["restaurant_customers"]]
 collision_layer = 4
