@@ -126,27 +126,27 @@ func refresh_visual() -> void:
 	_clean_invalid_content()
 	if content_bowl == null:
 		visual.color = Color(0.22, 0.22, 0.24, 1.0)
-		label.text = "POT EMPTY"
+		label.text = "空锅"
 	elif content_bowl.is_overcooked():
 		visual.color = Color(0.05, 0.04, 0.035, 1.0)
-		label.text = "POT OVER"
+		label.text = "煮糊"
 	elif content_bowl.status == OrderBowl.STATUS_COOKED:
 		visual.color = Color(0.28, 0.82, 0.38, 1.0)
-		label.text = "POT READY"
+		label.text = "已熟"
 	else:
 		visual.color = Color(0.95, 0.48, 0.18, 1.0)
-		label.text = "POT COOK"
+		label.text = "加热中"
 
 
 func get_content_status_text() -> String:
 	_clean_invalid_content()
 	if content_bowl == null:
-		return "POT EMPTY"
+		return "空锅"
 	if content_bowl.is_overcooked():
-		return "POT OVER"
+		return "煮糊"
 	if content_bowl.status == OrderBowl.STATUS_COOKED:
-		return "POT READY"
-	return "POT COOK"
+		return "已熟"
+	return "加热中"
 
 
 func _copy_content_to_bowl(target: OrderBowl, source: OrderBowl) -> void:

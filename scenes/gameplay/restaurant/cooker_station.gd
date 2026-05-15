@@ -155,7 +155,7 @@ func get_active_order_id() -> int:
 
 func get_status_text() -> String:
 	if not has_pot():
-		return "NO POT"
+		return "无锅"
 	return active_pot.get_content_status_text()
 
 

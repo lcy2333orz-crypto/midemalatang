@@ -154,10 +154,10 @@ func add_required_staple() -> bool:
 
 func get_staple_requirement_text() -> String:
 	if staple_type == "none":
-		return "no staple"
+		return "无主食"
 	if staple_added:
-		return "staple %s: added" % staple_type
-	return "staple %s: missing" % staple_type
+		return "%s已加" % _get_staple_display_text()
+	return "%s未加" % _get_staple_display_text()
 
 
 func is_overcooked() -> bool:
@@ -166,34 +166,34 @@ func is_overcooked() -> bool:
 
 func get_order_status_text() -> String:
 	if is_overcooked():
-		return "OVER"
+		return "煮糊"
 	match status:
 		STATUS_WAITING:
-			return "WAIT"
+			return "等待"
 		STATUS_COOKING:
-			return "COOK"
+			return "烹饪中"
 		STATUS_COOKED:
-			return "READY"
+			return "可出餐"
 		STATUS_SAUCED:
-			return "READY"
+			return "可出餐"
 		STATUS_PACKED:
-			return "PACKED"
+			return "已打包"
 		STATUS_READY:
-			return "READY"
+			return "可出餐"
 		STATUS_DONE:
-			return "DONE"
+			return "完成"
 		_:
-			return "WAIT"
+			return "等待"
 
 
 func get_cooker_timer_text() -> String:
 	if is_overcooked():
-		return "OVER"
+		return "煮糊"
 	if status == STATUS_COOKED:
-		return "READY %.1fs" % max(staple_overcook_time - cook_time, 0.0)
+		return "已熟 %.1f秒" % max(staple_overcook_time - cook_time, 0.0)
 	if status == STATUS_COOKING:
-		return "COOK %.1fs" % max(ingredient_time_required - cook_time, 0.0)
-	return "EMPTY"
+		return "加热中 %.1f秒" % max(ingredient_time_required - cook_time, 0.0)
+	return "空锅"
 
 
 func _sync_cooking_thresholds() -> void:
@@ -237,8 +237,8 @@ func mark_done() -> void:
 func get_summary_text() -> String:
 	var id_text: String = "C" if order_id <= 0 else "#%03d" % order_id
 	if is_empty_holder:
-		return "%s empty bowl" % id_text
-	return "%s %s %s %s" % [id_text, service_mode, get_staple_requirement_text(), status]
+		return "%s 空碗" % id_text
+	return "%s %s %s %s" % [id_text, _get_service_display_text(), get_staple_requirement_text(), get_order_status_text()]
 
 
 func get_detail_text() -> String:
@@ -248,9 +248,56 @@ func get_detail_text() -> String:
 	return "%s | %s | %s | %s" % [
 		get_summary_text(),
 		", ".join(ingredient_parts),
-		spice_level,
-		",".join(sauces)
+		_get_spice_display_text(),
+		_get_sauce_display_text()
 	]
+
+
+func _get_staple_display_text() -> String:
+	match staple_type:
+		"glass_noodle":
+			return "粉丝"
+		"noodle":
+			return "面"
+		"none":
+			return "无主食"
+		_:
+			return staple_type
+
+
+func _get_service_display_text() -> String:
+	if service_mode == "dine_in":
+		return "堂食"
+	return "外带"
+
+
+func _get_spice_display_text() -> String:
+	match spice_level:
+		"mild":
+			return "微辣"
+		"medium":
+			return "中辣"
+		"hot":
+			return "重辣"
+		_:
+			return spice_level
+
+
+func _get_sauce_display_text() -> String:
+	if sauces.is_empty():
+		return "无小料"
+	var display_parts: Array[String] = []
+	for sauce in sauces:
+		match sauce:
+			"chili":
+				display_parts.append("辣椒")
+			"garlic":
+				display_parts.append("蒜")
+			"cilantro":
+				display_parts.append("香菜")
+			_:
+				display_parts.append(str(sauce))
+	return "、".join(display_parts)
 
 
 func attach_to_holder(holder: Node2D) -> void:

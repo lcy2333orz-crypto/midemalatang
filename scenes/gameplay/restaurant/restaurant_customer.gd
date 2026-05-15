@@ -33,7 +33,7 @@ var patience_bar: ProgressBar
 func _ready() -> void:
 	add_to_group("restaurant_customers")
 	_ensure_visuals()
-	_set_status("in")
+	_set_status("进店")
 
 
 func _physics_process(_delta: float) -> void:
@@ -55,26 +55,26 @@ func setup(new_manager: Node, entrance_position: Vector2, display_position: Vect
 	global_position = entrance_position
 	target_position = display_position
 	current_state = CustomerState.ENTERING
-	_set_status("pick")
+	_set_status("选菜")
 
 
 func move_to_queue(queue_position: Vector2, queue_index: int) -> void:
 	desired_queue_index = queue_index
 	target_position = queue_position
 	current_state = CustomerState.QUEUEING
-	_set_status("queue")
+	_set_status("排队")
 
 
 func move_to_counter(counter_position: Vector2) -> void:
 	desired_queue_index = 0
 	target_position = counter_position
 	current_state = CustomerState.QUEUEING
-	_set_status("pay")
+	_set_status("付款")
 
 
 func mark_at_counter() -> void:
 	current_state = CustomerState.AT_COUNTER
-	_set_status("cashier")
+	_set_status("收银")
 
 
 func wait_for_order(new_order_id: int, new_service_mode: String, new_table_id: int, wait_position: Vector2) -> void:
@@ -83,14 +83,14 @@ func wait_for_order(new_order_id: int, new_service_mode: String, new_table_id: i
 	table_id = new_table_id
 	target_position = wait_position
 	current_state = CustomerState.WAITING_TABLE if service_mode == "dine_in" else CustomerState.WAITING_TAKEOUT
-	_set_status("table %d" % table_id if service_mode == "dine_in" else "takeout")
+	_set_status("桌%d" % table_id if service_mode == "dine_in" else "外带")
 	_update_patience_bar_visibility()
 
 
 func complete_order(exit_position: Vector2) -> void:
 	target_position = exit_position
 	current_state = CustomerState.LEAVING
-	_set_status("done")
+	_set_status("完成")
 
 
 func get_bowl_ingredients() -> Dictionary:
@@ -101,7 +101,7 @@ func _on_reached_target() -> void:
 	if current_state == CustomerState.ENTERING:
 		_select_ingredients()
 		current_state = CustomerState.CHOOSING
-		_set_status("picked")
+		_set_status("已选")
 		if manager != null and manager.has_method("enqueue_customer"):
 			manager.enqueue_customer(self)
 		return

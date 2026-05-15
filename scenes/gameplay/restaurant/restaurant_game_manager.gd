@@ -58,7 +58,7 @@ func _ready() -> void:
 	_initialize_day_state()
 	if is_day_open:
 		spawn_customer()
-	_refresh_ui("Restaurant day started.")
+	_refresh_ui("餐厅营业开始")
 
 
 func _initialize_day_state() -> void:
@@ -111,16 +111,16 @@ func spawn_customer() -> RestaurantCustomer:
 
 func request_close_day() -> void:
 	if is_ending_day:
-		_refresh_ui("Entering summary.")
+		_refresh_ui("正在进入结算")
 		if ui != null and ui.has_method("show_toast"):
-			ui.show_toast("Entering summary.", 1.8)
+			ui.show_toast("正在进入结算", 1.8)
 		return
 	is_day_open = false
 	day_time_remaining = 0.0
 	spawn_elapsed = 0.0
-	_refresh_ui("Closed: no new customers. Finish remaining orders.")
+	_refresh_ui("已打烊：不会再来新顾客，请处理剩余订单")
 	if ui != null and ui.has_method("show_toast"):
-		ui.show_toast("Closed: no new customers.", 1.8)
+		ui.show_toast("已打烊：不会再来新顾客", 1.8)
 	_check_day_end()
 
 
@@ -176,34 +176,34 @@ func interact_with_station(station_name: String) -> void:
 		"IngredientDisplay", "IngredientDisplay2", "IngredientDisplay3", "IngredientDisplayLocked", "DrinksFridge", "DrinkFridgeLocked", "PackingBagArea", "SauceStationMixed", "CustomerTrashBin", "StorageArea", "DrinkStorage", "CookerStationLocked":
 			_interact_placeholder(station_name)
 		_:
-			_refresh_ui("No restaurant action for %s." % station_name)
+			_refresh_ui("这里暂时不能操作：%s" % station_name)
 
 
 func _interact_placeholder(station_name: String) -> void:
-	var message: String = "Placeholder: %s." % station_name
+	var message: String = "占位功能：%s" % station_name
 	match station_name:
 		"IngredientDisplay", "IngredientDisplay2", "IngredientDisplay3":
-			message = "Customers pick ingredients here."
+			message = "顾客会在这里选菜"
 		"IngredientDisplayLocked":
-			message = "Ingredient slot locked."
+			message = "这个选菜格还未解锁"
 		"DrinksFridge":
-			message = "Drink flow not available yet."
+			message = "饮料流程暂未开放"
 		"DrinkFridgeLocked":
-			message = "Drink slot locked."
+			message = "饮料格还未解锁"
 		"PackingBagArea":
-			message = "Bag area placeholder."
+			message = "袋子区占位，暂未开放"
 		"SauceStationMixed":
-			message = "Sauce mix controls not available yet."
+			message = "小料组合操作暂未开放"
 		"CustomerTrashBin":
-			message = "Customer trash placeholder."
+			message = "客用垃圾桶占位"
 		"StorageArea":
-			message = "Restock flow not available yet."
+			message = "补货流程暂未开放"
 		"DrinkStorage":
-			message = "Drink storage placeholder."
+			message = "饮料库存占位"
 		"CookerStationLocked":
-			message = "Pot locked."
+			message = "锅位还未解锁"
 		"DiningTable3":
-			message = "DINE 3 is not used in this stage."
+			message = "本关暂不使用桌3"
 	_refresh_ui(message)
 	if ui != null and ui.has_method("show_toast"):
 		ui.show_toast(message, 1.4)
@@ -211,20 +211,20 @@ func _interact_placeholder(station_name: String) -> void:
 
 func interact_counter() -> void:
 	if held_dirty_cooker != null:
-		_refresh_ui("Clear dirty pot first.")
+		_refresh_ui("先清理脏锅")
 		return
 	if held_pot != null:
-		_refresh_ui("Put down the pot first.")
+		_refresh_ui("先放下锅")
 		return
 	var customer: RestaurantCustomer = _get_counter_customer()
 	if held_bowl != null:
 		if customer != null:
-			_refresh_ui("Put down what you are holding first.")
+			_refresh_ui("先放下手里的东西")
 		else:
 			interact_takeout_counter_delivery()
 		return
 	if customer == null:
-		_refresh_ui("No customer at counter.")
+		_refresh_ui("收银台前没有顾客")
 		return
 
 	_create_order_from_customer(customer)
@@ -234,12 +234,12 @@ func _create_order_from_customer(customer: RestaurantCustomer) -> void:
 	if customer == null:
 		return
 	if held_bowl != null or held_pot != null or held_dirty_cooker != null:
-		_refresh_ui("Put down what you are holding first.")
+		_refresh_ui("先放下手里的东西")
 		return
 
 	var ingredients: Dictionary = customer.get_bowl_ingredients()
 	if ingredients.is_empty():
-		_refresh_ui("Customer has not picked ingredients.")
+		_refresh_ui("顾客还没有选菜")
 		return
 
 	var bowl: OrderBowl = OrderBowlScene.instantiate() as OrderBowl
@@ -268,10 +268,10 @@ func _create_order_from_customer(customer: RestaurantCustomer) -> void:
 		wait_position = _get_table_spot(table_id)
 	customer.wait_for_order(order_id, service_mode, table_id, wait_position)
 
-	_refresh_ui("Order #%03d created: %s / %s / %s." % [
+	_refresh_ui("订单 #%03d 已生成：%s / %s / %s" % [
 		order_id,
-		staple_type,
-		spice_level,
+		_staple_text(staple_type),
+		_spice_text(spice_level),
 		_service_text(service_mode, table_id)
 	])
 	refresh_queue_positions()
@@ -279,39 +279,39 @@ func _create_order_from_customer(customer: RestaurantCustomer) -> void:
 
 func interact_waiting_order_area() -> void:
 	if held_dirty_cooker != null:
-		_refresh_ui("Clear dirty pot first.")
+		_refresh_ui("先清理脏锅")
 		return
 	if held_pot != null:
-		_refresh_ui("Put down the pot first.")
+		_refresh_ui("先放下锅")
 		return
 
 	if held_bowl == null:
 		var bowl: OrderBowl = waiting_area.take_first_bowl()
 		if bowl == null:
-			_refresh_ui("Waiting area is empty.")
+			_refresh_ui("待煮区是空的")
 			return
 		_hold_bowl(bowl)
-		_refresh_ui("Picked up %s." % bowl.get_summary_text())
+		_refresh_ui("拿起%s" % bowl.get_summary_text())
 		return
 
 	if held_bowl.status == OrderBowl.STATUS_WAITING:
 		if waiting_area.add_bowl(held_bowl):
 			held_bowl = null
-			_refresh_ui("Returned bowl to waiting area.")
+			_refresh_ui("已放回待煮区")
 		else:
-			_refresh_ui("Waiting area is full.")
+			_refresh_ui("待煮区满了")
 	else:
-		_refresh_ui("This bowl should go forward, not back to waiting.")
+		_refresh_ui("这个碗应该继续往后处理，不能放回待煮区")
 
 
 func interact_surface_slot(slot_id: String) -> void:
 	if held_dirty_cooker != null:
-		_refresh_ui("Clear dirty pot first.")
+		_refresh_ui("先清理脏锅")
 		return
 
 	var slot: SurfaceSlot = _get_surface_slot(slot_id)
 	if slot == null:
-		_refresh_ui("Surface slot not found.")
+		_refresh_ui("找不到这个桌面")
 		return
 
 	if held_pot != null:
@@ -319,17 +319,17 @@ func interact_surface_slot(slot_id: String) -> void:
 		if slot_bowl != null and held_pot.can_scoop_to_empty_bowl(slot_bowl):
 			held_pot.scoop_to_empty_bowl(slot_bowl)
 			slot.refresh_visual()
-			_refresh_ui("Scooped order #%03d." % slot_bowl.order_id)
+			_refresh_ui("已盛出订单 #%03d" % slot_bowl.order_id)
 			return
 		if not slot.is_empty():
-			_refresh_ui("Table occupied.")
+			_refresh_ui("这个桌面已经被占用")
 			return
 		var placed_pot: CookingPot = held_pot
 		if not slot.store_item(placed_pot):
-			_refresh_ui("Could not place pot.")
+			_refresh_ui("无法放下锅")
 			return
 		held_pot = null
-		_refresh_ui("Placed pot on %s." % slot.slot_label)
+		_refresh_ui("已把锅放到 %s" % slot.slot_label)
 		return
 
 	if held_bowl != null:
@@ -337,36 +337,36 @@ func interact_surface_slot(slot_id: String) -> void:
 		if slot_pot != null and slot_pot.can_scoop_to_empty_bowl(held_bowl):
 			slot_pot.scoop_to_empty_bowl(held_bowl)
 			slot.refresh_visual()
-			_refresh_ui("Scooped order #%03d." % held_bowl.order_id)
+			_refresh_ui("已盛出订单 #%03d" % held_bowl.order_id)
 			return
 		if not slot.is_empty():
-			_refresh_ui("Table occupied.")
+			_refresh_ui("这个桌面已经被占用")
 			return
 		var placed_bowl: OrderBowl = held_bowl
 		if not slot.store_bowl(placed_bowl):
-			_refresh_ui("Could not place bowl.")
+			_refresh_ui("无法放下碗")
 			return
 		held_bowl = null
 		if _try_complete_takeout_from_surface(slot, placed_bowl):
 			return
-		_refresh_ui("Placed order #%03d on %s." % [placed_bowl.order_id, slot.slot_label])
+		_refresh_ui("已把订单 #%03d 放到 %s" % [placed_bowl.order_id, slot.slot_label])
 		return
 
 	var item: Node2D = slot.take_item()
 	if item == null:
-		_refresh_ui("Table empty.")
+		_refresh_ui("桌上是空的")
 		return
 	var pot: CookingPot = item as CookingPot
 	if pot != null:
 		_hold_pot(pot)
-		_refresh_ui("Picked up pot.")
+		_refresh_ui("拿起锅")
 		return
 	var bowl: OrderBowl = item as OrderBowl
 	if bowl == null:
-		_refresh_ui("Table item cannot be held.")
+		_refresh_ui("桌上的东西不能拿起")
 		return
 	_hold_bowl(bowl)
-	_refresh_ui("Picked up empty bowl #%03d." % bowl.order_id if bowl.is_empty_holder else "Picked up order #%03d." % bowl.order_id)
+	_refresh_ui("拿起空碗 #%03d" % bowl.order_id if bowl.is_empty_holder else "拿起订单 #%03d" % bowl.order_id)
 
 
 func interact_cooker(cooker: CookerStation) -> void:
@@ -374,157 +374,157 @@ func interact_cooker(cooker: CookerStation) -> void:
 		return
 
 	if held_dirty_cooker != null:
-		_refresh_ui("Clear dirty pot first.")
+		_refresh_ui("先清理脏锅")
 		return
 
 	if held_pot != null:
 		if cooker.has_pot():
-			_refresh_ui("Stove already has a pot.")
+			_refresh_ui("这个锅位已经有锅")
 			return
 		if cooker.place_pot(held_pot):
 			held_pot = null
-			_refresh_ui("Pot placed on stove.")
+			_refresh_ui("锅已放回锅位")
 		else:
-			_refresh_ui("Could not place pot.")
+			_refresh_ui("无法放下锅")
 		return
 
 	if held_bowl != null:
 		if held_bowl.is_empty_holder:
 			if cooker.scoop_to_bowl(held_bowl):
-				_refresh_ui("Scooped order #%03d." % held_bowl.order_id)
+				_refresh_ui("已盛出订单 #%03d" % held_bowl.order_id)
 			else:
-				_refresh_ui("No ready pot content.")
+				_refresh_ui("锅里没有可盛出的熟食")
 			return
 		if held_bowl.status != OrderBowl.STATUS_WAITING:
-			_refresh_ui("This bowl cannot go into pot.")
+			_refresh_ui("这个碗不能放入锅")
 			return
 		if not cooker.has_pot():
-			_refresh_ui("No pot on stove.")
+			_refresh_ui("锅位上没有锅")
 			return
 		if not held_bowl.is_staple_ready_for_cooking():
-			_refresh_ui("Add required staple first.")
+			_refresh_ui("请先加主食")
 			return
 		var order_bowl: OrderBowl = held_bowl
 		if cooker.add_bowl_to_pot(order_bowl):
 			held_bowl = _create_empty_holder_for_order(order_bowl)
 			_hold_bowl(held_bowl)
-			_refresh_ui("Added order #%03d to pot." % order_bowl.order_id)
+			_refresh_ui("已把订单 #%03d 放入锅中" % order_bowl.order_id)
 		else:
-			_refresh_ui("Pot is occupied.")
+			_refresh_ui("锅里已经有东西")
 		return
 
 	var pot: CookingPot = cooker.take_pot()
 	if pot == null:
-		_refresh_ui("No pot on stove.")
+		_refresh_ui("锅位上没有锅")
 		return
 	_hold_pot(pot)
-	_refresh_ui("Picked up pot.")
+	_refresh_ui("拿起锅")
 
 
 func interact_staple_cabinet() -> void:
 	if held_dirty_cooker != null:
-		_refresh_ui("Clear dirty pot first.")
+		_refresh_ui("先清理脏锅")
 		return
 	if held_pot != null:
-		_refresh_ui("Put down the pot first.")
+		_refresh_ui("先放下锅")
 		return
 	if held_bowl == null:
-		_refresh_ui("Hold an order bowl first.")
+		_refresh_ui("先拿着订单碗")
 		return
 	if held_bowl.status != OrderBowl.STATUS_WAITING:
-		_refresh_ui("Only waiting orders need staple.")
+		_refresh_ui("只有待处理订单需要加主食")
 		return
 	if held_bowl.staple_type == "none":
 		held_bowl.staple_added = true
 		held_bowl.refresh_visuals()
-		_refresh_ui("This order needs no staple.")
+		_refresh_ui("这单不需要主食")
 		return
 	if held_bowl.staple_added:
-		_refresh_ui("Staple already added.")
+		_refresh_ui("主食已经加过了")
 		return
 
 	held_bowl.add_required_staple()
-	_refresh_ui("Added staple: %s." % held_bowl.staple_type)
+	_refresh_ui("已加入主食：%s" % _staple_text(held_bowl.staple_type))
 
 
 func interact_sauce_station() -> void:
 	if held_dirty_cooker != null:
-		_refresh_ui("Clear dirty pot first.")
+		_refresh_ui("先清理脏锅")
 		return
 	if held_pot != null:
-		_refresh_ui("Put down the pot first.")
+		_refresh_ui("先放下锅")
 		return
 	if held_bowl == null:
-		_refresh_ui("Hold a cooked bowl before adding sauces.")
+		_refresh_ui("先拿着煮好的碗")
 		return
 	if _reject_overcooked_held_order():
 		return
 	if held_bowl.status != OrderBowl.STATUS_COOKED and held_bowl.status != OrderBowl.STATUS_SAUCED:
-		_refresh_ui("Bowl must be cooked before sauce.")
+		_refresh_ui("煮熟后才能加小料")
 		return
 	held_bowl.add_next_sauce()
-	_refresh_ui("Sauces: %s." % ",".join(held_bowl.sauces))
+	_refresh_ui("已加小料：%s" % _sauce_list_text(held_bowl.sauces))
 
 
 func interact_packing_area() -> void:
 	if held_dirty_cooker != null:
-		_refresh_ui("Clear dirty pot first.")
+		_refresh_ui("先清理脏锅")
 		return
 	if held_pot != null:
-		_refresh_ui("Put down the pot first.")
+		_refresh_ui("先放下锅")
 		return
 	if held_bowl == null:
-		_refresh_ui("Hold a takeout bowl to pack.")
+		_refresh_ui("先拿着外带碗")
 		return
 	if _reject_overcooked_held_order():
 		return
 	if held_bowl.service_mode != "takeout":
-		_refresh_ui("Dine-in orders go to tables.")
+		_refresh_ui("堂食订单要送到桌子")
 		return
 	if not held_bowl.is_sauced():
-		_refresh_ui("Add sauce before packing.")
+		_refresh_ui("打包前需要先加小料")
 		return
 	held_bowl.mark_packed()
-	_refresh_ui("Packed order #%03d." % held_bowl.order_id)
+	_refresh_ui("订单 #%03d 已打包" % held_bowl.order_id)
 
 
 func interact_delivery_table(table_id: int) -> void:
 	if held_dirty_cooker != null:
-		_refresh_ui("Clear dirty pot first.")
+		_refresh_ui("先清理脏锅")
 		return
 	if held_pot != null:
-		_refresh_ui("Put down the pot first.")
+		_refresh_ui("先放下锅")
 		return
 	if held_bowl == null:
-		_refresh_ui("Hold a dine-in bowl to serve.")
+		_refresh_ui("先拿着堂食碗")
 		return
 	if _reject_overcooked_held_order():
 		return
 	if held_bowl.service_mode != "dine_in" or held_bowl.table_id != table_id:
-		_refresh_ui("Wrong table.")
+		_refresh_ui("不是这张桌")
 		return
 	if not held_bowl.is_sauced():
-		_refresh_ui("Add sauce before serving.")
+		_refresh_ui("出餐前需要先加小料")
 		return
 	_complete_held_order()
 
 
 func interact_takeout_pickup() -> void:
 	if held_dirty_cooker != null:
-		_refresh_ui("Clear dirty pot first.")
+		_refresh_ui("先清理脏锅")
 		return
 	if held_pot != null:
-		_refresh_ui("Use TAKEOUT 1 or TAKEOUT 2 for packed bowls.")
+		_refresh_ui("打包好的外带碗请放到外带桌1或外带桌2")
 		return
 	if held_bowl == null:
-		_refresh_ui("Hold a packed takeout bowl.")
+		_refresh_ui("先拿着已打包外带碗")
 		return
 	if _reject_overcooked_held_order():
 		return
 	if held_bowl.service_mode != "takeout" or held_bowl.status != OrderBowl.STATUS_PACKED:
-		_refresh_ui("Pack takeout orders, then place them on TAKEOUT 1 or TAKEOUT 2.")
+		_refresh_ui("外带订单打包后放到外带桌1或外带桌2")
 		return
-	_refresh_ui("Use TAKEOUT 1 or TAKEOUT 2.")
+	_refresh_ui("请使用外带桌1或外带桌2")
 
 
 func interact_takeout_counter_delivery() -> void:
@@ -533,10 +533,10 @@ func interact_takeout_counter_delivery() -> void:
 	if _reject_overcooked_held_order():
 		return
 	if held_bowl.service_mode != "takeout":
-		_refresh_ui("Dine-in order goes to assigned table.")
+		_refresh_ui("堂食订单要送到对应桌子")
 		return
 	if held_bowl.status != OrderBowl.STATUS_PACKED:
-		_refresh_ui("Pack takeout order first.")
+		_refresh_ui("外带订单需要先打包")
 		return
 	_complete_held_order()
 
@@ -554,12 +554,12 @@ func interact_trash_bin() -> void:
 				cleared_bowl.queue_free()
 				_record_failed_order()
 			held_pot.refresh_visual()
-			_refresh_ui("Pot cleared." if cleared_order_id <= 0 else "Order #%03d overcooked. Customer left." % cleared_order_id)
+			_refresh_ui("锅已清空" if cleared_order_id <= 0 else "订单 #%03d 煮糊了，顾客离开" % cleared_order_id)
 			return
 		if held_pot.is_empty():
-			_refresh_ui("Pot is empty.")
+			_refresh_ui("锅是空的")
 		else:
-			_refresh_ui("Only overcooked pot goes to trash.")
+			_refresh_ui("只有煮糊的锅可以倒掉")
 		return
 
 	if held_dirty_cooker != null:
@@ -567,15 +567,15 @@ func interact_trash_bin() -> void:
 		return
 
 	if held_bowl == null:
-		_refresh_ui("Nothing to discard.")
+		_refresh_ui("没有可以丢弃的东西")
 		return
 	if held_bowl.is_empty_holder:
 		if _has_active_content_for_order(held_bowl.order_id):
-			_refresh_ui("Keep this empty bowl for the active order.")
+			_refresh_ui("这只空碗还要用来盛出锅里的食材")
 			return
 		held_bowl.queue_free()
 		held_bowl = null
-		_refresh_ui("Discarded empty bowl.")
+		_refresh_ui("已丢弃空碗")
 		return
 	var discarded_order_id: int = held_bowl.order_id
 	_clear_waiting_customer_for_order(discarded_order_id)
@@ -583,7 +583,7 @@ func interact_trash_bin() -> void:
 	held_bowl.queue_free()
 	held_bowl = null
 	_record_failed_order()
-	_refresh_ui("Discarded order #%03d" % discarded_order_id)
+	_refresh_ui("已丢弃订单 #%03d" % discarded_order_id)
 
 
 func force_complete_one_order_for_smoke() -> bool:
@@ -624,19 +624,22 @@ func force_complete_one_order_for_smoke() -> bool:
 
 func get_hand_text() -> String:
 	if held_pot != null:
-		return "Holding %s" % held_pot.get_content_status_text().replace("POT", "pot")
+		var pot_state: String = held_pot.get_content_status_text()
+		if pot_state == "空锅":
+			return "拿着空锅"
+		return "拿着锅：%s" % pot_state
 	if held_dirty_cooker != null:
-		return "Holding dirty pot #%03d" % held_dirty_cooker.get_active_order_id()
+		return "拿着脏锅 #%03d" % held_dirty_cooker.get_active_order_id()
 	if held_bowl == null:
 		return ""
 	if held_bowl.is_empty_holder:
-		return "Holding empty bowl #%03d" % held_bowl.order_id
-	return "Holding #%03d" % held_bowl.order_id
+		return "拿着空碗 #%03d" % held_bowl.order_id
+	return "拿着订单 #%03d" % held_bowl.order_id
 
 
 func _complete_held_order() -> void:
 	if held_bowl != null and held_bowl.is_overcooked():
-		_refresh_ui("Order #%03d is overcooked. Use the trash bin." % held_bowl.order_id)
+		_refresh_ui("订单 #%03d 已煮糊，请拿去垃圾桶" % held_bowl.order_id)
 		return
 	var bowl: OrderBowl = held_bowl
 	var completed_order_id: int = bowl.order_id
@@ -652,7 +655,7 @@ func _complete_held_order() -> void:
 	completed_orders += 1
 	money_today += 10
 	_update_score()
-	_refresh_ui("Completed order #%03d +1" % completed_order_id)
+	_refresh_ui("完成订单 #%03d +1" % completed_order_id)
 
 
 func _hold_bowl(bowl: OrderBowl) -> void:
@@ -718,9 +721,9 @@ func _clear_held_dirty_cooker() -> void:
 	_clear_dirty_pot_visual()
 
 	if cleared_order_id > 0:
-		_refresh_ui("Order #%03d overcooked. Customer left." % cleared_order_id)
+		_refresh_ui("订单 #%03d 煮糊了，顾客离开" % cleared_order_id)
 	else:
-		_refresh_ui("Dirty pot cleared.")
+		_refresh_ui("脏锅已清理")
 
 
 func _attach_dirty_pot_visual(order_id: int) -> void:
@@ -751,7 +754,7 @@ func _attach_dirty_pot_visual(order_id: int) -> void:
 	label.size = Vector2(84, 24)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.text = "Dirty pot #%03d" % order_id
+	label.text = "脏锅 #%03d" % order_id
 	label.add_theme_font_size_override("font_size", 12)
 	label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.5, 1.0))
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
@@ -837,7 +840,7 @@ func _try_complete_takeout_from_surface(slot: SurfaceSlot, bowl: OrderBowl) -> b
 	completed_orders += 1
 	money_today += 10
 	_update_score()
-	_refresh_ui("Takeout order #%03d completed." % completed_order_id)
+	_refresh_ui("外带订单 #%03d 已完成" % completed_order_id)
 	return true
 
 
@@ -876,8 +879,8 @@ func _next_table_id() -> int:
 
 func _service_text(mode: String, table_id: int) -> String:
 	if mode == "dine_in":
-		return "DINE table %d" % table_id
-	return "TAKEOUT"
+		return "堂食 桌%d" % table_id
+	return "外带"
 
 
 func _get_queue_spot(index: int) -> Vector2:
@@ -905,7 +908,7 @@ func _update_order_patience(delta: float) -> void:
 
 	for failed_bowl in bowls_to_fail:
 		if failed_bowl != null and is_instance_valid(failed_bowl):
-			_fail_order_bowl(failed_bowl, "Order #%03d waited too long. Customer left." % failed_bowl.order_id)
+			_fail_order_bowl(failed_bowl, "订单 #%03d 等太久了，顾客离开" % failed_bowl.order_id)
 
 
 func _get_tracked_order_bowls() -> Array[OrderBowl]:
@@ -987,7 +990,7 @@ func _handle_queue_patience_failures() -> void:
 		queued_customers.erase(customer)
 		queue_lost_customers_today += 1
 		customer.complete_order(exit_point.global_position)
-		_refresh_ui("Queue customer waited too long and left.")
+		_refresh_ui("排队顾客等太久离开了")
 
 	if not lost_customers.is_empty():
 		refresh_queue_positions()
@@ -1069,7 +1072,7 @@ func _finish_day_and_show_summary() -> void:
 	}
 	RestaurantRunState.record_day(summary)
 	summary_transition_requested = true
-	_refresh_ui("Day ended. Entering summary.")
+	_refresh_ui("今日结束，进入结算")
 	if auto_change_to_summary:
 		call_deferred("_change_to_summary_scene")
 
@@ -1080,24 +1083,24 @@ func _change_to_summary_scene() -> void:
 
 func _get_review_text(score: int) -> String:
 	if score >= 30:
-		return "Review: smooth day."
+		return "今日评价：节奏不错"
 	if score >= 10:
-		return "Review: keep the pace steadier."
-	return "Review: recover the rhythm tomorrow."
+		return "今日评价：节奏还可以更稳"
+	return "今日评价：明天重新找回节奏"
 
 
 func _get_bowl_location_text(target_bowl: OrderBowl) -> String:
 	if target_bowl == held_bowl:
 		if target_bowl.status == OrderBowl.STATUS_WAITING:
-			return "HELD"
+			return "手中"
 		return target_bowl.get_order_status_text()
 	if held_pot != null and held_pot.content_bowl == target_bowl:
-		return "HELD POT"
+		return "手中锅"
 	if waiting_area.bowls.has(target_bowl):
-		return "WAITING"
+		return "待煮区"
 	for cooker in [cooker_1, cooker_2]:
 		if cooker != null and cooker.active_pot != null and cooker.active_pot.content_bowl == target_bowl:
-			return "POT 1" if cooker == cooker_1 else "POT 2"
+			return "锅位1" if cooker == cooker_1 else "锅位2"
 	for slot in surface_slots_by_id.values():
 		var surface_slot: SurfaceSlot = slot as SurfaceSlot
 		if surface_slot != null:
@@ -1125,7 +1128,7 @@ func _refresh_ui(message: String = "") -> void:
 
 func _get_order_card_text(target_bowl: OrderBowl) -> String:
 	var patience_percent: int = int(round(target_bowl.get_order_patience_ratio() * 100.0))
-	return "#%03d\n%s\n%s\n%s\n%s\n%d%%" % [
+	return "#%03d\n%s\n主食：%s\n目标：%s\n位置：%s\n耐心：%d%%" % [
 		target_bowl.order_id,
 		_service_text(target_bowl.service_mode, target_bowl.table_id),
 		_staple_text(target_bowl.staple_type),
@@ -1138,7 +1141,7 @@ func _get_order_card_text(target_bowl: OrderBowl) -> String:
 func _reject_overcooked_held_order() -> bool:
 	if held_bowl == null or not held_bowl.is_overcooked():
 		return false
-	_refresh_ui("Order #%03d is overcooked. Use the trash bin." % held_bowl.order_id)
+	_refresh_ui("订单 #%03d 已煮糊，请拿去垃圾桶" % held_bowl.order_id)
 	return true
 
 
@@ -1152,16 +1155,45 @@ func _clear_waiting_customer_for_order(order_id: int) -> void:
 func _staple_text(staple_type: String) -> String:
 	match staple_type:
 		"glass_noodle":
-			return "glass noodle"
+			return "粉丝"
 		"noodle":
-			return "noodle"
+			return "面"
 		"none":
-			return "no staple"
+			return "无主食"
 		_:
 			return staple_type
 
 
+func _spice_text(spice_level: String) -> String:
+	match spice_level:
+		"mild":
+			return "微辣"
+		"medium":
+			return "中辣"
+		"hot":
+			return "重辣"
+		_:
+			return spice_level
+
+
+func _sauce_list_text(sauces: Array[String]) -> String:
+	if sauces.is_empty():
+		return "无"
+	var parts: Array[String] = []
+	for sauce in sauces:
+		match sauce:
+			"chili":
+				parts.append("辣椒")
+			"garlic":
+				parts.append("蒜")
+			"cilantro":
+				parts.append("香菜")
+			_:
+				parts.append(str(sauce))
+	return "、".join(parts)
+
+
 func _delivery_destination_text(target_bowl: OrderBowl) -> String:
 	if target_bowl.service_mode == "dine_in":
-		return "DINE %d" % target_bowl.table_id
-	return "TAKEOUT 1/2"
+		return "桌%d" % target_bowl.table_id
+	return "外带桌"

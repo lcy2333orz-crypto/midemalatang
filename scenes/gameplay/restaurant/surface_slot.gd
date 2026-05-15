@@ -114,7 +114,7 @@ func refresh_visual() -> void:
 
 	var bowl: OrderBowl = stored_item as OrderBowl
 	if bowl != null:
-		label.text = "EMPTY #%03d" % bowl.order_id if bowl.is_empty_holder else "#%03d" % bowl.order_id
+		label.text = "空碗 #%03d" % bowl.order_id if bowl.is_empty_holder else "#%03d" % bowl.order_id
 		return
 
 	var pot: CookingPot = stored_item as CookingPot

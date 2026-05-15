@@ -42,7 +42,7 @@ Greybox restaurant modules live under `res://scenes/gameplay/restaurant/`:
 
 ## Movable Pot Design Note
 
-Pot labels are intentionally limited to `POT EMPTY`, `POT COOK`, `POT READY`, and `POT OVER`.
+Pot labels are intentionally limited to the current visible state words: `空锅`, `加热中`, `已熟`, and `煮糊`.
 
 The pot's contents still keep their internal order data for timers, order tracking, patience, and validation, but the pot never displays `#001` or any other order number in the scene. The order number stays on the empty bowl / order clip. This is by design, not a bug: players must manage which empty bowl belongs near which pot, creating memory and coordination pressure in the kitchen.
 

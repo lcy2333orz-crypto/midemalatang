@@ -24,7 +24,7 @@ func update_status(text: String) -> void:
 func update_time(seconds_remaining: float) -> void:
 	_ensure_widgets()
 	var display_seconds: int = max(0, int(ceil(seconds_remaining)))
-	time_label.text = "Time %ds" % display_seconds
+	time_label.text = "剩余 %d 秒" % display_seconds
 
 
 func update_orders(text: String) -> void:
@@ -169,7 +169,7 @@ func _create_order_card(card_text: String) -> Panel:
 	var patience_percent: float = 0.0
 	for i in range(lines.size()):
 		if i == lines.size() - 1:
-			patience_percent = float(str(lines[i]).replace("%", ""))
+			patience_percent = _extract_percent_value(str(lines[i]))
 		else:
 			label_lines.append(lines[i])
 
@@ -189,3 +189,14 @@ func _create_order_card(card_text: String) -> Panel:
 	box.add_child(patience_bar)
 
 	return card
+
+
+func _extract_percent_value(text: String) -> float:
+	var number_text: String = ""
+	for i in range(text.length()):
+		var ch: String = text.substr(i, 1)
+		if (ch >= "0" and ch <= "9") or ch == ".":
+			number_text += ch
+	if number_text == "":
+		return 0.0
+	return float(number_text)

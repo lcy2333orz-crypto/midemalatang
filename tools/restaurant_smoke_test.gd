@@ -78,7 +78,7 @@ func _run() -> void:
 		_finish()
 		return
 
-	await _check_visible_text_is_ascii()
+	await _check_visible_text_is_chinese()
 	if not failures.is_empty():
 		_finish()
 		return
@@ -194,54 +194,54 @@ func _assert_greybox_labels(scene: Node) -> void:
 		"GridVisual/GridLineV15": "",
 		"GridVisual/GridLineH0": "",
 		"GridVisual/GridLineH9": "",
-		"PlayerSpawns/PlayerSpawn1/Label": "P1 SPAWN",
-		"PlayerSpawns/PlayerSpawn2/Label": "P2 SPAWN",
-		"PlayerSpawns/PlayerSpawn3/Label": "P3 SPAWN",
-		"PlayerSpawns/PlayerSpawn4/Label": "P4 SPAWN",
-		"LockedPlaceholders/DoorCell1/Label": "DOOR A r5c1",
-		"LockedPlaceholders/DoorCell2/Label": "DOOR B r6c1",
-		"LockedPlaceholders/IngredientDisplay2/Label": "ING 2 r1c2",
-		"LockedPlaceholders/IngredientDisplay3/Label": "ING 3 r1c3",
-		"LockedPlaceholders/IngredientDisplay4Locked/Label": "ING LOCK r1c4",
-		"LockedPlaceholders/DrinkFridge2Locked/Label": "DRINK LOCK r1c6",
-		"LockedPlaceholders/Cooker3Locked/Label": "POT LOCK r7c15",
-		"LockedPlaceholders/SauceStationMixed/Label": "SAUCE MIX r9c14",
-		"LockedPlaceholders/PackingBagArea/Label": "BAG AREA r1c13",
-		"SurfaceSlots/TakeoutPickupSlot1/Label": "TAKEOUT 1",
-		"SurfaceSlots/TakeoutPickupSlot2/Label": "TAKEOUT 2",
-		"LockedPlaceholders/CustomerTrashBin/Label": "TRASH C r9c1",
-		"LockedPlaceholders/DrinkStorage/Label": "DRINK BOX r9c11",
-		"Stations/IngredientDisplay/Label": "ING 1",
-		"Stations/DrinksFridge/Label": "DRINK 1",
-		"Stations/Counter/Label": "COUNTER",
-		"Stations/StapleArea/Label": "STAPLE",
-		"Stations/CookerStations/CookerStation1/Label": "POT 1",
-		"Stations/CookerStations/CookerStation2/Label": "POT 2",
-		"Stations/CookerStations/CookerStation1/StatusLabel": "EMPTY",
-		"Stations/CookerStations/CookerStation2/StatusLabel": "EMPTY",
-		"Stations/SauceStation/Label": "CHILI",
-		"Stations/PackingArea/Label": "PACK MACHINE",
-		"Stations/TakeoutPickup/Label": "TAKEOUT 1",
-		"Stations/TrashBin/Label": "TRASH K",
-		"Stations/StorageArea/Label": "FRIDGE",
-		"Stations/DiningTables/DiningTable1/Label": "DINE 1",
-		"Stations/DiningTables/DiningTable2/Label": "DINE 2",
-		"Stations/WaitingOrderArea/Label": "WAITING",
-		"SurfaceSlots/SurfaceSlot_r1c8/Label": "SURF r1c8",
-		"SurfaceSlots/SurfaceSlot_r1c9/Label": "SURF r1c9",
-		"SurfaceSlots/SurfaceSlot_r1c10/Label": "SURF r1c10",
-		"SurfaceSlots/SurfaceSlot_r1c11/Label": "SURF r1c11",
-		"SurfaceSlots/SurfaceSlot_r2c10/Label": "SURF r2c10",
-		"SurfaceSlots/SurfaceSlot_r3c10/Label": "SURF r3c10",
-		"SurfaceSlots/SurfaceSlot_r4c10/Label": "SURF r4c10",
-		"SurfaceSlots/SurfaceSlot_r5c10/Label": "SURF r5c10",
-		"SurfaceSlots/SurfaceSlot_r6c10/Label": "SURF r6c10",
-		"SurfaceSlots/SurfaceSlot_r1c15/Label": "SURF r1c15",
-		"SurfaceSlots/SurfaceSlot_r2c15/Label": "SURF r2c15",
-		"SurfaceSlots/SurfaceSlot_r4c15/Label": "SURF r4c15",
-		"SurfaceSlots/SurfaceSlot_r6c15/Label": "SURF r6c15",
-		"SurfaceSlots/SurfaceSlot_r8c15/Label": "SURF r8c15",
-		"SurfaceSlots/SurfaceSlot_r9c15/Label": "SURF r9c15",
+		"PlayerSpawns/PlayerSpawn1/Label": "1P 出生",
+		"PlayerSpawns/PlayerSpawn2/Label": "2P 出生",
+		"PlayerSpawns/PlayerSpawn3/Label": "3P 出生",
+		"PlayerSpawns/PlayerSpawn4/Label": "4P 出生",
+		"LockedPlaceholders/DoorCell1/Label": "门",
+		"LockedPlaceholders/DoorCell2/Label": "门",
+		"LockedPlaceholders/IngredientDisplay2/Label": "选菜2",
+		"LockedPlaceholders/IngredientDisplay3/Label": "选菜3",
+		"LockedPlaceholders/IngredientDisplay4Locked/Label": "选菜锁定",
+		"LockedPlaceholders/DrinkFridge2Locked/Label": "饮料锁定",
+		"LockedPlaceholders/Cooker3Locked/Label": "锅位锁定",
+		"LockedPlaceholders/SauceStationMixed/Label": "小料桶",
+		"LockedPlaceholders/PackingBagArea/Label": "袋子区",
+		"SurfaceSlots/TakeoutPickupSlot1/Label": "外带桌1",
+		"SurfaceSlots/TakeoutPickupSlot2/Label": "外带桌2",
+		"LockedPlaceholders/CustomerTrashBin/Label": "客用垃圾桶",
+		"LockedPlaceholders/DrinkStorage/Label": "饮料箱",
+		"Stations/IngredientDisplay/Label": "选菜1",
+		"Stations/DrinksFridge/Label": "饮料1",
+		"Stations/Counter/Label": "收银台",
+		"Stations/StapleArea/Label": "主食柜",
+		"Stations/CookerStations/CookerStation1/Label": "锅位1",
+		"Stations/CookerStations/CookerStation2/Label": "锅位2",
+		"Stations/CookerStations/CookerStation1/StatusLabel": "空锅",
+		"Stations/CookerStations/CookerStation2/StatusLabel": "空锅",
+		"Stations/SauceStation/Label": "辣椒",
+		"Stations/PackingArea/Label": "打包机",
+		"Stations/TakeoutPickup/Label": "外带桌1",
+		"Stations/TrashBin/Label": "厨房垃圾桶",
+		"Stations/StorageArea/Label": "冰箱",
+		"Stations/DiningTables/DiningTable1/Label": "桌1",
+		"Stations/DiningTables/DiningTable2/Label": "桌2",
+		"Stations/WaitingOrderArea/Label": "待煮区旧",
+		"SurfaceSlots/SurfaceSlot_r1c8/Label": "空桌 r1c8",
+		"SurfaceSlots/SurfaceSlot_r1c9/Label": "空桌 r1c9",
+		"SurfaceSlots/SurfaceSlot_r1c10/Label": "空桌 r1c10",
+		"SurfaceSlots/SurfaceSlot_r1c11/Label": "空桌 r1c11",
+		"SurfaceSlots/SurfaceSlot_r2c10/Label": "空桌 r2c10",
+		"SurfaceSlots/SurfaceSlot_r3c10/Label": "空桌 r3c10",
+		"SurfaceSlots/SurfaceSlot_r4c10/Label": "空桌 r4c10",
+		"SurfaceSlots/SurfaceSlot_r5c10/Label": "空桌 r5c10",
+		"SurfaceSlots/SurfaceSlot_r6c10/Label": "空桌 r6c10",
+		"SurfaceSlots/SurfaceSlot_r1c15/Label": "空桌 r1c15",
+		"SurfaceSlots/SurfaceSlot_r2c15/Label": "空桌 r2c15",
+		"SurfaceSlots/SurfaceSlot_r4c15/Label": "空桌 r4c15",
+		"SurfaceSlots/SurfaceSlot_r6c15/Label": "空桌 r6c15",
+		"SurfaceSlots/SurfaceSlot_r8c15/Label": "空桌 r8c15",
+		"SurfaceSlots/SurfaceSlot_r9c15/Label": "空桌 r9c15",
 	}
 
 	for path in expected_labels:
@@ -846,8 +846,8 @@ func _check_pots_spawn_on_stoves() -> void:
 		_fail("pot spawn", "initial pots should be empty")
 		scene.queue_free()
 		return
-	if manager.cooker_1.active_pot.get_content_status_text() != "POT EMPTY":
-		_fail("pot spawn", "empty pot should show POT EMPTY")
+	if manager.cooker_1.active_pot.get_content_status_text() != "空锅":
+		_fail("pot spawn", "empty pot should show 空锅")
 		scene.queue_free()
 		return
 
@@ -912,8 +912,8 @@ func _check_pot_heats_only_on_stove() -> void:
 	manager.interact_cooker(manager.cooker_1)
 	var pot: CookingPot = manager.cooker_1.active_pot
 	var pot_label: Label = pot.get_node_or_null("Label") as Label
-	if pot_label != null and pot_label.text != "POT COOK":
-		_fail("pot heat", "cooking pot should show POT COOK without order id")
+	if pot_label != null and pot_label.text != "加热中":
+		_fail("pot heat", "cooking pot should show 加热中 without order id")
 		scene.queue_free()
 		return
 	pot.call("_process", 8.2)
@@ -921,8 +921,8 @@ func _check_pot_heats_only_on_stove() -> void:
 		_fail("pot heat", "pot content should become READY on stove")
 		scene.queue_free()
 		return
-	if pot_label != null and pot_label.text != "POT READY":
-		_fail("pot heat", "ready pot should show POT READY without order id")
+	if pot_label != null and pot_label.text != "已熟":
+		_fail("pot heat", "ready pot should show 已熟 without order id")
 		scene.queue_free()
 		return
 	var holder: OrderBowl = manager.held_bowl
@@ -1189,7 +1189,7 @@ func _check_two_table_assignment() -> void:
 	_pass("table assignment")
 
 
-func _check_visible_text_is_ascii() -> void:
+func _check_visible_text_is_chinese() -> void:
 	RestaurantRunState.start_new_run(3)
 	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
 	var scene: Node = scene_resource.instantiate()
@@ -1199,7 +1199,7 @@ func _check_visible_text_is_ascii() -> void:
 
 	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
 	if manager == null:
-		_fail("ascii text", "restaurant manager was not found")
+		_fail("chinese text", "restaurant manager was not found")
 		scene.queue_free()
 		return
 
@@ -1227,16 +1227,22 @@ func _check_visible_text_is_ascii() -> void:
 	texts.append(bowl.get_order_status_text())
 	texts.append(bowl.get_cooker_timer_text())
 
-	for text in texts:
-		if not _is_ascii(text):
-			_fail("ascii text", "visible text should be ASCII: %s" % text)
+	var expected_fragments: Array[String] = ["等待", "空锅", "拿着订单 #605", "剩余 13 秒", "可出餐", "已熟", "煮糊"]
+	for expected in expected_fragments:
+		var found: bool = false
+		for text in texts:
+			if text.contains(expected):
+				found = true
+				break
+		if not found:
+			_fail("chinese text", "visible text should contain Chinese fragment: %s" % expected)
 			ui.queue_free()
 			scene.queue_free()
 			return
 
 	ui.queue_free()
 	scene.queue_free()
-	_pass("ascii text")
+	_pass("chinese text")
 
 
 func _check_placeholder_interactions_do_not_mutate() -> void:
@@ -1365,8 +1371,8 @@ func _check_overcooked_trash_rule() -> void:
 		scene.queue_free()
 		return
 	var over_pot_label: Label = manager.cooker_1.active_pot.get_node_or_null("Label") as Label
-	if over_pot_label != null and over_pot_label.text != "POT OVER":
-		_fail("overcooked trash", "overcooked pot should show POT OVER without order id")
+	if over_pot_label != null and over_pot_label.text != "煮糊":
+		_fail("overcooked trash", "overcooked pot should show 煮糊 without order id")
 		scene.queue_free()
 		return
 
@@ -1462,11 +1468,11 @@ func _check_order_card_destination() -> void:
 	var takeout_bowl: OrderBowl = OrderBowl.new()
 	takeout_bowl.setup_order(401, {"spinach": 1}, "noodle", "hot", "takeout", 0)
 	var takeout_text: String = manager._get_order_card_text(takeout_bowl)
-	if not takeout_text.contains("TAKEOUT 1/2"):
+	if not takeout_text.contains("外带桌"):
 		_fail("order card destination", "takeout card should show pickup destination")
 		scene.queue_free()
 		return
-	if not takeout_text.contains("#401") or not takeout_text.contains("100%"):
+	if not takeout_text.contains("#401") or not takeout_text.contains("耐心：100%") or not takeout_text.contains("主食：面"):
 		_fail("order card destination", "takeout card should keep id and patience")
 		scene.queue_free()
 		return
@@ -1474,11 +1480,11 @@ func _check_order_card_destination() -> void:
 	var dine_bowl: OrderBowl = OrderBowl.new()
 	dine_bowl.setup_order(402, {"spinach": 1}, "noodle", "hot", "dine_in", 2)
 	var dine_text: String = manager._get_order_card_text(dine_bowl)
-	if not dine_text.contains("DINE 2"):
+	if not dine_text.contains("桌2"):
 		_fail("order card destination", "dine-in card should show table destination")
 		scene.queue_free()
 		return
-	if not dine_text.contains("#402") or not dine_text.contains("100%"):
+	if not dine_text.contains("#402") or not dine_text.contains("耐心：100%") or not dine_text.contains("主食：面"):
 		_fail("order card destination", "dine-in card should keep id and patience")
 		scene.queue_free()
 		return
@@ -1518,7 +1524,7 @@ func _check_restaurant_hud_layout() -> void:
 		_fail("hud layout", "status label should be hidden in the simplified HUD")
 		ui.queue_free()
 		return
-	ui.update_hand_state("Holding #001")
+	ui.update_hand_state("拿着订单 #001")
 	if bool(hand_label.visible):
 		_fail("hud layout", "hand label should stay hidden in the simplified HUD")
 		ui.queue_free()
@@ -1528,14 +1534,14 @@ func _check_restaurant_hud_layout() -> void:
 		ui.queue_free()
 		return
 
-	ui.show_toast("Closed: no new customers.", 1.8)
-	if not bool(toast_label.visible) or not toast_label.text.contains("Closed"):
+	ui.show_toast("已打烊：不会再来新顾客", 1.8)
+	if not bool(toast_label.visible) or not toast_label.text.contains("已打烊"):
 		_fail("hud layout", "toast should show manual close feedback")
 		ui.queue_free()
 		return
 
 	ui.update_time(12.4)
-	if not time_label.text.contains("13s"):
+	if not time_label.text.contains("剩余 13 秒"):
 		_fail("hud layout", "time label should round up remaining seconds")
 		ui.queue_free()
 		return
