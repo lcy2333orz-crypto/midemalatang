@@ -11,6 +11,7 @@ const STATUS_COOKING = "cooking"
 const STATUS_COOKED = "cooked"
 const STATUS_OVERCOOKED = "overcooked"
 const STATUS_SAUCED = "sauced"
+const STATUS_SEALED = "sealed"
 const STATUS_PACKED = "packed"
 const STATUS_READY = "ready"
 const STATUS_DONE = "done"
@@ -176,8 +177,10 @@ func get_order_status_text() -> String:
 			return "可出餐"
 		STATUS_SAUCED:
 			return "可出餐"
+		STATUS_SEALED:
+			return "已封口"
 		STATUS_PACKED:
-			return "已打包"
+			return "已装袋"
 		STATUS_READY:
 			return "可出餐"
 		STATUS_DONE:
@@ -202,7 +205,7 @@ func _sync_cooking_thresholds() -> void:
 
 
 func add_next_sauce() -> void:
-	var sauce_cycle: Array[String] = ["chili", "garlic", "cilantro"]
+	var sauce_cycle: Array[String] = ["garlic_water", "sesame_paste", "vinegar", "sugar"]
 	for sauce in sauce_cycle:
 		if not sauces.has(sauce):
 			sauces.append(sauce)
@@ -219,9 +222,19 @@ func is_sauced() -> bool:
 
 
 func mark_packed() -> void:
-	if service_mode == "takeout":
+	if service_mode == "takeout" and status == STATUS_SEALED:
 		status = STATUS_PACKED
 		refresh_visuals()
+
+
+func mark_sealed() -> void:
+	if service_mode == "takeout":
+		status = STATUS_SEALED
+		refresh_visuals()
+
+
+func is_sealed() -> bool:
+	return status == STATUS_SEALED
 
 
 func mark_ready() -> void:
@@ -289,6 +302,14 @@ func _get_sauce_display_text() -> String:
 	var display_parts: Array[String] = []
 	for sauce in sauces:
 		match sauce:
+			"garlic_water":
+				display_parts.append("蒜水")
+			"sesame_paste":
+				display_parts.append("麻酱")
+			"vinegar":
+				display_parts.append("醋")
+			"sugar":
+				display_parts.append("糖")
 			"chili":
 				display_parts.append("辣椒")
 			"garlic":
@@ -375,6 +396,8 @@ func refresh_visuals() -> void:
 			bowl_rect.color = Color(0.16, 0.12, 0.08, 1.0)
 		STATUS_SAUCED:
 			bowl_rect.color = Color(0.8, 0.45, 0.2, 1.0)
+		STATUS_SEALED:
+			bowl_rect.color = Color(0.78, 0.86, 1.0, 1.0)
 		STATUS_PACKED:
 			bowl_rect.color = Color(0.9, 0.9, 0.9, 1.0)
 		STATUS_READY:

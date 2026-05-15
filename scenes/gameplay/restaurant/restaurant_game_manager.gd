@@ -144,6 +144,16 @@ func refresh_queue_positions() -> void:
 
 
 func interact_with_station(station_name: String) -> void:
+	interact_with_station_action(station_name, "interact")
+
+
+func interact_with_station_action(station_name: String, action_name: String = "interact") -> void:
+	if (station_name == "SauceStation" or station_name == "SauceStationMixed"):
+		interact_sauce_station_action(action_name)
+		return
+	if action_name != "interact" and action_name != "sauce_x":
+		return
+
 	if station_name.begins_with("SurfaceSlot_") or station_name.begins_with("TakeoutPickupSlot"):
 		interact_surface_slot(station_name)
 		return
@@ -160,9 +170,11 @@ func interact_with_station(station_name: String) -> void:
 		"StapleArea", "StapleCabinet":
 			interact_staple_cabinet()
 		"SauceStation":
-			interact_sauce_station()
+			interact_sauce_station_action(action_name)
 		"PackingArea":
 			interact_packing_area()
+		"PackingBagArea":
+			interact_packing_bag_area()
 		"DiningTable1":
 			interact_delivery_table(1)
 		"DiningTable2":
@@ -173,7 +185,7 @@ func interact_with_station(station_name: String) -> void:
 			interact_takeout_pickup()
 		"TrashBin":
 			interact_trash_bin()
-		"IngredientDisplay", "IngredientDisplay2", "IngredientDisplay3", "IngredientDisplayLocked", "DrinksFridge", "DrinkFridgeLocked", "PackingBagArea", "SauceStationMixed", "CustomerTrashBin", "StorageArea", "DrinkStorage", "CookerStationLocked":
+		"IngredientDisplay", "IngredientDisplay2", "IngredientDisplay3", "IngredientDisplayLocked", "DrinksFridge", "DrinkFridgeLocked", "CustomerTrashBin", "StorageArea", "DrinkStorage", "CookerStationLocked":
 			_interact_placeholder(station_name)
 		_:
 			_refresh_ui("这里暂时不能操作：%s" % station_name)
@@ -349,6 +361,13 @@ func interact_surface_slot(slot_id: String) -> void:
 		held_bowl = null
 		if _try_complete_takeout_from_surface(slot, placed_bowl):
 			return
+		if slot.is_takeout_pickup_slot and placed_bowl.service_mode == "takeout":
+			if placed_bowl.status == OrderBowl.STATUS_SEALED:
+				_refresh_ui("外带单还没有装袋")
+				return
+			if placed_bowl.status != OrderBowl.STATUS_PACKED:
+				_refresh_ui("外带单还没有封口")
+				return
 		_refresh_ui("已把订单 #%03d 放到 %s" % [placed_bowl.order_id, slot.slot_label])
 		return
 
@@ -448,6 +467,10 @@ func interact_staple_cabinet() -> void:
 
 
 func interact_sauce_station() -> void:
+	interact_sauce_station_action("interact")
+
+
+func interact_sauce_station_action(action_name: String = "interact") -> void:
 	if held_dirty_cooker != null:
 		_refresh_ui("先清理脏锅")
 		return
@@ -462,8 +485,16 @@ func interact_sauce_station() -> void:
 	if held_bowl.status != OrderBowl.STATUS_COOKED and held_bowl.status != OrderBowl.STATUS_SAUCED:
 		_refresh_ui("煮熟后才能加小料")
 		return
-	held_bowl.add_next_sauce()
-	_refresh_ui("已加小料：%s" % _sauce_list_text(held_bowl.sauces))
+	var sauce_id: String = _sauce_id_for_action(action_name)
+	var sauce_name: String = _sauce_display_text(sauce_id)
+	if held_bowl.sauces.has(sauce_id):
+		_refresh_ui("已经加过：%s" % sauce_name)
+		return
+	held_bowl.sauces.append(sauce_id)
+	if held_bowl.status == OrderBowl.STATUS_COOKED:
+		held_bowl.status = OrderBowl.STATUS_SAUCED
+	held_bowl.refresh_visuals()
+	_refresh_ui("已加小料：%s" % sauce_name)
 
 
 func interact_packing_area() -> void:
@@ -484,8 +515,42 @@ func interact_packing_area() -> void:
 	if not held_bowl.is_sauced():
 		_refresh_ui("打包前需要先加小料")
 		return
+	if held_bowl.status == OrderBowl.STATUS_PACKED:
+		_refresh_ui("订单已经装袋，请放到外带桌")
+		return
+	if held_bowl.status == OrderBowl.STATUS_SEALED:
+		_refresh_ui("已经封口，请去袋子区装袋")
+		return
+	held_bowl.mark_sealed()
+	_refresh_ui("订单 #%03d 已封口，请去袋子区装袋" % held_bowl.order_id)
+
+
+func interact_packing_bag_area() -> void:
+	if held_dirty_cooker != null:
+		_refresh_ui("先清理脏锅")
+		return
+	if held_pot != null:
+		_refresh_ui("先放下锅")
+		return
+	if held_bowl == null:
+		_refresh_ui("先拿着已封口的外带碗")
+		return
+	if _reject_overcooked_held_order():
+		return
+	if held_bowl.service_mode != "takeout":
+		_refresh_ui("堂食订单不用装袋")
+		return
+	if not held_bowl.is_sauced():
+		_refresh_ui("装袋前需要先加小料")
+		return
+	if held_bowl.status == OrderBowl.STATUS_PACKED:
+		_refresh_ui("订单已经装袋，请放到外带桌")
+		return
+	if held_bowl.status != OrderBowl.STATUS_SEALED:
+		_refresh_ui("请先去封口机打包")
+		return
 	held_bowl.mark_packed()
-	_refresh_ui("订单 #%03d 已打包" % held_bowl.order_id)
+	_refresh_ui("订单 #%03d 已装袋，请放到外带桌" % held_bowl.order_id)
 
 
 func interact_delivery_table(table_id: int) -> void:
@@ -521,8 +586,14 @@ func interact_takeout_pickup() -> void:
 		return
 	if _reject_overcooked_held_order():
 		return
-	if held_bowl.service_mode != "takeout" or held_bowl.status != OrderBowl.STATUS_PACKED:
-		_refresh_ui("外带订单打包后放到外带桌1或外带桌2")
+	if held_bowl.service_mode != "takeout":
+		_refresh_ui("堂食订单要送到对应桌子")
+		return
+	if held_bowl.status == OrderBowl.STATUS_SEALED:
+		_refresh_ui("外带单还没有装袋")
+		return
+	if held_bowl.status != OrderBowl.STATUS_PACKED:
+		_refresh_ui("外带单还没有封口")
 		return
 	_refresh_ui("请使用外带桌1或外带桌2")
 
@@ -535,8 +606,11 @@ func interact_takeout_counter_delivery() -> void:
 	if held_bowl.service_mode != "takeout":
 		_refresh_ui("堂食订单要送到对应桌子")
 		return
+	if held_bowl.status == OrderBowl.STATUS_SEALED:
+		_refresh_ui("外带单还没有装袋")
+		return
 	if held_bowl.status != OrderBowl.STATUS_PACKED:
-		_refresh_ui("外带订单需要先打包")
+		_refresh_ui("外带单还没有封口")
 		return
 	_complete_held_order()
 
@@ -615,6 +689,7 @@ func force_complete_one_order_for_smoke() -> bool:
 		return false
 	if held_bowl.service_mode == "takeout":
 		interact_packing_area()
+		interact_packing_bag_area()
 		interact_surface_slot("TakeoutPickupSlot1")
 	else:
 		interact_delivery_table(held_bowl.table_id)
@@ -1181,16 +1256,40 @@ func _sauce_list_text(sauces: Array[String]) -> String:
 		return "无"
 	var parts: Array[String] = []
 	for sauce in sauces:
-		match sauce:
-			"chili":
-				parts.append("辣椒")
-			"garlic":
-				parts.append("蒜")
-			"cilantro":
-				parts.append("香菜")
-			_:
-				parts.append(str(sauce))
+		parts.append(_sauce_display_text(sauce))
 	return "、".join(parts)
+
+
+func _sauce_id_for_action(action_name: String) -> String:
+	match action_name:
+		"sauce_y":
+			return "sesame_paste"
+		"sauce_a":
+			return "vinegar"
+		"sauce_b":
+			return "sugar"
+		_:
+			return "garlic_water"
+
+
+func _sauce_display_text(sauce_id: String) -> String:
+	match sauce_id:
+		"garlic_water":
+			return "蒜水"
+		"sesame_paste":
+			return "麻酱"
+		"vinegar":
+			return "醋"
+		"sugar":
+			return "糖"
+		"chili":
+			return "辣椒"
+		"garlic":
+			return "蒜"
+		"cilantro":
+			return "香菜"
+		_:
+			return sauce_id
 
 
 func _delivery_destination_text(target_bowl: OrderBowl) -> String:

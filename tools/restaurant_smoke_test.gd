@@ -13,6 +13,21 @@ func _run() -> void:
 		_finish()
 		return
 
+	_check_input_mappings()
+	if not failures.is_empty():
+		_finish()
+		return
+
+	await _check_interaction_prompts()
+	if not failures.is_empty():
+		_finish()
+		return
+
+	await _check_sauce_action_buttons()
+	if not failures.is_empty():
+		_finish()
+		return
+
 	await _check_order_loop()
 	if not failures.is_empty():
 		_finish()
@@ -188,6 +203,132 @@ func _check_scene_loads() -> void:
 	_pass("scene load")
 
 
+func _check_input_mappings() -> void:
+	var key_checks: Dictionary = {
+		"ui_left": [KEY_A, KEY_LEFT],
+		"ui_right": [KEY_D, KEY_RIGHT],
+		"ui_up": [KEY_W, KEY_UP],
+		"ui_down": [KEY_S, KEY_DOWN],
+		"interact": [KEY_H],
+		"sauce_x": [KEY_H],
+		"sauce_y": [KEY_J],
+		"sauce_a": [KEY_K],
+		"sauce_b": [KEY_L],
+	}
+	for action_name in key_checks:
+		if not InputMap.has_action(action_name):
+			_fail("input mappings", "missing action %s" % action_name)
+			continue
+		for keycode in key_checks[action_name]:
+			if not _action_has_key(action_name, int(keycode)):
+				_fail("input mappings", "%s missing key %s" % [action_name, keycode])
+
+	if _action_has_key("interact", KEY_E):
+		_fail("input mappings", "interact should not still use E")
+
+	var motion_checks: Array[Array] = [
+		["ui_left", JOY_AXIS_LEFT_X, -1.0],
+		["ui_right", JOY_AXIS_LEFT_X, 1.0],
+		["ui_up", JOY_AXIS_LEFT_Y, -1.0],
+		["ui_down", JOY_AXIS_LEFT_Y, 1.0],
+	]
+	for check in motion_checks:
+		if not _action_has_joy_motion(str(check[0]), int(check[1]), float(check[2])):
+			_fail("input mappings", "%s missing left stick motion" % check[0])
+
+	var button_checks: Dictionary = {
+		"interact": JOY_BUTTON_X,
+		"sauce_x": JOY_BUTTON_X,
+		"sauce_y": JOY_BUTTON_Y,
+		"sauce_a": JOY_BUTTON_A,
+		"sauce_b": JOY_BUTTON_B,
+	}
+	for action_name in button_checks:
+		if not _action_has_joy_button(action_name, int(button_checks[action_name])):
+			_fail("input mappings", "%s missing joy button %s" % [action_name, button_checks[action_name]])
+
+	if failures.is_empty():
+		_pass("input mappings")
+
+
+func _check_interaction_prompts() -> void:
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+
+	var counter_area: RestaurantStationArea = scene.get_node_or_null("Stations/Counter/InteractionArea") as RestaurantStationArea
+	var sauce_area: RestaurantStationArea = scene.get_node_or_null("Stations/SauceStation/InteractionArea") as RestaurantStationArea
+	if counter_area == null or sauce_area == null:
+		_fail("interaction prompts", "missing prompt station area")
+		scene.queue_free()
+		return
+
+	var counter_prompt: String = counter_area.get_interaction_prompt()
+	var sauce_prompt: String = sauce_area.get_interaction_prompt()
+	if not counter_prompt.contains("[H]") or counter_prompt.contains("[E]"):
+		_fail("interaction prompts", "normal prompt should use [H], got %s" % counter_prompt)
+		scene.queue_free()
+		return
+	if not sauce_prompt.contains("H/J/K/L") or sauce_prompt.contains("[E]"):
+		_fail("interaction prompts", "sauce prompt should show H/J/K/L, got %s" % sauce_prompt)
+		scene.queue_free()
+		return
+
+	scene.queue_free()
+	_pass("interaction prompts")
+
+
+func _check_sauce_action_buttons() -> void:
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("sauce actions", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	var bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(bowl)
+	bowl.setup_order(901, {"spinach": 1}, "none", "mild", "dine_in", 1)
+	bowl.status = OrderBowl.STATUS_COOKED
+	manager._hold_bowl(bowl)
+
+	var expected: Dictionary = {
+		"sauce_x": "garlic_water",
+		"sauce_y": "sesame_paste",
+		"sauce_a": "vinegar",
+		"sauce_b": "sugar",
+	}
+	for action_name in expected:
+		var sauce_id: String = expected[action_name]
+		manager.interact_with_station_action("SauceStation", action_name)
+		if not bowl.sauces.has(sauce_id):
+			_fail("sauce actions", "%s did not add %s" % [action_name, sauce_id])
+			scene.queue_free()
+			return
+
+	var sauce_count: int = bowl.sauces.size()
+	manager.interact_with_station_action("SauceStation", "sauce_x")
+	if bowl.sauces.size() != sauce_count:
+		_fail("sauce actions", "duplicate sauce should not be added")
+		scene.queue_free()
+		return
+	if not bowl.is_sauced():
+		_fail("sauce actions", "bowl should be sauced after one sauce")
+		scene.queue_free()
+		return
+
+	scene.queue_free()
+	_pass("sauce actions")
+
+
 func _assert_greybox_labels(scene: Node) -> void:
 	var expected_labels: Dictionary = {
 		"GridVisual/GridLineV0": "",
@@ -220,7 +361,7 @@ func _assert_greybox_labels(scene: Node) -> void:
 		"Stations/CookerStations/CookerStation1/StatusLabel": "空锅",
 		"Stations/CookerStations/CookerStation2/StatusLabel": "空锅",
 		"Stations/SauceStation/Label": "辣椒",
-		"Stations/PackingArea/Label": "打包机",
+		"Stations/PackingArea/Label": "封口机",
 		"Stations/TakeoutPickup/Label": "外带桌1",
 		"Stations/TrashBin/Label": "厨房垃圾桶",
 		"Stations/StorageArea/Label": "冰箱",
@@ -615,6 +756,34 @@ func _assert_node_position(scene: Node, path: String, expected: Vector2, step_na
 		_fail(step_name, "%s expected %s but was %s" % [path, expected, node.position])
 
 
+func _action_has_key(action_name: String, keycode: int) -> bool:
+	for event in InputMap.action_get_events(action_name):
+		var key_event: InputEventKey = event as InputEventKey
+		if key_event != null and key_event.physical_keycode == keycode:
+			return true
+	return false
+
+
+func _action_has_joy_button(action_name: String, button_index: int) -> bool:
+	for event in InputMap.action_get_events(action_name):
+		var button_event: InputEventJoypadButton = event as InputEventJoypadButton
+		if button_event != null and button_event.button_index == button_index:
+			return true
+	return false
+
+
+func _action_has_joy_motion(action_name: String, axis: int, sign_value: float) -> bool:
+	for event in InputMap.action_get_events(action_name):
+		var motion_event: InputEventJoypadMotion = event as InputEventJoypadMotion
+		if motion_event == null or motion_event.axis != axis:
+			continue
+		if sign_value < 0.0 and motion_event.axis_value < -0.5:
+			return true
+		if sign_value > 0.0 and motion_event.axis_value > 0.5:
+			return true
+	return false
+
+
 func _is_ascii(text: String) -> bool:
 	for i in range(text.length()):
 		if text.unicode_at(i) > 127:
@@ -681,6 +850,7 @@ func _check_delivery_paths() -> void:
 	manager.held_bowl = takeout_bowl
 	manager.interact_sauce_station()
 	manager.interact_packing_area()
+	manager.interact_packing_bag_area()
 	manager.interact_surface_slot("TakeoutPickupSlot1")
 	if manager.held_bowl != null or int(manager.completed_orders) != 1:
 		_fail("delivery paths", "packed takeout should complete at takeout pickup slot")
@@ -1300,12 +1470,45 @@ func _check_takeout_pickup_slot_completion() -> void:
 	var bowl: OrderBowl = OrderBowl.new()
 	scene.add_child(bowl)
 	bowl.setup_order(603, {"spinach": 1}, "none", "mild", "takeout", 0)
-	bowl.status = OrderBowl.STATUS_PACKED
+	bowl.status = OrderBowl.STATUS_COOKED
 	manager._hold_bowl(bowl)
 	var completed_before: int = int(manager.completed_orders)
+	manager.interact_packing_area()
+	if bowl.status != OrderBowl.STATUS_COOKED:
+		_fail("takeout slot", "sealing should require sauce")
+		scene.queue_free()
+		return
+
+	manager.interact_sauce_station_action("sauce_x")
+	manager.interact_packing_area()
+	if bowl.status != OrderBowl.STATUS_SEALED:
+		_fail("takeout slot", "sauced takeout should become sealed")
+		scene.queue_free()
+		return
+
+	manager.interact_surface_slot("TakeoutPickupSlot1")
+	var slot: SurfaceSlot = manager._get_surface_slot("TakeoutPickupSlot1")
+	if int(manager.completed_orders) != completed_before:
+		_fail("takeout slot", "sealed takeout should not complete")
+		scene.queue_free()
+		return
+	if slot == null or slot.get_stored_bowl() != bowl:
+		_fail("takeout slot", "sealed takeout should remain on pickup slot")
+		scene.queue_free()
+		return
+
+	manager.interact_surface_slot("TakeoutPickupSlot1")
+	if manager.held_bowl != bowl:
+		_fail("takeout slot", "sealed takeout should be picked back up")
+		scene.queue_free()
+		return
+	manager.interact_packing_bag_area()
+	if bowl.status != OrderBowl.STATUS_PACKED:
+		_fail("takeout slot", "sealed takeout should become packed at bag area")
+		scene.queue_free()
+		return
 	manager.interact_surface_slot("TakeoutPickupSlot1")
 
-	var slot: SurfaceSlot = manager._get_surface_slot("TakeoutPickupSlot1")
 	if manager.held_bowl != null:
 		_fail("takeout slot", "completed takeout should leave player hands")
 		scene.queue_free()

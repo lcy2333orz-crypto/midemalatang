@@ -69,9 +69,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 
-	if event.is_action_pressed("interact"):
-
-		try_interact()
+	for action_name in ["sauce_x", "sauce_y", "sauce_a", "sauce_b", "interact"]:
+		if event.is_action_pressed(action_name):
+			if try_interact(action_name):
+				get_viewport().set_input_as_handled()
+			return
 
 
 func request_restaurant_close_day() -> bool:
@@ -115,11 +117,11 @@ func unregister_nearby_station(station: Area2D) -> void:
 
 
 
-func try_interact() -> void:
+func try_interact(action_name: String = "interact") -> bool:
 
 	if not _can_interact_now():
 
-		return
+		return false
 
 
 
@@ -131,7 +133,7 @@ func try_interact() -> void:
 
 		print("No station nearby")
 
-		return
+		return false
 
 
 
@@ -141,7 +143,10 @@ func try_interact() -> void:
 
 		print("No valid station nearby")
 
-		return
+		return false
+
+	if action_name in ["sauce_y", "sauce_a", "sauce_b"] and not _station_accepts_sauce_action(target_station):
+		return false
 
 
 
@@ -153,8 +158,9 @@ func try_interact() -> void:
 
 
 
-	if target_station.has_method("interact"):
-
+	if target_station.has_method("interact_with_action"):
+		target_station.interact_with_action(action_name)
+	elif target_station.has_method("interact"):
 		target_station.interact()
 
 
@@ -162,6 +168,18 @@ func try_interact() -> void:
 	_update_interaction_prompt()
 
 	_update_hand_state_prompt()
+
+	return true
+
+
+func _station_accepts_sauce_action(station: Area2D) -> bool:
+	if station == null or not is_instance_valid(station):
+		return false
+	var restaurant_station: RestaurantStationArea = station as RestaurantStationArea
+	if restaurant_station == null:
+		return false
+	var station_name: String = restaurant_station.station_name
+	return station_name == "SauceStation" or station_name == "SauceStationMixed"
 
 
 
@@ -337,7 +355,7 @@ func _update_interaction_prompt() -> void:
 
 
 
-	var prompt_text: String = "[E]"
+	var prompt_text: String = "[H]"
 
 	if target_station.has_method("get_interaction_prompt"):
 

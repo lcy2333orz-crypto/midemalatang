@@ -37,12 +37,20 @@ func get_interaction_priority() -> int:
 
 
 func get_interaction_prompt() -> String:
-	return "[E] %s" % _get_label_text()
+	if station_name == "SauceStation" or station_name == "SauceStationMixed":
+		return "[H/J/K/L] 小料"
+	return "[H] %s" % _get_label_text()
 
 
 func interact() -> void:
+	interact_with_action("interact")
+
+
+func interact_with_action(action_name: String = "interact") -> void:
 	var manager: Node = get_tree().get_first_node_in_group("restaurant_game_manager")
-	if manager != null and manager.has_method("interact_with_station"):
+	if manager != null and manager.has_method("interact_with_station_action"):
+		manager.interact_with_station_action(station_name, action_name)
+	elif manager != null and manager.has_method("interact_with_station"):
 		manager.interact_with_station(station_name)
 
 
