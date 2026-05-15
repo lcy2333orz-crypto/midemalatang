@@ -138,11 +138,12 @@ func _check_scene_loads() -> void:
 	_assert_node_position(scene, "Stations/PackingArea", _grid(1, 12), "grid packing")
 	_assert_node_position(scene, "SurfaceSlots/TakeoutPickupSlot1", _grid(3, 8), "grid takeout slot 1")
 	_assert_node_position(scene, "SurfaceSlots/TakeoutPickupSlot2", _grid(4, 8), "grid takeout slot 2")
-	_assert_node_position(scene, "LockedPlaceholders/TakeoutPickupTable2", _grid(4, 8), "grid takeout placeholder 2")
 	_assert_node_position(scene, "Stations/DiningTables/DiningTable1", _grid(9, 4), "grid table 1")
 	_assert_node_position(scene, "Stations/DiningTables/DiningTable2", _grid(9, 6), "grid table 2")
+	_assert_small_shared_interaction_shape(scene)
 	_assert_greybox_labels(scene)
 	_assert_independent_cell_bodies(scene)
+	_assert_removed_duplicate_cells(scene)
 	_assert_character_scale(scene)
 
 	scene.free()
@@ -168,7 +169,6 @@ func _assert_greybox_labels(scene: Node) -> void:
 		"LockedPlaceholders/Cooker3Locked/Label": "POT LOCK r7c15",
 		"LockedPlaceholders/SauceStationMixed/Label": "SAUCE MIX r9c14",
 		"LockedPlaceholders/PackingBagArea/Label": "BAG AREA r1c13",
-		"LockedPlaceholders/TakeoutPickupTable2/Label": "TAKEOUT 2 r4c8",
 		"SurfaceSlots/TakeoutPickupSlot1/Label": "TAKEOUT 1",
 		"SurfaceSlots/TakeoutPickupSlot2/Label": "TAKEOUT 2",
 		"LockedPlaceholders/CustomerTrashBin/Label": "TRASH C r9c1",
@@ -253,7 +253,6 @@ func _assert_independent_cell_bodies(scene: Node) -> void:
 		"LockedPlaceholders/Cooker3Locked",
 		"LockedPlaceholders/SauceStationMixed",
 		"LockedPlaceholders/PackingBagArea",
-		"LockedPlaceholders/TakeoutPickupTable2",
 		"LockedPlaceholders/CustomerTrashBin",
 		"LockedPlaceholders/DrinkStorage",
 	]
@@ -299,6 +298,57 @@ func _assert_solid_independent_cell(scene: Node, path: String, requires_interact
 		var interaction_shape: CollisionShape2D = interaction_area.get_node_or_null("CollisionShape2D") as CollisionShape2D
 		if interaction_shape == null or interaction_shape.shape == null:
 			_fail("independent cells", "%s missing InteractionArea/CollisionShape2D" % path)
+
+
+func _assert_small_shared_interaction_shape(scene: Node) -> void:
+	var sample_shape: CollisionShape2D = scene.get_node_or_null("SurfaceSlots/SurfaceSlot_r1c8/InteractionArea/CollisionShape2D") as CollisionShape2D
+	if sample_shape == null:
+		_fail("interaction shape", "missing SurfaceSlot_r1c8 interaction shape")
+		return
+
+	var rect: RectangleShape2D = sample_shape.shape as RectangleShape2D
+	if rect == null:
+		_fail("interaction shape", "SurfaceSlot interaction shape is not RectangleShape2D")
+		return
+	if rect.size.x > 55.0 or rect.size.y > 55.0:
+		_fail("interaction shape", "shared interaction shape too large: %s" % rect.size)
+
+	var paths: Array[String] = [
+		"SurfaceSlots/SurfaceSlot_r1c8/InteractionArea/CollisionShape2D",
+		"SurfaceSlots/SurfaceSlot_r1c9/InteractionArea/CollisionShape2D",
+		"SurfaceSlots/TakeoutPickupSlot1/InteractionArea/CollisionShape2D",
+		"SurfaceSlots/TakeoutPickupSlot2/InteractionArea/CollisionShape2D",
+		"Stations/CookerStations/CookerStation1/InteractionArea/CollisionShape2D",
+		"Stations/SauceStation/InteractionArea/CollisionShape2D",
+		"Stations/PackingArea/InteractionArea/CollisionShape2D",
+		"Stations/TrashBin/InteractionArea/CollisionShape2D",
+		"Stations/DiningTables/DiningTable1/InteractionArea/CollisionShape2D",
+	]
+	for path in paths:
+		var shape_node: CollisionShape2D = scene.get_node_or_null(path) as CollisionShape2D
+		if shape_node == null:
+			_fail("interaction shape", "missing %s" % path)
+			continue
+		if shape_node.shape != sample_shape.shape:
+			_fail("interaction shape", "%s does not use shared small shape" % path)
+
+	var counter_shape: CollisionShape2D = scene.get_node_or_null("Stations/Counter/InteractionArea/CollisionShape2D") as CollisionShape2D
+	var staple_shape: CollisionShape2D = scene.get_node_or_null("Stations/StapleArea/InteractionArea/CollisionShape2D") as CollisionShape2D
+	if counter_shape != null and counter_shape.shape == sample_shape.shape:
+		_fail("interaction shape", "Counter should keep its front interaction shape")
+	if staple_shape != null and staple_shape.shape == sample_shape.shape:
+		_fail("interaction shape", "StapleArea should keep its front interaction shape")
+
+
+func _assert_removed_duplicate_cells(scene: Node) -> void:
+	if scene.get_node_or_null("LockedPlaceholders/TakeoutPickupTable2") != null:
+		_fail("duplicate cells", "LockedPlaceholders/TakeoutPickupTable2 should not exist")
+	if scene.get_node_or_null("Stations/EntranceZone/SolidBody") != null:
+		_fail("duplicate cells", "EntranceZone should not have SolidBody")
+	if scene.get_node_or_null("LockedPlaceholders/DoorCell1/SolidBody") != null:
+		_fail("duplicate cells", "DoorCell1 should not have SolidBody")
+	if scene.get_node_or_null("LockedPlaceholders/DoorCell2/SolidBody") != null:
+		_fail("duplicate cells", "DoorCell2 should not have SolidBody")
 
 
 func _assert_character_scale(scene: Node) -> void:
