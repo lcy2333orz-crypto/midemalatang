@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3 uid="uid://b4vixu7ouriwb"]
+[gd_scene load_steps=15 format=3 uid="uid://b4vixu7ouriwb"]
 
 [ext_resource type="PackedScene" uid="uid://c8eg3meju24nj" path="res://scenes/gameplay/player.tscn" id="1_player"]
 [ext_resource type="Script" uid="uid://btc7pfuqyt0tg" path="res://scenes/gameplay/restaurant/restaurant_game_manager.gd" id="2_manager"]
@@ -6,38 +6,242 @@
 [ext_resource type="Script" uid="uid://cub2a1ggstgav" path="res://scenes/gameplay/restaurant/waiting_order_area.gd" id="4_waiting_area"]
 [ext_resource type="Script" uid="uid://ci10kx374fy67" path="res://scenes/gameplay/restaurant/cooker_station.gd" id="5_cooker"]
 [ext_resource type="Script" uid="uid://ciidmld6xe4px" path="res://scenes/gameplay/restaurant/restaurant_ui.gd" id="6_ui"]
+[ext_resource type="Script" path="res://scenes/gameplay/restaurant/surface_slot.gd" id="7_surface_slot"]
 
 [sub_resource type="WorldBoundaryShape2D" id="WorldBoundary_floor"]
 
 [sub_resource type="RectangleShape2D" id="Shape_solid_square"]
-size = Vector2(72, 72)
+size = Vector2(44, 44)
 
 [sub_resource type="RectangleShape2D" id="Shape_solid_wide"]
-size = Vector2(144, 72)
+size = Vector2(44, 44)
 
 [sub_resource type="RectangleShape2D" id="Shape_interact_square"]
-size = Vector2(112, 112)
+size = Vector2(80, 80)
 
 [sub_resource type="RectangleShape2D" id="Shape_interact_wide"]
-size = Vector2(184, 112)
+size = Vector2(80, 80)
 
 [sub_resource type="RectangleShape2D" id="Shape_counter_interact"]
-size = Vector2(184, 128)
+size = Vector2(90, 90)
 
 [sub_resource type="RectangleShape2D" id="Shape_solid_table"]
-size = Vector2(72, 72)
+size = Vector2(44, 44)
 
 [node name="TestRestaurant" type="Node2D"]
+[node name="EnvironmentRoot" type="Node2D" parent="."]
+
+[node name="GridVisual" type="Node2D" parent="."]
+z_index = -5
+
+[node name="GridBackground" type="Polygon2D" parent="GridVisual"]
+color = Color(0.72, 0.74, 0.7, 0.22)
+polygon = PackedVector2Array(142.5, 130, 817.5, 130, 817.5, 535, 142.5, 535)
+
+
+[node name="GridLineV0" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(142.5, 130, 142.5, 535)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineV1" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(187.5, 130, 187.5, 535)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineV2" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(232.5, 130, 232.5, 535)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineV3" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(277.5, 130, 277.5, 535)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineV4" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(322.5, 130, 322.5, 535)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineV5" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(367.5, 130, 367.5, 535)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineV6" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(412.5, 130, 412.5, 535)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineV7" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(457.5, 130, 457.5, 535)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineV8" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(502.5, 130, 502.5, 535)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineV9" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(547.5, 130, 547.5, 535)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineV10" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(592.5, 130, 592.5, 535)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineV11" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(637.5, 130, 637.5, 535)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineV12" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(682.5, 130, 682.5, 535)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineV13" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(727.5, 130, 727.5, 535)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineV14" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(772.5, 130, 772.5, 535)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineV15" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(817.5, 130, 817.5, 535)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineH0" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(142.5, 130, 817.5, 130)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineH1" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(142.5, 175, 817.5, 175)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineH2" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(142.5, 220, 817.5, 220)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineH3" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(142.5, 265, 817.5, 265)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineH4" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(142.5, 310, 817.5, 310)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineH5" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(142.5, 355, 817.5, 355)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineH6" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(142.5, 400, 817.5, 400)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineH7" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(142.5, 445, 817.5, 445)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineH8" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(142.5, 490, 817.5, 490)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="GridLineH9" type="Line2D" parent="GridVisual"]
+points = PackedVector2Array(142.5, 535, 817.5, 535)
+width = 1.0
+default_color = Color(0.15, 0.16, 0.14, 0.22)
+
+[node name="SurfaceSlots" type="Node2D" parent="."]
+z_index = 1
+
+[node name="PlayerSpawns" type="Node2D" parent="."]
+z_index = 2
+
+[node name="PlayerSpawn1" type="Marker2D" parent="PlayerSpawns"]
+position = Vector2(525, 377.5)
+
+[node name="PlayerSpawn2" type="Marker2D" parent="PlayerSpawns"]
+position = Vector2(660, 242.5)
+
+[node name="PlayerSpawn3" type="Marker2D" parent="PlayerSpawns"]
+position = Vector2(660, 332.5)
+
+[node name="PlayerSpawn4" type="Marker2D" parent="PlayerSpawns"]
+position = Vector2(660, 422.5)
+
+
+[node name="Label" type="Label" parent="PlayerSpawns/PlayerSpawn1"]
+offset_left = -36.0
+offset_top = -26.0
+offset_right = 36.0
+offset_bottom = -8.0
+text = "P1 SPAWN"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+[node name="Label" type="Label" parent="PlayerSpawns/PlayerSpawn2"]
+offset_left = -36.0
+offset_top = -26.0
+offset_right = 36.0
+offset_bottom = -8.0
+text = "P2 SPAWN"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+[node name="Label" type="Label" parent="PlayerSpawns/PlayerSpawn3"]
+offset_left = -36.0
+offset_top = -26.0
+offset_right = 36.0
+offset_bottom = -8.0
+text = "P3 SPAWN"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+[node name="Label" type="Label" parent="PlayerSpawns/PlayerSpawn4"]
+offset_left = -36.0
+offset_top = -26.0
+offset_right = 36.0
+offset_bottom = -8.0
+text = "P4 SPAWN"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+[node name="LockedPlaceholders" type="Node2D" parent="."]
+z_index = 1
 
 [node name="Floor" type="Polygon2D" parent="."]
+z_index = -20
 color = Color(0.78, 0.78, 0.72, 1)
 polygon = PackedVector2Array(0, 0, 960, 0, 960, 540, 0, 540)
 
 [node name="FrontHouseBand" type="Polygon2D" parent="."]
+z_index = -19
 color = Color(0.88, 0.86, 0.78, 1)
 polygon = PackedVector2Array(0, 0, 960, 0, 960, 270, 0, 270)
 
 [node name="KitchenBand" type="Polygon2D" parent="."]
+z_index = -19
 color = Color(0.68, 0.72, 0.74, 1)
 polygon = PackedVector2Array(0, 270, 960, 270, 960, 540, 0, 540)
 
@@ -47,65 +251,827 @@ polygon = PackedVector2Array(0, 270, 960, 270, 960, 540, 0, 540)
 position = Vector2(480, 540)
 shape = SubResource("WorldBoundary_floor")
 
+
+
+[node name="DoorCell1" type="Node2D" parent="LockedPlaceholders"]
+position = Vector2(165, 332.5)
+
+[node name="Visual" type="Polygon2D" parent="LockedPlaceholders/DoorCell1"]
+color = Color(0.25, 0.35, 0.45, 0.55)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="LockedPlaceholders/DoorCell1"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "DOOR A r5c1"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="DoorCell2" type="Node2D" parent="LockedPlaceholders"]
+position = Vector2(165, 377.5)
+
+[node name="Visual" type="Polygon2D" parent="LockedPlaceholders/DoorCell2"]
+color = Color(0.25, 0.35, 0.45, 0.55)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="LockedPlaceholders/DoorCell2"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "DOOR B r6c1"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="IngredientDisplay2" type="Node2D" parent="LockedPlaceholders"]
+position = Vector2(210, 152.5)
+
+[node name="Visual" type="Polygon2D" parent="LockedPlaceholders/IngredientDisplay2"]
+color = Color(0.3, 0.9, 0.55, 0.45)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="LockedPlaceholders/IngredientDisplay2"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "ING 2 r1c2"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="IngredientDisplay3" type="Node2D" parent="LockedPlaceholders"]
+position = Vector2(255, 152.5)
+
+[node name="Visual" type="Polygon2D" parent="LockedPlaceholders/IngredientDisplay3"]
+color = Color(0.3, 0.9, 0.55, 0.45)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="LockedPlaceholders/IngredientDisplay3"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "ING 3 r1c3"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="IngredientDisplay4Locked" type="Node2D" parent="LockedPlaceholders"]
+position = Vector2(300, 152.5)
+
+[node name="Visual" type="Polygon2D" parent="LockedPlaceholders/IngredientDisplay4Locked"]
+color = Color(0.18, 0.18, 0.18, 0.45)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="LockedPlaceholders/IngredientDisplay4Locked"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "ING LOCK r1c4"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="DrinkFridge2Locked" type="Node2D" parent="LockedPlaceholders"]
+position = Vector2(390, 152.5)
+
+[node name="Visual" type="Polygon2D" parent="LockedPlaceholders/DrinkFridge2Locked"]
+color = Color(0.18, 0.18, 0.18, 0.45)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="LockedPlaceholders/DrinkFridge2Locked"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "DRINK LOCK r1c6"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="Cooker3Locked" type="Node2D" parent="LockedPlaceholders"]
+position = Vector2(795, 422.5)
+
+[node name="Visual" type="Polygon2D" parent="LockedPlaceholders/Cooker3Locked"]
+color = Color(0.18, 0.18, 0.18, 0.45)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="LockedPlaceholders/Cooker3Locked"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "POT LOCK r7c15"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="SauceStationMixed" type="Node2D" parent="LockedPlaceholders"]
+position = Vector2(750, 512.5)
+
+[node name="Visual" type="Polygon2D" parent="LockedPlaceholders/SauceStationMixed"]
+color = Color(0.95, 0.62, 0.25, 0.45)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="LockedPlaceholders/SauceStationMixed"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "SAUCE MIX r9c14"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="PackingBagArea" type="Node2D" parent="LockedPlaceholders"]
+position = Vector2(705, 152.5)
+
+[node name="Visual" type="Polygon2D" parent="LockedPlaceholders/PackingBagArea"]
+color = Color(0.92, 0.92, 0.92, 0.45)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="LockedPlaceholders/PackingBagArea"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "BAG AREA r1c13"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="TakeoutPickupTable2" type="Node2D" parent="LockedPlaceholders"]
+position = Vector2(525, 242.5)
+
+[node name="Visual" type="Polygon2D" parent="LockedPlaceholders/TakeoutPickupTable2"]
+color = Color(0.45, 0.95, 0.95, 0.45)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="LockedPlaceholders/TakeoutPickupTable2"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "TAKEOUT 2 r3c9"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="CustomerTrashBin" type="Node2D" parent="LockedPlaceholders"]
+position = Vector2(165, 512.5)
+
+[node name="Visual" type="Polygon2D" parent="LockedPlaceholders/CustomerTrashBin"]
+color = Color(0.18, 0.19, 0.2, 0.45)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="LockedPlaceholders/CustomerTrashBin"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "TRASH C r9c1"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="DrinkStorage" type="Node2D" parent="LockedPlaceholders"]
+position = Vector2(615, 512.5)
+
+[node name="Visual" type="Polygon2D" parent="LockedPlaceholders/DrinkStorage"]
+color = Color(0.42, 0.58, 0.92, 0.45)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="LockedPlaceholders/DrinkStorage"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "DRINK BOX r9c11"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="SurfaceSlot_r1c8" type="Node2D" parent="SurfaceSlots"]
+position = Vector2(480, 152.5)
+script = ExtResource("7_surface_slot")
+slot_id = "SurfaceSlot_r1c8"
+slot_label = "SURF r1c8"
+is_takeout_pickup_slot = false
+
+[node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r1c8"]
+color = Color(0.55, 0.55, 0.5, 0.32)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r1c8"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "SURF r1c8"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="SurfaceSlot_r1c9" type="Node2D" parent="SurfaceSlots"]
+position = Vector2(525, 152.5)
+script = ExtResource("7_surface_slot")
+slot_id = "SurfaceSlot_r1c9"
+slot_label = "SURF r1c9"
+is_takeout_pickup_slot = false
+
+[node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r1c9"]
+color = Color(0.55, 0.55, 0.5, 0.32)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r1c9"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "SURF r1c9"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="SurfaceSlot_r1c10" type="Node2D" parent="SurfaceSlots"]
+position = Vector2(570, 152.5)
+script = ExtResource("7_surface_slot")
+slot_id = "SurfaceSlot_r1c10"
+slot_label = "SURF r1c10"
+is_takeout_pickup_slot = false
+
+[node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r1c10"]
+color = Color(0.55, 0.55, 0.5, 0.32)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r1c10"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "SURF r1c10"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="SurfaceSlot_r1c11" type="Node2D" parent="SurfaceSlots"]
+position = Vector2(615, 152.5)
+script = ExtResource("7_surface_slot")
+slot_id = "SurfaceSlot_r1c11"
+slot_label = "SURF r1c11"
+is_takeout_pickup_slot = false
+
+[node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r1c11"]
+color = Color(0.55, 0.55, 0.5, 0.32)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r1c11"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "SURF r1c11"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="SurfaceSlot_r2c10" type="Node2D" parent="SurfaceSlots"]
+position = Vector2(570, 197.5)
+script = ExtResource("7_surface_slot")
+slot_id = "SurfaceSlot_r2c10"
+slot_label = "SURF r2c10"
+is_takeout_pickup_slot = false
+
+[node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r2c10"]
+color = Color(0.55, 0.55, 0.5, 0.32)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r2c10"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "SURF r2c10"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="SurfaceSlot_r3c10" type="Node2D" parent="SurfaceSlots"]
+position = Vector2(570, 242.5)
+script = ExtResource("7_surface_slot")
+slot_id = "SurfaceSlot_r3c10"
+slot_label = "SURF r3c10"
+is_takeout_pickup_slot = false
+
+[node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r3c10"]
+color = Color(0.55, 0.55, 0.5, 0.32)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r3c10"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "SURF r3c10"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="SurfaceSlot_r4c10" type="Node2D" parent="SurfaceSlots"]
+position = Vector2(570, 287.5)
+script = ExtResource("7_surface_slot")
+slot_id = "SurfaceSlot_r4c10"
+slot_label = "SURF r4c10"
+is_takeout_pickup_slot = false
+
+[node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r4c10"]
+color = Color(0.55, 0.55, 0.5, 0.32)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r4c10"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "SURF r4c10"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="SurfaceSlot_r5c10" type="Node2D" parent="SurfaceSlots"]
+position = Vector2(570, 332.5)
+script = ExtResource("7_surface_slot")
+slot_id = "SurfaceSlot_r5c10"
+slot_label = "SURF r5c10"
+is_takeout_pickup_slot = false
+
+[node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r5c10"]
+color = Color(0.55, 0.55, 0.5, 0.32)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r5c10"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "SURF r5c10"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="SurfaceSlot_r6c10" type="Node2D" parent="SurfaceSlots"]
+position = Vector2(570, 377.5)
+script = ExtResource("7_surface_slot")
+slot_id = "SurfaceSlot_r6c10"
+slot_label = "SURF r6c10"
+is_takeout_pickup_slot = false
+
+[node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r6c10"]
+color = Color(0.55, 0.55, 0.5, 0.32)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r6c10"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "SURF r6c10"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="SurfaceSlot_r1c15" type="Node2D" parent="SurfaceSlots"]
+position = Vector2(795, 152.5)
+script = ExtResource("7_surface_slot")
+slot_id = "SurfaceSlot_r1c15"
+slot_label = "SURF r1c15"
+is_takeout_pickup_slot = false
+
+[node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r1c15"]
+color = Color(0.55, 0.55, 0.5, 0.32)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r1c15"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "SURF r1c15"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="SurfaceSlot_r2c15" type="Node2D" parent="SurfaceSlots"]
+position = Vector2(795, 197.5)
+script = ExtResource("7_surface_slot")
+slot_id = "SurfaceSlot_r2c15"
+slot_label = "SURF r2c15"
+is_takeout_pickup_slot = false
+
+[node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r2c15"]
+color = Color(0.55, 0.55, 0.5, 0.32)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r2c15"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "SURF r2c15"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="SurfaceSlot_r4c15" type="Node2D" parent="SurfaceSlots"]
+position = Vector2(795, 287.5)
+script = ExtResource("7_surface_slot")
+slot_id = "SurfaceSlot_r4c15"
+slot_label = "SURF r4c15"
+is_takeout_pickup_slot = false
+
+[node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r4c15"]
+color = Color(0.55, 0.55, 0.5, 0.32)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r4c15"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "SURF r4c15"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="SurfaceSlot_r6c15" type="Node2D" parent="SurfaceSlots"]
+position = Vector2(795, 377.5)
+script = ExtResource("7_surface_slot")
+slot_id = "SurfaceSlot_r6c15"
+slot_label = "SURF r6c15"
+is_takeout_pickup_slot = false
+
+[node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r6c15"]
+color = Color(0.55, 0.55, 0.5, 0.32)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r6c15"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "SURF r6c15"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="SurfaceSlot_r8c15" type="Node2D" parent="SurfaceSlots"]
+position = Vector2(795, 467.5)
+script = ExtResource("7_surface_slot")
+slot_id = "SurfaceSlot_r8c15"
+slot_label = "SURF r8c15"
+is_takeout_pickup_slot = false
+
+[node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r8c15"]
+color = Color(0.55, 0.55, 0.5, 0.32)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r8c15"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "SURF r8c15"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+[node name="SurfaceSlot_r9c15" type="Node2D" parent="SurfaceSlots"]
+position = Vector2(795, 512.5)
+script = ExtResource("7_surface_slot")
+slot_id = "SurfaceSlot_r9c15"
+slot_label = "SURF r9c15"
+is_takeout_pickup_slot = false
+
+[node name="Visual" type="Polygon2D" parent="SurfaceSlots/SurfaceSlot_r9c15"]
+color = Color(0.55, 0.55, 0.5, 0.32)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="SurfaceSlots/SurfaceSlot_r9c15"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "SURF r9c15"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+
+
+[node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r1c8"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "SurfaceSlot_r1c8"
+station_label = "SURF r1c8"
+interaction_priority = 70
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r1c8/InteractionArea"]
+shape = SubResource("Shape_interact_square")
+
+[node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r1c9"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "SurfaceSlot_r1c9"
+station_label = "SURF r1c9"
+interaction_priority = 70
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r1c9/InteractionArea"]
+shape = SubResource("Shape_interact_square")
+
+[node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r1c10"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "SurfaceSlot_r1c10"
+station_label = "SURF r1c10"
+interaction_priority = 70
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r1c10/InteractionArea"]
+shape = SubResource("Shape_interact_square")
+
+[node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r1c11"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "SurfaceSlot_r1c11"
+station_label = "SURF r1c11"
+interaction_priority = 70
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r1c11/InteractionArea"]
+shape = SubResource("Shape_interact_square")
+
+[node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r2c10"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "SurfaceSlot_r2c10"
+station_label = "SURF r2c10"
+interaction_priority = 70
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r2c10/InteractionArea"]
+shape = SubResource("Shape_interact_square")
+
+[node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r3c10"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "SurfaceSlot_r3c10"
+station_label = "SURF r3c10"
+interaction_priority = 70
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r3c10/InteractionArea"]
+shape = SubResource("Shape_interact_square")
+
+[node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r4c10"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "SurfaceSlot_r4c10"
+station_label = "SURF r4c10"
+interaction_priority = 70
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r4c10/InteractionArea"]
+shape = SubResource("Shape_interact_square")
+
+[node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r5c10"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "SurfaceSlot_r5c10"
+station_label = "SURF r5c10"
+interaction_priority = 70
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r5c10/InteractionArea"]
+shape = SubResource("Shape_interact_square")
+
+[node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r6c10"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "SurfaceSlot_r6c10"
+station_label = "SURF r6c10"
+interaction_priority = 70
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r6c10/InteractionArea"]
+shape = SubResource("Shape_interact_square")
+
+[node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r1c15"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "SurfaceSlot_r1c15"
+station_label = "SURF r1c15"
+interaction_priority = 70
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r1c15/InteractionArea"]
+shape = SubResource("Shape_interact_square")
+
+[node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r2c15"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "SurfaceSlot_r2c15"
+station_label = "SURF r2c15"
+interaction_priority = 70
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r2c15/InteractionArea"]
+shape = SubResource("Shape_interact_square")
+
+[node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r4c15"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "SurfaceSlot_r4c15"
+station_label = "SURF r4c15"
+interaction_priority = 70
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r4c15/InteractionArea"]
+shape = SubResource("Shape_interact_square")
+
+[node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r6c15"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "SurfaceSlot_r6c15"
+station_label = "SURF r6c15"
+interaction_priority = 70
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r6c15/InteractionArea"]
+shape = SubResource("Shape_interact_square")
+
+[node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r8c15"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "SurfaceSlot_r8c15"
+station_label = "SURF r8c15"
+interaction_priority = 70
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r8c15/InteractionArea"]
+shape = SubResource("Shape_interact_square")
+
+[node name="InteractionArea" type="Area2D" parent="SurfaceSlots/SurfaceSlot_r9c15"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "SurfaceSlot_r9c15"
+station_label = "SURF r9c15"
+interaction_priority = 70
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/SurfaceSlot_r9c15/InteractionArea"]
+shape = SubResource("Shape_interact_square")
+
+
+[node name="TakeoutPickupSlot1" type="Node2D" parent="SurfaceSlots"]
+position = Vector2(480, 242.5)
+script = ExtResource("7_surface_slot")
+slot_id = "TakeoutPickupSlot1"
+slot_label = "TAKEOUT 1"
+is_takeout_pickup_slot = true
+
+[node name="Visual" type="Polygon2D" parent="SurfaceSlots/TakeoutPickupSlot1"]
+color = Color(0.45, 0.95, 0.95, 0.52)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="SurfaceSlots/TakeoutPickupSlot1"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "TAKEOUT 1"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+[node name="InteractionArea" type="Area2D" parent="SurfaceSlots/TakeoutPickupSlot1"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "TakeoutPickupSlot1"
+station_label = "TAKEOUT 1"
+interaction_priority = 75
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/TakeoutPickupSlot1/InteractionArea"]
+shape = SubResource("Shape_interact_square")
+
+[node name="TakeoutPickupSlot2" type="Node2D" parent="SurfaceSlots"]
+position = Vector2(525, 242.5)
+script = ExtResource("7_surface_slot")
+slot_id = "TakeoutPickupSlot2"
+slot_label = "TAKEOUT 2"
+is_takeout_pickup_slot = true
+
+[node name="Visual" type="Polygon2D" parent="SurfaceSlots/TakeoutPickupSlot2"]
+color = Color(0.45, 0.95, 0.95, 0.52)
+polygon = PackedVector2Array(-20, -20, 20, -20, 20, 20, -20, 20)
+
+[node name="Label" type="Label" parent="SurfaceSlots/TakeoutPickupSlot2"]
+offset_left = -44.0
+offset_top = -12.0
+offset_right = 44.0
+offset_bottom = 12.0
+text = "TAKEOUT 2"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+[node name="InteractionArea" type="Area2D" parent="SurfaceSlots/TakeoutPickupSlot2"]
+collision_layer = 2
+script = ExtResource("3_station_area")
+station_name = "TakeoutPickupSlot2"
+station_label = "TAKEOUT 2"
+interaction_priority = 75
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SurfaceSlots/TakeoutPickupSlot2/InteractionArea"]
+shape = SubResource("Shape_interact_square")
 [node name="Markers" type="Node2D" parent="."]
 
 [node name="Entrance" type="Marker2D" parent="Markers"]
-position = Vector2(36, 132)
+position = Vector2(120, 332.5)
 
 [node name="IngredientDisplay" type="Marker2D" parent="Markers"]
-position = Vector2(204, 132)
+position = Vector2(210, 197.5)
 
 [node name="CounterSpot" type="Marker2D" parent="Markers"]
-position = Vector2(420, 156)
+position = Vector2(435, 377.5)
 
 [node name="Exit" type="Marker2D" parent="Markers"]
-position = Vector2(1010, 120)
+position = Vector2(120, 332.5)
 
 [node name="TakeoutWait" type="Marker2D" parent="Markers"]
-position = Vector2(828, 156)
+position = Vector2(435, 287.5)
 
 [node name="TakeoutPickup" type="Marker2D" parent="Markers"]
-position = Vector2(828, 492)
+position = Vector2(480, 242.5)
 
 [node name="QueueSpots" type="Node2D" parent="Markers"]
 
 [node name="QueueSpot1" type="Marker2D" parent="Markers/QueueSpots"]
-position = Vector2(312, 156)
+position = Vector2(390, 377.5)
 
 [node name="QueueSpot2" type="Marker2D" parent="Markers/QueueSpots"]
-position = Vector2(312, 96)
+position = Vector2(390, 332.5)
 
 [node name="QueueSpot3" type="Marker2D" parent="Markers/QueueSpots"]
-position = Vector2(228, 96)
+position = Vector2(390, 287.5)
 
 [node name="TableSpots" type="Node2D" parent="Markers"]
 
 [node name="TableSpot1" type="Marker2D" parent="Markers/TableSpots"]
-position = Vector2(660, 132)
+position = Vector2(300, 467.5)
 
 [node name="TableSpot2" type="Marker2D" parent="Markers/TableSpots"]
-position = Vector2(744, 132)
+position = Vector2(390, 467.5)
 
 [node name="TableSpot3" type="Marker2D" parent="Markers/TableSpots"]
-position = Vector2(828, 132)
+position = Vector2(480, 467.5)
 
 [node name="Stations" type="Node2D" parent="."]
 
 [node name="EntranceZone" type="Node2D" parent="Stations"]
-position = Vector2(84, 192)
+position = Vector2(165, 332.5)
 
 [node name="Visual" type="Polygon2D" parent="Stations/EntranceZone"]
 color = Color(0.45, 0.75, 1, 1)
-polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
+polygon = PackedVector2Array(-22, -22, 22, -22, 22, 22, -22, 22)
 
 [node name="Label" type="Label" parent="Stations/EntranceZone"]
-offset_left = -36.0
+offset_left = -48.0
 offset_top = -12.0
-offset_right = 36.0
+offset_right = 48.0
 offset_bottom = 12.0
-text = "门口"
+text = "DOOR"
 horizontal_alignment = 1
 vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
 
 [node name="SolidBody" type="StaticBody2D" parent="Stations/EntranceZone"]
 
@@ -116,26 +1082,27 @@ shape = SubResource("Shape_solid_square")
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "EntranceZone"
-station_label = "门口"
+station_label = "DOOR"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/EntranceZone/InteractionArea"]
 shape = SubResource("Shape_interact_square")
 
 [node name="IngredientDisplay" type="Node2D" parent="Stations"]
-position = Vector2(204, 192)
+position = Vector2(165, 152.5)
 
 [node name="Visual" type="Polygon2D" parent="Stations/IngredientDisplay"]
 color = Color(0.3, 0.9, 0.55, 1)
-polygon = PackedVector2Array(-72, -36, 72, -36, 72, 36, -72, 36)
+polygon = PackedVector2Array(-22, -22, 22, -22, 22, 22, -22, 22)
 
 [node name="Label" type="Label" parent="Stations/IngredientDisplay"]
 offset_left = -72.0
 offset_top = -12.0
 offset_right = 72.0
 offset_bottom = 12.0
-text = "选菜柜"
+text = "ING 1"
 horizontal_alignment = 1
 vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
 
 [node name="SolidBody" type="StaticBody2D" parent="Stations/IngredientDisplay"]
 
@@ -146,26 +1113,27 @@ shape = SubResource("Shape_solid_wide")
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "IngredientDisplay"
-station_label = "选菜柜"
+station_label = "ING 1"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/IngredientDisplay/InteractionArea"]
 shape = SubResource("Shape_interact_wide")
 
 [node name="Counter" type="Node2D" parent="Stations"]
-position = Vector2(420, 216)
+position = Vector2(480, 377.5)
 
 [node name="Visual" type="Polygon2D" parent="Stations/Counter"]
 color = Color(0.95, 0.28, 0.22, 1)
-polygon = PackedVector2Array(-72, -36, 72, -36, 72, 36, -72, 36)
+polygon = PackedVector2Array(-22, -22, 22, -22, 22, 22, -22, 22)
 
 [node name="Label" type="Label" parent="Stations/Counter"]
 offset_left = -72.0
 offset_top = -12.0
 offset_right = 72.0
 offset_bottom = 12.0
-text = "收银台"
+text = "COUNTER"
 horizontal_alignment = 1
 vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
 
 [node name="SolidBody" type="StaticBody2D" parent="Stations/Counter"]
 
@@ -176,7 +1144,7 @@ shape = SubResource("Shape_solid_wide")
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "Counter"
-station_label = "收银台"
+station_label = "COUNTER"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/Counter/InteractionArea"]
 shape = SubResource("Shape_counter_interact")
@@ -184,20 +1152,21 @@ shape = SubResource("Shape_counter_interact")
 [node name="DiningTables" type="Node2D" parent="Stations"]
 
 [node name="DiningTable1" type="Node2D" parent="Stations/DiningTables"]
-position = Vector2(660, 192)
+position = Vector2(300, 512.5)
 
 [node name="Visual" type="Polygon2D" parent="Stations/DiningTables/DiningTable1"]
 color = Color(0.65, 0.45, 0.28, 1)
-polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
+polygon = PackedVector2Array(-22, -22, 22, -22, 22, 22, -22, 22)
 
 [node name="Label" type="Label" parent="Stations/DiningTables/DiningTable1"]
-offset_left = -36.0
+offset_left = -48.0
 offset_top = -18.0
-offset_right = 36.0
+offset_right = 48.0
 offset_bottom = 18.0
-text = "堂食桌1"
+text = "DINE 1"
 horizontal_alignment = 1
 vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
 
 [node name="SolidBody" type="StaticBody2D" parent="Stations/DiningTables/DiningTable1"]
 
@@ -208,26 +1177,27 @@ shape = SubResource("Shape_solid_table")
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "DiningTable1"
-station_label = "堂食桌1"
+station_label = "DINE 1"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/DiningTables/DiningTable1/InteractionArea"]
 shape = SubResource("Shape_interact_square")
 
 [node name="DiningTable2" type="Node2D" parent="Stations/DiningTables"]
-position = Vector2(744, 192)
+position = Vector2(390, 512.5)
 
 [node name="Visual" type="Polygon2D" parent="Stations/DiningTables/DiningTable2"]
 color = Color(0.65, 0.45, 0.28, 1)
-polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
+polygon = PackedVector2Array(-22, -22, 22, -22, 22, 22, -22, 22)
 
 [node name="Label" type="Label" parent="Stations/DiningTables/DiningTable2"]
-offset_left = -36.0
+offset_left = -48.0
 offset_top = -18.0
-offset_right = 36.0
+offset_right = 48.0
 offset_bottom = 18.0
-text = "堂食桌2"
+text = "DINE 2"
 horizontal_alignment = 1
 vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
 
 [node name="SolidBody" type="StaticBody2D" parent="Stations/DiningTables/DiningTable2"]
 
@@ -238,26 +1208,27 @@ shape = SubResource("Shape_solid_table")
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "DiningTable2"
-station_label = "堂食桌2"
+station_label = "DINE 2"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/DiningTables/DiningTable2/InteractionArea"]
 shape = SubResource("Shape_interact_square")
 
 [node name="DiningTable3" type="Node2D" parent="Stations/DiningTables"]
-position = Vector2(828, 192)
+position = Vector2(480, 512.5)
 
 [node name="Visual" type="Polygon2D" parent="Stations/DiningTables/DiningTable3"]
 color = Color(0.65, 0.45, 0.28, 1)
-polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
+polygon = PackedVector2Array(-22, -22, 22, -22, 22, 22, -22, 22)
 
 [node name="Label" type="Label" parent="Stations/DiningTables/DiningTable3"]
-offset_left = -36.0
+offset_left = -48.0
 offset_top = -18.0
-offset_right = 36.0
+offset_right = 48.0
 offset_bottom = 18.0
-text = "堂食桌3"
+text = "DINE 3"
 horizontal_alignment = 1
 vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
 
 [node name="SolidBody" type="StaticBody2D" parent="Stations/DiningTables/DiningTable3"]
 
@@ -268,26 +1239,27 @@ shape = SubResource("Shape_solid_table")
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "DiningTable3"
-station_label = "堂食桌3"
+station_label = "DINE 3"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/DiningTables/DiningTable3/InteractionArea"]
 shape = SubResource("Shape_interact_square")
 
 [node name="DrinksFridge" type="Node2D" parent="Stations"]
-position = Vector2(84, 276)
+position = Vector2(345, 152.5)
 
 [node name="Visual" type="Polygon2D" parent="Stations/DrinksFridge"]
 color = Color(0.38, 0.8, 0.95, 1)
-polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
+polygon = PackedVector2Array(-22, -22, 22, -22, 22, 22, -22, 22)
 
 [node name="Label" type="Label" parent="Stations/DrinksFridge"]
-offset_left = -36.0
+offset_left = -48.0
 offset_top = -12.0
-offset_right = 36.0
+offset_right = 48.0
 offset_bottom = 12.0
-text = "饮料柜"
+text = "DRINK 1"
 horizontal_alignment = 1
 vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
 
 [node name="SolidBody" type="StaticBody2D" parent="Stations/DrinksFridge"]
 
@@ -298,26 +1270,27 @@ shape = SubResource("Shape_solid_square")
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "DrinksFridge"
-station_label = "饮料柜"
+station_label = "DRINK 1"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/DrinksFridge/InteractionArea"]
 shape = SubResource("Shape_interact_square")
 
 [node name="TrashBin" type="Node2D" parent="Stations"]
-position = Vector2(924, 324)
+position = Vector2(750, 152.5)
 
 [node name="Visual" type="Polygon2D" parent="Stations/TrashBin"]
 color = Color(0.18, 0.19, 0.2, 1)
-polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
+polygon = PackedVector2Array(-22, -22, 22, -22, 22, 22, -22, 22)
 
 [node name="Label" type="Label" parent="Stations/TrashBin"]
-offset_left = -36.0
+offset_left = -48.0
 offset_top = -12.0
-offset_right = 36.0
+offset_right = 48.0
 offset_bottom = 12.0
-text = "垃圾桶"
+text = "TRASH K"
 horizontal_alignment = 1
 vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
 
 [node name="SolidBody" type="StaticBody2D" parent="Stations/TrashBin"]
 
@@ -328,27 +1301,28 @@ shape = SubResource("Shape_solid_square")
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "TrashBin"
-station_label = "垃圾桶"
+station_label = "TRASH K"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/TrashBin/InteractionArea"]
 shape = SubResource("Shape_interact_square")
 
 [node name="WaitingOrderArea" type="Node2D" parent="Stations"]
-position = Vector2(180, 360)
+position = Vector2(480, 422.5)
 script = ExtResource("4_waiting_area")
 
 [node name="Visual" type="Polygon2D" parent="Stations/WaitingOrderArea"]
 color = Color(0.98, 0.86, 0.28, 1)
-polygon = PackedVector2Array(-72, -36, 72, -36, 72, 36, -72, 36)
+polygon = PackedVector2Array(-22, -22, 22, -22, 22, 22, -22, 22)
 
 [node name="Label" type="Label" parent="Stations/WaitingOrderArea"]
 offset_left = -72.0
 offset_top = -12.0
 offset_right = 72.0
 offset_bottom = 12.0
-text = "待煮区"
+text = "WAITING"
 horizontal_alignment = 1
 vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
 
 [node name="SolidBody" type="StaticBody2D" parent="Stations/WaitingOrderArea"]
 
@@ -359,7 +1333,7 @@ shape = SubResource("Shape_solid_wide")
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "WaitingOrderArea"
-station_label = "待煮区"
+station_label = "WAITING"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/WaitingOrderArea/InteractionArea"]
 shape = SubResource("Shape_interact_wide")
@@ -367,21 +1341,22 @@ shape = SubResource("Shape_interact_wide")
 [node name="CookerStations" type="Node2D" parent="Stations"]
 
 [node name="CookerStation1" type="Node2D" parent="Stations/CookerStations"]
-position = Vector2(396, 360)
+position = Vector2(795, 242.5)
 script = ExtResource("5_cooker")
 
 [node name="Visual" type="Polygon2D" parent="Stations/CookerStations/CookerStation1"]
 color = Color(0.85, 0.38, 0.92, 1)
-polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
+polygon = PackedVector2Array(-22, -22, 22, -22, 22, 22, -22, 22)
 
 [node name="Label" type="Label" parent="Stations/CookerStations/CookerStation1"]
-offset_left = -36.0
+offset_left = -48.0
 offset_top = -12.0
-offset_right = 36.0
+offset_right = 48.0
 offset_bottom = 12.0
-text = "锅位1"
+text = "POT 1"
 horizontal_alignment = 1
 vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
 
 [node name="PotArea" type="Node2D" parent="Stations/CookerStations/CookerStation1"]
 position = Vector2(0, 0)
@@ -394,9 +1369,10 @@ offset_left = -44.0
 offset_top = -68.0
 offset_right = 44.0
 offset_bottom = -46.0
-text = "空锅"
+text = "EMPTY"
 horizontal_alignment = 1
 vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
 
 [node name="SolidBody" type="StaticBody2D" parent="Stations/CookerStations/CookerStation1"]
 
@@ -407,28 +1383,29 @@ shape = SubResource("Shape_solid_square")
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "CookerStation1"
-station_label = "锅位1"
+station_label = "POT 1"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/CookerStations/CookerStation1/InteractionArea"]
 shape = SubResource("Shape_interact_square")
 
 [node name="CookerStation2" type="Node2D" parent="Stations/CookerStations"]
-position = Vector2(480, 360)
+position = Vector2(795, 332.5)
 script = ExtResource("5_cooker")
 station_id = "CookerStation2"
 
 [node name="Visual" type="Polygon2D" parent="Stations/CookerStations/CookerStation2"]
 color = Color(0.85, 0.38, 0.92, 1)
-polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
+polygon = PackedVector2Array(-22, -22, 22, -22, 22, 22, -22, 22)
 
 [node name="Label" type="Label" parent="Stations/CookerStations/CookerStation2"]
-offset_left = -36.0
+offset_left = -48.0
 offset_top = -12.0
-offset_right = 36.0
+offset_right = 48.0
 offset_bottom = 12.0
-text = "锅位2"
+text = "POT 2"
 horizontal_alignment = 1
 vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
 
 [node name="PotArea" type="Node2D" parent="Stations/CookerStations/CookerStation2"]
 position = Vector2(0, 0)
@@ -441,9 +1418,10 @@ offset_left = -44.0
 offset_top = -68.0
 offset_right = 44.0
 offset_bottom = -46.0
-text = "空锅"
+text = "EMPTY"
 horizontal_alignment = 1
 vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
 
 [node name="SolidBody" type="StaticBody2D" parent="Stations/CookerStations/CookerStation2"]
 
@@ -454,26 +1432,27 @@ shape = SubResource("Shape_solid_square")
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "CookerStation2"
-station_label = "锅位2"
+station_label = "POT 2"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/CookerStations/CookerStation2/InteractionArea"]
 shape = SubResource("Shape_interact_square")
 
 [node name="StapleArea" type="Node2D" parent="Stations"]
-position = Vector2(84, 432)
+position = Vector2(480, 332.5)
 
 [node name="Visual" type="Polygon2D" parent="Stations/StapleArea"]
 color = Color(0.92, 0.92, 0.72, 1)
-polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
+polygon = PackedVector2Array(-22, -22, 22, -22, 22, 22, -22, 22)
 
 [node name="Label" type="Label" parent="Stations/StapleArea"]
-offset_left = -36.0
+offset_left = -48.0
 offset_top = -12.0
-offset_right = 36.0
+offset_right = 48.0
 offset_bottom = 12.0
-text = "主食区"
+text = "STAPLE"
 horizontal_alignment = 1
 vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
 
 [node name="SolidBody" type="StaticBody2D" parent="Stations/StapleArea"]
 
@@ -484,26 +1463,27 @@ shape = SubResource("Shape_solid_square")
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "StapleArea"
-station_label = "主食区"
+station_label = "STAPLE"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/StapleArea/InteractionArea"]
 shape = SubResource("Shape_interact_square")
 
 [node name="SauceStation" type="Node2D" parent="Stations"]
-position = Vector2(612, 360)
+position = Vector2(705, 512.5)
 
 [node name="Visual" type="Polygon2D" parent="Stations/SauceStation"]
 color = Color(0.95, 0.62, 0.25, 1)
-polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
+polygon = PackedVector2Array(-22, -22, 22, -22, 22, 22, -22, 22)
 
 [node name="Label" type="Label" parent="Stations/SauceStation"]
-offset_left = -36.0
+offset_left = -48.0
 offset_top = -12.0
-offset_right = 36.0
+offset_right = 48.0
 offset_bottom = 12.0
-text = "小料台"
+text = "CHILI"
 horizontal_alignment = 1
 vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
 
 [node name="SolidBody" type="StaticBody2D" parent="Stations/SauceStation"]
 
@@ -514,26 +1494,27 @@ shape = SubResource("Shape_solid_square")
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "SauceStation"
-station_label = "小料台"
+station_label = "CHILI"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/SauceStation/InteractionArea"]
 shape = SubResource("Shape_interact_square")
 
 [node name="PackingArea" type="Node2D" parent="Stations"]
-position = Vector2(684, 432)
+position = Vector2(660, 152.5)
 
 [node name="Visual" type="Polygon2D" parent="Stations/PackingArea"]
 color = Color(0.92, 0.92, 0.92, 1)
-polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
+polygon = PackedVector2Array(-22, -22, 22, -22, 22, 22, -22, 22)
 
 [node name="Label" type="Label" parent="Stations/PackingArea"]
-offset_left = -36.0
+offset_left = -48.0
 offset_top = -12.0
-offset_right = 36.0
+offset_right = 48.0
 offset_bottom = 12.0
-text = "打包台"
+text = "PACK MACHINE"
 horizontal_alignment = 1
 vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
 
 [node name="SolidBody" type="StaticBody2D" parent="Stations/PackingArea"]
 
@@ -544,26 +1525,27 @@ shape = SubResource("Shape_solid_square")
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "PackingArea"
-station_label = "打包台"
+station_label = "PACK MACHINE"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/PackingArea/InteractionArea"]
 shape = SubResource("Shape_interact_square")
 
 [node name="TakeoutPickup" type="Node2D" parent="Stations"]
-position = Vector2(828, 432)
+position = Vector2(480, 242.5)
 
 [node name="Visual" type="Polygon2D" parent="Stations/TakeoutPickup"]
 color = Color(0.45, 0.95, 0.95, 1)
-polygon = PackedVector2Array(-72, -36, 72, -36, 72, 36, -72, 36)
+polygon = PackedVector2Array(-22, -22, 22, -22, 22, 22, -22, 22)
 
 [node name="Label" type="Label" parent="Stations/TakeoutPickup"]
 offset_left = -72.0
 offset_top = -12.0
 offset_right = 72.0
 offset_bottom = 12.0
-text = "取餐区"
+text = "TAKEOUT 1"
 horizontal_alignment = 1
 vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
 
 [node name="SolidBody" type="StaticBody2D" parent="Stations/TakeoutPickup"]
 
@@ -574,26 +1556,28 @@ shape = SubResource("Shape_solid_wide")
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "TakeoutPickup"
-station_label = "取餐区"
+station_label = "TAKEOUT 1"
+interaction_priority = 10
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/TakeoutPickup/InteractionArea"]
 shape = SubResource("Shape_interact_wide")
 
 [node name="StorageArea" type="Node2D" parent="Stations"]
-position = Vector2(84, 504)
+position = Vector2(570, 512.5)
 
 [node name="Visual" type="Polygon2D" parent="Stations/StorageArea"]
 color = Color(0.42, 0.58, 0.92, 1)
-polygon = PackedVector2Array(-36, -36, 36, -36, 36, 36, -36, 36)
+polygon = PackedVector2Array(-22, -22, 22, -22, 22, 22, -22, 22)
 
 [node name="Label" type="Label" parent="Stations/StorageArea"]
-offset_left = -36.0
+offset_left = -48.0
 offset_top = -12.0
-offset_right = 36.0
+offset_right = 48.0
 offset_bottom = 12.0
-text = "库存区"
+text = "FRIDGE"
 horizontal_alignment = 1
 vertical_alignment = 1
+theme_override_font_sizes/font_size = 8
 
 [node name="SolidBody" type="StaticBody2D" parent="Stations/StorageArea"]
 
@@ -604,7 +1588,7 @@ shape = SubResource("Shape_solid_square")
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "StorageArea"
-station_label = "库存区"
+station_label = "FRIDGE"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/StorageArea/InteractionArea"]
 shape = SubResource("Shape_interact_square")
@@ -612,7 +1596,7 @@ shape = SubResource("Shape_interact_square")
 [node name="Characters" type="Node2D" parent="."]
 
 [node name="Player" parent="Characters" instance=ExtResource("1_player")]
-position = Vector2(540, 456)
+position = Vector2(525, 377.5)
 
 [node name="Bowls" type="Node2D" parent="."]
 

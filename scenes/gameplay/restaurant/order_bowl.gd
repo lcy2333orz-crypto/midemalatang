@@ -26,6 +26,7 @@ const STATUS_DONE = "done"
 var ingredients: Dictionary = {}
 var sauces: Array[String] = []
 var is_empty_holder: bool = false
+var staple_added: bool = false
 var cook_time: float = 0.0
 var ingredient_time_required: float = 8.0
 var ready_window_seconds: float = 6.0
@@ -54,6 +55,7 @@ func setup_customer_bowl(new_ingredients: Dictionary) -> void:
 	status = STATUS_CUSTOMER_BOWL
 	staple_state = STAPLE_RAW
 	is_empty_holder = false
+	staple_added = true
 	sauces.clear()
 	cook_time = 0.0
 	order_patience_current = order_patience_max
@@ -78,6 +80,7 @@ func setup_order(
 	status = STATUS_WAITING
 	staple_state = STAPLE_RAW
 	is_empty_holder = false
+	staple_added = staple_type == "none"
 	sauces.clear()
 	cook_time = 0.0
 	order_patience_current = order_patience_max
@@ -127,6 +130,34 @@ func set_full_order_visual() -> void:
 
 func can_leave_cooker() -> bool:
 	return status == STATUS_COOKED and not is_overcooked()
+
+
+func needs_staple() -> bool:
+	return staple_type != "none"
+
+
+func is_staple_ready_for_cooking() -> bool:
+	return staple_type == "none" or staple_added
+
+
+func add_required_staple() -> bool:
+	if staple_type == "none":
+		staple_added = true
+		refresh_visuals()
+		return false
+	if staple_added:
+		return false
+	staple_added = true
+	refresh_visuals()
+	return true
+
+
+func get_staple_requirement_text() -> String:
+	if staple_type == "none":
+		return "no staple"
+	if staple_added:
+		return "staple %s: added" % staple_type
+	return "staple %s: missing" % staple_type
 
 
 func is_overcooked() -> bool:
@@ -206,8 +237,8 @@ func mark_done() -> void:
 func get_summary_text() -> String:
 	var id_text: String = "C" if order_id <= 0 else "#%03d" % order_id
 	if is_empty_holder:
-		return "%s 空盆" % id_text
-	return "%s %s %s %s" % [id_text, service_mode, staple_type, status]
+		return "%s empty bowl" % id_text
+	return "%s %s %s %s" % [id_text, service_mode, get_staple_requirement_text(), status]
 
 
 func get_detail_text() -> String:
@@ -281,7 +312,7 @@ func refresh_visuals() -> void:
 	if is_empty_holder:
 		bowl_rect.color = Color(0.82, 0.82, 0.82, 1.0)
 		clip_rect.color = Color(1.0, 0.96, 0.55, 1.0)
-		label.text = "空\n%s" % ("C" if order_id <= 0 else str(order_id))
+		label.text = "E\n%s" % ("C" if order_id <= 0 else str(order_id))
 		return
 
 	match status:

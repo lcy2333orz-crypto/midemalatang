@@ -23,6 +23,26 @@ func _run() -> void:
 		_finish()
 		return
 
+	await _check_surface_slot_place_take()
+	if not failures.is_empty():
+		_finish()
+		return
+
+	await _check_counter_gives_bowl_to_player()
+	if not failures.is_empty():
+		_finish()
+		return
+
+	await _check_staple_required_before_cooking()
+	if not failures.is_empty():
+		_finish()
+		return
+
+	await _check_takeout_pickup_slot_completion()
+	if not failures.is_empty():
+		_finish()
+		return
+
 	await _check_overcooked_trash_rule()
 	if not failures.is_empty():
 		_finish()
@@ -68,6 +88,11 @@ func _check_scene_loads() -> void:
 	var required_paths: Array[String] = [
 		"Markers/Entrance",
 		"Markers/QueueSpots",
+		"EnvironmentRoot",
+		"GridVisual",
+		"SurfaceSlots",
+		"PlayerSpawns/PlayerSpawn1",
+		"LockedPlaceholders",
 		"Stations/IngredientDisplay",
 		"Stations/Counter",
 		"Stations/DiningTables",
@@ -86,8 +111,107 @@ func _check_scene_loads() -> void:
 		if scene.get_node_or_null(path) == null:
 			_fail("scene nodes", "missing %s" % path)
 
+	_assert_node_position(scene, "Characters/Player", _grid(6, 9), "grid player spawn")
+	_assert_node_position(scene, "Markers/Entrance", _grid(5, 0), "grid entrance")
+	_assert_node_position(scene, "Markers/Exit", _grid(5, 0), "grid exit")
+	_assert_node_position(scene, "Markers/CounterSpot", _grid(6, 7), "grid counter spot")
+	_assert_node_position(scene, "Stations/Counter", _grid(6, 8), "grid counter")
+	_assert_node_position(scene, "Stations/WaitingOrderArea", _grid(7, 8), "grid waiting area")
+	_assert_node_position(scene, "Stations/CookerStations/CookerStation1", _grid(3, 15), "grid cooker 1")
+	_assert_node_position(scene, "Stations/CookerStations/CookerStation2", _grid(5, 15), "grid cooker 2")
+	_assert_node_position(scene, "Stations/SauceStation", _grid(9, 13), "grid sauce")
+	_assert_node_position(scene, "Stations/PackingArea", _grid(1, 12), "grid packing")
+	_assert_node_position(scene, "Stations/DiningTables/DiningTable1", _grid(9, 4), "grid table 1")
+	_assert_node_position(scene, "Stations/DiningTables/DiningTable2", _grid(9, 6), "grid table 2")
+	_assert_greybox_labels(scene)
+
 	scene.free()
 	_pass("scene load")
+
+
+func _assert_greybox_labels(scene: Node) -> void:
+	var expected_labels: Dictionary = {
+		"GridVisual/GridLineV0": "",
+		"GridVisual/GridLineV15": "",
+		"GridVisual/GridLineH0": "",
+		"GridVisual/GridLineH9": "",
+		"PlayerSpawns/PlayerSpawn1/Label": "P1 SPAWN",
+		"PlayerSpawns/PlayerSpawn2/Label": "P2 SPAWN",
+		"PlayerSpawns/PlayerSpawn3/Label": "P3 SPAWN",
+		"PlayerSpawns/PlayerSpawn4/Label": "P4 SPAWN",
+		"LockedPlaceholders/DoorCell1/Label": "DOOR A r5c1",
+		"LockedPlaceholders/DoorCell2/Label": "DOOR B r6c1",
+		"LockedPlaceholders/IngredientDisplay2/Label": "ING 2 r1c2",
+		"LockedPlaceholders/IngredientDisplay3/Label": "ING 3 r1c3",
+		"LockedPlaceholders/IngredientDisplay4Locked/Label": "ING LOCK r1c4",
+		"LockedPlaceholders/DrinkFridge2Locked/Label": "DRINK LOCK r1c6",
+		"LockedPlaceholders/Cooker3Locked/Label": "POT LOCK r7c15",
+		"LockedPlaceholders/SauceStationMixed/Label": "SAUCE MIX r9c14",
+		"LockedPlaceholders/PackingBagArea/Label": "BAG AREA r1c13",
+		"SurfaceSlots/TakeoutPickupSlot1/Label": "TAKEOUT 1",
+		"SurfaceSlots/TakeoutPickupSlot2/Label": "TAKEOUT 2",
+		"LockedPlaceholders/CustomerTrashBin/Label": "TRASH C r9c1",
+		"LockedPlaceholders/DrinkStorage/Label": "DRINK BOX r9c11",
+		"Stations/IngredientDisplay/Label": "ING 1",
+		"Stations/DrinksFridge/Label": "DRINK 1",
+		"Stations/Counter/Label": "COUNTER",
+		"Stations/StapleArea/Label": "STAPLE",
+		"Stations/CookerStations/CookerStation1/Label": "POT 1",
+		"Stations/CookerStations/CookerStation2/Label": "POT 2",
+		"Stations/CookerStations/CookerStation1/StatusLabel": "EMPTY",
+		"Stations/CookerStations/CookerStation2/StatusLabel": "EMPTY",
+		"Stations/SauceStation/Label": "CHILI",
+		"Stations/PackingArea/Label": "PACK MACHINE",
+		"Stations/TakeoutPickup/Label": "TAKEOUT 1",
+		"Stations/TrashBin/Label": "TRASH K",
+		"Stations/StorageArea/Label": "FRIDGE",
+		"Stations/DiningTables/DiningTable1/Label": "DINE 1",
+		"Stations/DiningTables/DiningTable2/Label": "DINE 2",
+		"Stations/WaitingOrderArea/Label": "WAITING",
+		"SurfaceSlots/SurfaceSlot_r1c8/Label": "SURF r1c8",
+		"SurfaceSlots/SurfaceSlot_r1c9/Label": "SURF r1c9",
+		"SurfaceSlots/SurfaceSlot_r1c10/Label": "SURF r1c10",
+		"SurfaceSlots/SurfaceSlot_r1c11/Label": "SURF r1c11",
+		"SurfaceSlots/SurfaceSlot_r2c10/Label": "SURF r2c10",
+		"SurfaceSlots/SurfaceSlot_r3c10/Label": "SURF r3c10",
+		"SurfaceSlots/SurfaceSlot_r4c10/Label": "SURF r4c10",
+		"SurfaceSlots/SurfaceSlot_r5c10/Label": "SURF r5c10",
+		"SurfaceSlots/SurfaceSlot_r6c10/Label": "SURF r6c10",
+		"SurfaceSlots/SurfaceSlot_r1c15/Label": "SURF r1c15",
+		"SurfaceSlots/SurfaceSlot_r2c15/Label": "SURF r2c15",
+		"SurfaceSlots/SurfaceSlot_r4c15/Label": "SURF r4c15",
+		"SurfaceSlots/SurfaceSlot_r6c15/Label": "SURF r6c15",
+		"SurfaceSlots/SurfaceSlot_r8c15/Label": "SURF r8c15",
+		"SurfaceSlots/SurfaceSlot_r9c15/Label": "SURF r9c15",
+	}
+
+	for path in expected_labels:
+		var node: Node = scene.get_node_or_null(path)
+		if node == null:
+			_fail("greybox labels", "missing %s" % path)
+			continue
+		var expected: String = expected_labels[path]
+		if expected == "":
+			continue
+		var label: Label = node as Label
+		if label == null:
+			_fail("greybox labels", "%s is not a Label" % path)
+			continue
+		if label.text != expected:
+			_fail("greybox labels", "%s expected '%s' but was '%s'" % [path, expected, label.text])
+
+
+func _grid(row: int, col: int) -> Vector2:
+	return Vector2(142.5, 130.0) + Vector2((float(col) - 0.5) * 45.0, (float(row) - 0.5) * 45.0)
+
+
+func _assert_node_position(scene: Node, path: String, expected: Vector2, step_name: String) -> void:
+	var node: Node2D = scene.get_node_or_null(path) as Node2D
+	if node == null:
+		_fail(step_name, "missing %s" % path)
+		return
+	if node.position.distance_to(expected) > 1.0:
+		_fail(step_name, "%s expected %s but was %s" % [path, expected, node.position])
 
 
 func _check_order_loop() -> void:
@@ -145,17 +269,13 @@ func _check_delivery_paths() -> void:
 	scene.add_child(takeout_bowl)
 	takeout_bowl.setup_order(501, {"spinach": 1}, "noodle", "hot", "takeout", 0)
 	takeout_bowl.status = OrderBowl.STATUS_COOKED
+	takeout_bowl.add_required_staple()
 	manager.held_bowl = takeout_bowl
 	manager.interact_sauce_station()
 	manager.interact_packing_area()
-	manager.interact_takeout_pickup()
-	if manager.held_bowl == null:
-		_fail("delivery paths", "takeout should not complete at pickup area")
-		scene.queue_free()
-		return
-	manager.interact_counter()
+	manager.interact_surface_slot("TakeoutPickupSlot1")
 	if manager.held_bowl != null or int(manager.completed_orders) != 1:
-		_fail("delivery paths", "packed takeout should complete at counter")
+		_fail("delivery paths", "packed takeout should complete at takeout pickup slot")
 		scene.queue_free()
 		return
 
@@ -163,6 +283,7 @@ func _check_delivery_paths() -> void:
 	scene.add_child(dine_bowl)
 	dine_bowl.setup_order(502, {"spinach": 1}, "noodle", "hot", "dine_in", 2)
 	dine_bowl.status = OrderBowl.STATUS_COOKED
+	dine_bowl.add_required_staple()
 	manager.held_bowl = dine_bowl
 	manager.interact_sauce_station()
 	manager.interact_delivery_table(1)
@@ -178,6 +299,158 @@ func _check_delivery_paths() -> void:
 
 	scene.queue_free()
 	_pass("delivery paths")
+
+
+func _check_surface_slot_place_take() -> void:
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("surface slot", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	var bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(bowl)
+	bowl.setup_order(601, {"spinach": 1}, "none", "mild", "dine_in", 1)
+	manager._hold_bowl(bowl)
+	manager.interact_surface_slot("SurfaceSlot_r1c8")
+
+	var slot: SurfaceSlot = manager._get_surface_slot("SurfaceSlot_r1c8")
+	if manager.held_bowl != null or slot == null or slot.get_stored_bowl() != bowl:
+		_fail("surface slot", "bowl was not placed on surface slot")
+		scene.queue_free()
+		return
+	if not manager._get_tracked_order_bowls().has(bowl):
+		_fail("surface slot", "placed bowl was not tracked")
+		scene.queue_free()
+		return
+
+	manager.interact_surface_slot("SurfaceSlot_r1c8")
+	if manager.held_bowl != bowl or not slot.is_empty():
+		_fail("surface slot", "bowl was not picked back up from surface slot")
+		scene.queue_free()
+		return
+
+	scene.queue_free()
+	_pass("surface slot")
+
+
+func _check_counter_gives_bowl_to_player() -> void:
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("counter handoff", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	var guard: int = 0
+	while manager._get_counter_customer() == null and guard < 360:
+		await process_frame
+		guard += 1
+
+	manager.interact_counter()
+	if manager.held_bowl == null:
+		_fail("counter handoff", "counter should give order bowl directly to player")
+		scene.queue_free()
+		return
+	if manager.waiting_area.bowls.has(manager.held_bowl):
+		_fail("counter handoff", "new order should not enter waiting area")
+		scene.queue_free()
+		return
+	if not manager._get_tracked_order_bowls().has(manager.held_bowl):
+		_fail("counter handoff", "new held order should be tracked")
+		scene.queue_free()
+		return
+
+	scene.queue_free()
+	_pass("counter handoff")
+
+
+func _check_staple_required_before_cooking() -> void:
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("staple gate", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	var bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(bowl)
+	bowl.setup_order(602, {"spinach": 1}, "noodle", "mild", "takeout", 0)
+	manager._hold_bowl(bowl)
+	manager.interact_cooker(manager.cooker_1)
+	if manager.cooker_1.active_bowl != null or manager.held_bowl != bowl:
+		_fail("staple gate", "order without staple should not enter cooker")
+		scene.queue_free()
+		return
+
+	manager.interact_staple_cabinet()
+	manager.interact_cooker(manager.cooker_1)
+	if manager.cooker_1.active_bowl != bowl or manager.held_bowl != null:
+		_fail("staple gate", "order with staple should enter cooker")
+		scene.queue_free()
+		return
+
+	scene.queue_free()
+	_pass("staple gate")
+
+
+func _check_takeout_pickup_slot_completion() -> void:
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("takeout slot", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	var bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(bowl)
+	bowl.setup_order(603, {"spinach": 1}, "none", "mild", "takeout", 0)
+	bowl.status = OrderBowl.STATUS_PACKED
+	manager._hold_bowl(bowl)
+	var completed_before: int = int(manager.completed_orders)
+	manager.interact_surface_slot("TakeoutPickupSlot1")
+
+	var slot: SurfaceSlot = manager._get_surface_slot("TakeoutPickupSlot1")
+	if manager.held_bowl != null:
+		_fail("takeout slot", "completed takeout should leave player hands")
+		scene.queue_free()
+		return
+	if slot == null or not slot.is_empty():
+		_fail("takeout slot", "takeout slot should be empty after completion")
+		scene.queue_free()
+		return
+	if int(manager.completed_orders) != completed_before + 1 or int(manager.money_today) != 10:
+		_fail("takeout slot", "takeout slot completion did not update totals")
+		scene.queue_free()
+		return
+
+	scene.queue_free()
+	_pass("takeout slot")
 
 
 func _check_overcooked_trash_rule() -> void:
@@ -210,7 +483,8 @@ func _check_overcooked_trash_rule() -> void:
 		return
 
 	manager.interact_counter()
-	manager.interact_waiting_order_area()
+	if manager.held_bowl != null and not manager.held_bowl.is_staple_ready_for_cooking():
+		manager.interact_staple_cabinet()
 	manager.interact_cooker(manager.cooker_1)
 	if manager.cooker_1.active_bowl == null:
 		_fail("overcooked trash", "order did not enter cooker")
@@ -268,6 +542,8 @@ func _check_overcooked_trash_rule() -> void:
 	var bowl_2: OrderBowl = bowl_scene.instantiate() as OrderBowl
 	bowl_1.setup_order(301, {"spinach": 1}, "noodle", "hot", "takeout", 0)
 	bowl_2.setup_order(302, {"spinach": 1}, "noodle", "hot", "takeout", 0)
+	bowl_1.add_required_staple()
+	bowl_2.add_required_staple()
 	manager.cooker_1.add_bowl(bowl_1)
 	manager.cooker_2.add_bowl(bowl_2)
 	manager.cooker_1.active_bowl.update_cooking(14.2)
@@ -308,8 +584,8 @@ func _check_order_card_destination() -> void:
 	var takeout_bowl: OrderBowl = OrderBowl.new()
 	takeout_bowl.setup_order(401, {"spinach": 1}, "noodle", "hot", "takeout", 0)
 	var takeout_text: String = manager._get_order_card_text(takeout_bowl)
-	if not takeout_text.contains("收银台"):
-		_fail("order card destination", "takeout card should show counter destination")
+	if not takeout_text.contains("TAKEOUT 1/2"):
+		_fail("order card destination", "takeout card should show pickup destination")
 		scene.queue_free()
 		return
 	if not takeout_text.contains("#401") or not takeout_text.contains("100%"):
@@ -320,7 +596,7 @@ func _check_order_card_destination() -> void:
 	var dine_bowl: OrderBowl = OrderBowl.new()
 	dine_bowl.setup_order(402, {"spinach": 1}, "noodle", "hot", "dine_in", 2)
 	var dine_text: String = manager._get_order_card_text(dine_bowl)
-	if not dine_text.contains("堂食桌2"):
+	if not dine_text.contains("DINE 2"):
 		_fail("order card destination", "dine-in card should show table destination")
 		scene.queue_free()
 		return
