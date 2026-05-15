@@ -312,7 +312,7 @@ func refresh_visuals() -> void:
 	if is_empty_holder:
 		bowl_rect.color = Color(0.82, 0.82, 0.82, 1.0)
 		clip_rect.color = Color(1.0, 0.96, 0.55, 1.0)
-		label.text = "E\n%s" % ("C" if order_id <= 0 else str(order_id))
+		label.text = "E\n%s" % ("C" if order_id <= 0 else "#%03d" % order_id)
 		return
 
 	match status:

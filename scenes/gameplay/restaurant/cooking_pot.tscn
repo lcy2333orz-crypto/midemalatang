@@ -1,0 +1,20 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/gameplay/restaurant/cooking_pot.gd" id="1_pot"]
+
+[node name="CookingPot" type="Node2D"]
+script = ExtResource("1_pot")
+
+[node name="Visual" type="Polygon2D" parent="."]
+color = Color(0.22, 0.22, 0.24, 1)
+polygon = PackedVector2Array(-22, -16, 22, -16, 26, 10, 14, 22, -14, 22, -26, 10)
+
+[node name="Label" type="Label" parent="."]
+offset_left = -38.0
+offset_top = -9.0
+offset_right = 38.0
+offset_bottom = 9.0
+text = "POT EMPTY"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 9

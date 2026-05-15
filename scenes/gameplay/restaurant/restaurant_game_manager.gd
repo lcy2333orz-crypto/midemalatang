@@ -29,6 +29,7 @@ var spawn_count: int = 0
 var spawn_elapsed: float = 0.0
 
 var held_bowl: OrderBowl = null
+var held_pot: CookingPot = null
 var held_dirty_cooker: CookerStation = null
 var held_dirty_pot_visual: Node2D = null
 @onready var characters_node: Node2D = $"../Characters"
@@ -212,6 +213,9 @@ func interact_counter() -> void:
 	if held_dirty_cooker != null:
 		_refresh_ui("Clear dirty pot first.")
 		return
+	if held_pot != null:
+		_refresh_ui("Put down the pot first.")
+		return
 	var customer: RestaurantCustomer = _get_counter_customer()
 	if held_bowl != null:
 		if customer != null:
@@ -229,7 +233,7 @@ func interact_counter() -> void:
 func _create_order_from_customer(customer: RestaurantCustomer) -> void:
 	if customer == null:
 		return
-	if held_bowl != null or held_dirty_cooker != null:
+	if held_bowl != null or held_pot != null or held_dirty_cooker != null:
 		_refresh_ui("Put down what you are holding first.")
 		return
 
@@ -277,6 +281,9 @@ func interact_waiting_order_area() -> void:
 	if held_dirty_cooker != null:
 		_refresh_ui("Clear dirty pot first.")
 		return
+	if held_pot != null:
+		_refresh_ui("Put down the pot first.")
+		return
 
 	if held_bowl == null:
 		var bowl: OrderBowl = waiting_area.take_first_bowl()
@@ -307,7 +314,31 @@ func interact_surface_slot(slot_id: String) -> void:
 		_refresh_ui("Surface slot not found.")
 		return
 
+	if held_pot != null:
+		var slot_bowl: OrderBowl = slot.get_stored_bowl()
+		if slot_bowl != null and held_pot.can_scoop_to_empty_bowl(slot_bowl):
+			held_pot.scoop_to_empty_bowl(slot_bowl)
+			slot.refresh_visual()
+			_refresh_ui("Scooped order #%03d." % slot_bowl.order_id)
+			return
+		if not slot.is_empty():
+			_refresh_ui("Table occupied.")
+			return
+		var placed_pot: CookingPot = held_pot
+		if not slot.store_item(placed_pot):
+			_refresh_ui("Could not place pot.")
+			return
+		held_pot = null
+		_refresh_ui("Placed pot on %s." % slot.slot_label)
+		return
+
 	if held_bowl != null:
+		var slot_pot: CookingPot = slot.get_stored_pot()
+		if slot_pot != null and slot_pot.can_scoop_to_empty_bowl(held_bowl):
+			slot_pot.scoop_to_empty_bowl(held_bowl)
+			slot.refresh_visual()
+			_refresh_ui("Scooped order #%03d." % held_bowl.order_id)
+			return
 		if not slot.is_empty():
 			_refresh_ui("Table occupied.")
 			return
@@ -321,12 +352,21 @@ func interact_surface_slot(slot_id: String) -> void:
 		_refresh_ui("Placed order #%03d on %s." % [placed_bowl.order_id, slot.slot_label])
 		return
 
-	var bowl: OrderBowl = slot.take_bowl()
-	if bowl == null:
+	var item: Node2D = slot.take_item()
+	if item == null:
 		_refresh_ui("Table empty.")
 		return
+	var pot: CookingPot = item as CookingPot
+	if pot != null:
+		_hold_pot(pot)
+		_refresh_ui("Picked up pot.")
+		return
+	var bowl: OrderBowl = item as OrderBowl
+	if bowl == null:
+		_refresh_ui("Table item cannot be held.")
+		return
 	_hold_bowl(bowl)
-	_refresh_ui("Picked up order #%03d." % bowl.order_id)
+	_refresh_ui("Picked up empty bowl #%03d." % bowl.order_id if bowl.is_empty_holder else "Picked up order #%03d." % bowl.order_id)
 
 
 func interact_cooker(cooker: CookerStation) -> void:
@@ -337,36 +377,56 @@ func interact_cooker(cooker: CookerStation) -> void:
 		_refresh_ui("Clear dirty pot first.")
 		return
 
+	if held_pot != null:
+		if cooker.has_pot():
+			_refresh_ui("Stove already has a pot.")
+			return
+		if cooker.place_pot(held_pot):
+			held_pot = null
+			_refresh_ui("Pot placed on stove.")
+		else:
+			_refresh_ui("Could not place pot.")
+		return
+
 	if held_bowl != null:
+		if held_bowl.is_empty_holder:
+			if cooker.scoop_to_bowl(held_bowl):
+				_refresh_ui("Scooped order #%03d." % held_bowl.order_id)
+			else:
+				_refresh_ui("No ready pot content.")
+			return
 		if held_bowl.status != OrderBowl.STATUS_WAITING:
-			_refresh_ui("Only waiting bowls can enter cooker.")
+			_refresh_ui("This bowl cannot go into pot.")
+			return
+		if not cooker.has_pot():
+			_refresh_ui("No pot on stove.")
 			return
 		if not held_bowl.is_staple_ready_for_cooking():
 			_refresh_ui("Add required staple first.")
 			return
-		if cooker.add_bowl(held_bowl):
-			held_bowl = null
-			_refresh_ui("Cooking started.")
+		var order_bowl: OrderBowl = held_bowl
+		if cooker.add_bowl_to_pot(order_bowl):
+			held_bowl = _create_empty_holder_for_order(order_bowl)
+			_hold_bowl(held_bowl)
+			_refresh_ui("Added order #%03d to pot." % order_bowl.order_id)
 		else:
-			_refresh_ui("Cooker is occupied.")
+			_refresh_ui("Pot is occupied.")
 		return
 
-	if cooker.active_bowl != null and cooker.active_bowl.is_overcooked():
-		_hold_dirty_cooker(cooker)
-		_refresh_ui("Dirty pot #%03d. Take it to trash." % cooker.get_active_order_id())
+	var pot: CookingPot = cooker.take_pot()
+	if pot == null:
+		_refresh_ui("No pot on stove.")
 		return
-
-	var bowl: OrderBowl = cooker.take_bowl()
-	if bowl == null:
-		_refresh_ui("Cooker is busy or empty.")
-		return
-	_hold_bowl(bowl)
-	_refresh_ui("Took cooked bowl. Staple is %s." % bowl.staple_state)
+	_hold_pot(pot)
+	_refresh_ui("Picked up pot.")
 
 
 func interact_staple_cabinet() -> void:
 	if held_dirty_cooker != null:
 		_refresh_ui("Clear dirty pot first.")
+		return
+	if held_pot != null:
+		_refresh_ui("Put down the pot first.")
 		return
 	if held_bowl == null:
 		_refresh_ui("Hold an order bowl first.")
@@ -391,6 +451,9 @@ func interact_sauce_station() -> void:
 	if held_dirty_cooker != null:
 		_refresh_ui("Clear dirty pot first.")
 		return
+	if held_pot != null:
+		_refresh_ui("Put down the pot first.")
+		return
 	if held_bowl == null:
 		_refresh_ui("Hold a cooked bowl before adding sauces.")
 		return
@@ -406,6 +469,9 @@ func interact_sauce_station() -> void:
 func interact_packing_area() -> void:
 	if held_dirty_cooker != null:
 		_refresh_ui("Clear dirty pot first.")
+		return
+	if held_pot != null:
+		_refresh_ui("Put down the pot first.")
 		return
 	if held_bowl == null:
 		_refresh_ui("Hold a takeout bowl to pack.")
@@ -426,6 +492,9 @@ func interact_delivery_table(table_id: int) -> void:
 	if held_dirty_cooker != null:
 		_refresh_ui("Clear dirty pot first.")
 		return
+	if held_pot != null:
+		_refresh_ui("Put down the pot first.")
+		return
 	if held_bowl == null:
 		_refresh_ui("Hold a dine-in bowl to serve.")
 		return
@@ -443,6 +512,9 @@ func interact_delivery_table(table_id: int) -> void:
 func interact_takeout_pickup() -> void:
 	if held_dirty_cooker != null:
 		_refresh_ui("Clear dirty pot first.")
+		return
+	if held_pot != null:
+		_refresh_ui("Use TAKEOUT 1 or TAKEOUT 2 for packed bowls.")
 		return
 	if held_bowl == null:
 		_refresh_ui("Hold a packed takeout bowl.")
@@ -470,12 +542,37 @@ func interact_takeout_counter_delivery() -> void:
 
 
 func interact_trash_bin() -> void:
+	if held_pot != null:
+		if held_pot.has_overcooked_content():
+			var cleared_bowl: OrderBowl = held_pot.clear_content()
+			var cleared_order_id: int = 0
+			if cleared_bowl != null:
+				cleared_order_id = cleared_bowl.order_id
+				_clear_waiting_customer_for_order(cleared_order_id)
+				_clear_surface_slot_references(cleared_bowl)
+				_clear_holder_bowls_for_order(cleared_order_id)
+				cleared_bowl.queue_free()
+				_record_failed_order()
+			held_pot.refresh_visual()
+			_refresh_ui("Pot cleared." if cleared_order_id <= 0 else "Order #%03d overcooked. Customer left." % cleared_order_id)
+			return
+		if held_pot.is_empty():
+			_refresh_ui("Pot is empty.")
+		else:
+			_refresh_ui("Only overcooked pot goes to trash.")
+		return
+
 	if held_dirty_cooker != null:
 		_clear_held_dirty_cooker()
 		return
 
 	if held_bowl == null:
 		_refresh_ui("Nothing to discard.")
+		return
+	if held_bowl.is_empty_holder:
+		held_bowl.queue_free()
+		held_bowl = null
+		_refresh_ui("Discarded empty bowl.")
 		return
 	var discarded_order_id: int = held_bowl.order_id
 	_clear_waiting_customer_for_order(discarded_order_id)
@@ -500,9 +597,9 @@ func force_complete_one_order_for_smoke() -> bool:
 	interact_cooker(cooker_1)
 	if cooker_1.active_bowl == null:
 		return false
-	if cooker_1.holder_bowl == null:
+	if held_bowl == null:
 		return false
-	if not bool(cooker_1.holder_bowl.is_empty_holder):
+	if not bool(held_bowl.is_empty_holder):
 		return false
 
 	cooker_1.active_bowl.update_cooking(8.2)
@@ -523,10 +620,14 @@ func force_complete_one_order_for_smoke() -> bool:
 
 
 func get_hand_text() -> String:
+	if held_pot != null:
+		return "Holding %s" % held_pot.get_content_status_text().replace("POT", "pot")
 	if held_dirty_cooker != null:
 		return "Holding dirty pot #%03d" % held_dirty_cooker.get_active_order_id()
 	if held_bowl == null:
 		return ""
+	if held_bowl.is_empty_holder:
+		return "Holding empty bowl #%03d" % held_bowl.order_id
 	return "Holding #%03d" % held_bowl.order_id
 
 
@@ -541,6 +642,7 @@ func _complete_held_order() -> void:
 		customer.complete_order(exit_point.global_position)
 	waiting_customers_by_order_id.erase(bowl.order_id)
 	_clear_surface_slot_references(bowl)
+	_clear_holder_bowls_for_order(completed_order_id)
 	bowl.mark_done()
 	bowl.queue_free()
 	held_bowl = null
@@ -551,10 +653,41 @@ func _complete_held_order() -> void:
 
 
 func _hold_bowl(bowl: OrderBowl) -> void:
+	if bowl == null:
+		return
 	held_bowl = bowl
 	var player: Node2D = get_tree().get_first_node_in_group("player") as Node2D
 	if player != null:
 		bowl.attach_to_holder(player)
+
+
+func _hold_pot(pot: CookingPot) -> void:
+	if pot == null:
+		return
+	held_pot = pot
+	var player: Node2D = get_tree().get_first_node_in_group("player") as Node2D
+	if player != null:
+		pot.attach_to_holder(player)
+
+
+func _create_empty_holder_for_order(order_bowl: OrderBowl) -> OrderBowl:
+	var holder: OrderBowl = OrderBowlScene.instantiate() as OrderBowl
+	holder.setup_order(
+		order_bowl.order_id,
+		order_bowl.ingredients,
+		order_bowl.staple_type,
+		order_bowl.spice_level,
+		order_bowl.service_mode,
+		order_bowl.table_id
+	)
+	holder.order_patience_max = order_bowl.order_patience_max
+	holder.order_patience_current = order_bowl.order_patience_current
+	holder.ingredient_time_required = order_bowl.ingredient_time_required
+	holder.ready_window_seconds = order_bowl.ready_window_seconds
+	holder.staple_added = order_bowl.staple_added
+	holder.set_empty_holder_visual()
+	bowls_node.add_child(holder)
+	return holder
 
 
 func _hold_dirty_cooker(cooker: CookerStation) -> void:
@@ -659,6 +792,26 @@ func _clear_surface_slot_references(bowl: OrderBowl) -> void:
 		if surface_slot == null or not is_instance_valid(surface_slot):
 			continue
 		surface_slot.remove_bowl_if_matches(bowl)
+		var pot: CookingPot = surface_slot.get_stored_pot()
+		if pot != null and pot.content_bowl == bowl:
+			pot.clear_content()
+			surface_slot.refresh_visual()
+
+
+func _clear_holder_bowls_for_order(order_id: int) -> void:
+	if order_id <= 0:
+		return
+	if held_bowl != null and held_bowl.is_empty_holder and held_bowl.order_id == order_id:
+		held_bowl.queue_free()
+		held_bowl = null
+	for slot in surface_slots_by_id.values():
+		var surface_slot: SurfaceSlot = slot as SurfaceSlot
+		if surface_slot == null or not is_instance_valid(surface_slot):
+			continue
+		var bowl: OrderBowl = surface_slot.get_stored_bowl()
+		if bowl != null and bowl.is_empty_holder and bowl.order_id == order_id:
+			surface_slot.remove_bowl_if_matches(bowl)
+			bowl.queue_free()
 
 
 func _try_complete_takeout_from_surface(slot: SurfaceSlot, bowl: OrderBowl) -> bool:
@@ -675,6 +828,7 @@ func _try_complete_takeout_from_surface(slot: SurfaceSlot, bowl: OrderBowl) -> b
 		customer.complete_order(exit_point.global_position)
 	waiting_customers_by_order_id.erase(bowl.order_id)
 	slot.remove_bowl_if_matches(bowl)
+	_clear_holder_bowls_for_order(completed_order_id)
 	bowl.mark_done()
 	bowl.queue_free()
 	completed_orders += 1
@@ -753,21 +907,26 @@ func _update_order_patience(delta: float) -> void:
 
 func _get_tracked_order_bowls() -> Array[OrderBowl]:
 	var bowls: Array[OrderBowl] = []
-	if held_bowl != null and is_instance_valid(held_bowl):
+	if held_bowl != null and is_instance_valid(held_bowl) and not held_bowl.is_empty_holder:
 		bowls.append(held_bowl)
+	if held_pot != null and is_instance_valid(held_pot) and held_pot.content_bowl != null and is_instance_valid(held_pot.content_bowl):
+		bowls.append(held_pot.content_bowl)
 	for waiting_bowl in waiting_area.bowls:
-		if waiting_bowl != null and is_instance_valid(waiting_bowl) and waiting_bowl not in bowls:
+		if waiting_bowl != null and is_instance_valid(waiting_bowl) and not waiting_bowl.is_empty_holder and waiting_bowl not in bowls:
 			bowls.append(waiting_bowl)
 	for cooker in [cooker_1, cooker_2]:
-		if cooker != null and cooker.active_bowl != null and is_instance_valid(cooker.active_bowl) and cooker.active_bowl not in bowls:
-			bowls.append(cooker.active_bowl)
+		if cooker != null and cooker.active_pot != null and cooker.active_pot.content_bowl != null and is_instance_valid(cooker.active_pot.content_bowl) and cooker.active_pot.content_bowl not in bowls:
+			bowls.append(cooker.active_pot.content_bowl)
 	for slot in surface_slots_by_id.values():
 		var surface_slot: SurfaceSlot = slot as SurfaceSlot
 		if surface_slot == null or not is_instance_valid(surface_slot):
 			continue
 		var slot_bowl: OrderBowl = surface_slot.get_stored_bowl()
-		if slot_bowl != null and is_instance_valid(slot_bowl) and slot_bowl not in bowls:
+		if slot_bowl != null and is_instance_valid(slot_bowl) and not slot_bowl.is_empty_holder and slot_bowl not in bowls:
 			bowls.append(slot_bowl)
+		var slot_pot: CookingPot = surface_slot.get_stored_pot()
+		if slot_pot != null and slot_pot.content_bowl != null and is_instance_valid(slot_pot.content_bowl) and slot_pot.content_bowl not in bowls:
+			bowls.append(slot_pot.content_bowl)
 	return bowls
 
 
@@ -799,18 +958,21 @@ func _fail_order_bowl(bowl: OrderBowl, message: String) -> void:
 	var order_id: int = bowl.order_id
 	if held_bowl == bowl:
 		held_bowl = null
+	if held_pot != null and held_pot.content_bowl == bowl:
+		held_pot.clear_content()
 
 	waiting_area.remove_bowl(bowl)
 	_clear_surface_slot_references(bowl)
 
 	for cooker in [cooker_1, cooker_2]:
-		if cooker != null and cooker.active_bowl == bowl:
+		if cooker != null and cooker.active_pot != null and cooker.active_pot.content_bowl == bowl:
 			cooker.clear_active_bowl()
 			if held_dirty_cooker == cooker:
 				held_dirty_cooker = null
 				_clear_dirty_pot_visual()
 
 	_clear_waiting_customer_for_order(order_id)
+	_clear_holder_bowls_for_order(order_id)
 	bowl.queue_free()
 	_record_failed_order()
 	_refresh_ui(message)
@@ -834,7 +996,7 @@ func _check_day_end() -> void:
 
 
 func _has_active_restaurant_work() -> bool:
-	if held_bowl != null or held_dirty_cooker != null:
+	if held_bowl != null or held_pot != null or held_dirty_cooker != null:
 		return true
 	if not _get_tracked_order_bowls().is_empty():
 		return true
@@ -882,15 +1044,21 @@ func _get_bowl_location_text(target_bowl: OrderBowl) -> String:
 		if target_bowl.status == OrderBowl.STATUS_WAITING:
 			return "HELD"
 		return target_bowl.get_order_status_text()
+	if held_pot != null and held_pot.content_bowl == target_bowl:
+		return "HELD POT"
 	if waiting_area.bowls.has(target_bowl):
 		return "WAITING"
 	for cooker in [cooker_1, cooker_2]:
-		if cooker != null and cooker.active_bowl == target_bowl:
-			return target_bowl.get_order_status_text()
+		if cooker != null and cooker.active_pot != null and cooker.active_pot.content_bowl == target_bowl:
+			return "POT 1" if cooker == cooker_1 else "POT 2"
 	for slot in surface_slots_by_id.values():
 		var surface_slot: SurfaceSlot = slot as SurfaceSlot
-		if surface_slot != null and surface_slot.get_stored_bowl() == target_bowl:
-			return surface_slot.slot_label
+		if surface_slot != null:
+			if surface_slot.get_stored_bowl() == target_bowl:
+				return surface_slot.slot_label
+			var pot: CookingPot = surface_slot.get_stored_pot()
+			if pot != null and pot.content_bowl == target_bowl:
+				return surface_slot.slot_label
 	return target_bowl.get_order_status_text()
 
 

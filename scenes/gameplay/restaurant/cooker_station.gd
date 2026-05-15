@@ -1,8 +1,12 @@
 class_name CookerStation
 extends Node2D
 
-@export var station_id: String = "CookerStation1"
+const CookingPotScene = preload("res://scenes/gameplay/restaurant/cooking_pot.tscn")
 
+@export var station_id: String = "CookerStation1"
+@export var default_pot_id: String = ""
+
+var active_pot: CookingPot = null
 var active_bowl: OrderBowl = null
 var holder_bowl: OrderBowl = null
 var bowl: OrderBowl = null
@@ -12,66 +16,133 @@ var bowl_holder_area: Node2D = null
 var status_label: Label = null
 
 
-func _process(delta: float) -> void:
+func _ready() -> void:
 	_ensure_parts()
-	if active_bowl != null and is_instance_valid(active_bowl):
-		active_bowl.update_cooking(delta)
+	_find_existing_pot()
+	if active_pot == null:
+		var pot: CookingPot = CookingPotScene.instantiate() as CookingPot
+		pot.pot_id = default_pot_id if default_pot_id.strip_edges() != "" else station_id.replace("CookerStation", "Pot")
+		place_pot(pot)
+	_sync_compat_bowl()
 	_update_status_label()
 
 
-func can_accept_bowl() -> bool:
-	return active_bowl == null
-
-
-func add_bowl(new_bowl: OrderBowl) -> bool:
+func _process(_delta: float) -> void:
 	_ensure_parts()
-	if new_bowl == null or active_bowl != null:
-		return false
+	if active_pot != null and is_instance_valid(active_pot):
+		active_pot.set_on_heat(true)
+		active_pot.refresh_visual()
+	_sync_compat_bowl()
+	_update_status_label()
 
-	active_bowl = new_bowl
-	holder_bowl = new_bowl
-	bowl = new_bowl
-	active_bowl.status = OrderBowl.STATUS_COOKING
-	active_bowl.cook_time = 0.0
-	active_bowl.set_empty_holder_visual()
-	active_bowl.detach_to_world(self, bowl_holder_area.global_position)
-	active_bowl.z_index = 30
+
+func has_pot() -> bool:
+	return active_pot != null and is_instance_valid(active_pot)
+
+
+func can_accept_pot() -> bool:
+	return not has_pot()
+
+
+func place_pot(pot: CookingPot) -> bool:
+	_ensure_parts()
+	if pot == null or not is_instance_valid(pot) or has_pot():
+		return false
+	active_pot = pot
+	if pot.get_parent() != null:
+		pot.get_parent().remove_child(pot)
+	pot_area.add_child(pot)
+	pot.position = Vector2.ZERO
+	pot.z_index = 24
+	pot.current_station = self
+	pot.set_on_heat(true)
+	_sync_compat_bowl()
 	_update_status_label()
 	return true
 
 
+func take_pot() -> CookingPot:
+	if not has_pot():
+		return null
+	var pot: CookingPot = active_pot
+	active_pot = null
+	pot.current_station = null
+	pot.set_on_heat(false)
+	_sync_compat_bowl()
+	_update_status_label()
+	return pot
+
+
+func get_pot() -> CookingPot:
+	if has_pot():
+		return active_pot
+	return null
+
+
+func can_accept_bowl() -> bool:
+	return has_pot() and active_pot.is_empty()
+
+
+func add_bowl_to_pot(new_bowl: OrderBowl) -> bool:
+	if not has_pot():
+		return false
+	if not active_pot.add_order_bowl(new_bowl):
+		return false
+	_sync_compat_bowl()
+	_update_status_label()
+	return true
+
+
+func add_bowl(new_bowl: OrderBowl) -> bool:
+	return add_bowl_to_pot(new_bowl)
+
+
+func can_scoop_to_bowl(empty_bowl: OrderBowl) -> bool:
+	return has_pot() and active_pot.can_scoop_to_empty_bowl(empty_bowl)
+
+
+func scoop_to_bowl(empty_bowl: OrderBowl) -> bool:
+	if not can_scoop_to_bowl(empty_bowl):
+		return false
+	var ok: bool = active_pot.scoop_to_empty_bowl(empty_bowl)
+	_sync_compat_bowl()
+	_update_status_label()
+	return ok
+
+
 func can_take_bowl() -> bool:
-	return active_bowl != null and active_bowl.can_leave_cooker()
+	return has_pot() and active_pot.content_bowl != null and active_pot.content_bowl.can_leave_cooker()
 
 
 func take_bowl() -> OrderBowl:
 	if not can_take_bowl():
 		return null
-
-	var result: OrderBowl = active_bowl
-	result.set_full_order_visual()
-	active_bowl = null
-	holder_bowl = null
-	bowl = null
+	var result: OrderBowl = active_pot.clear_content()
+	if result != null:
+		result.visible = true
+		result.set_full_order_visual()
+	_sync_compat_bowl()
 	_update_status_label()
 	return result
 
 
-func clear_overcooked_bowl() -> OrderBowl:
-	if active_bowl == null or not active_bowl.is_overcooked():
+func clear_overcooked_content() -> OrderBowl:
+	if not has_pot() or not active_pot.has_overcooked_content():
 		return null
-
 	return clear_active_bowl()
 
 
-func clear_active_bowl() -> OrderBowl:
-	if active_bowl == null:
-		return null
+func clear_overcooked_bowl() -> OrderBowl:
+	return clear_overcooked_content()
 
-	var result: OrderBowl = active_bowl
-	active_bowl = null
-	holder_bowl = null
-	bowl = null
+
+func clear_active_bowl() -> OrderBowl:
+	if not has_pot():
+		return null
+	var result: OrderBowl = active_pot.clear_content()
+	if result != null:
+		result.visible = true
+	_sync_compat_bowl()
 	_update_status_label()
 	return result
 
@@ -83,9 +154,9 @@ func get_active_order_id() -> int:
 
 
 func get_status_text() -> String:
-	if active_bowl == null:
-		return "EMPTY"
-	return active_bowl.get_cooker_timer_text()
+	if not has_pot():
+		return "NO POT"
+	return active_pot.get_content_status_text()
 
 
 func _ensure_parts() -> void:
@@ -119,6 +190,25 @@ func _ensure_parts() -> void:
 		status_label.add_theme_color_override("font_outline_color", Color.WHITE)
 		status_label.add_theme_constant_override("outline_size", 3)
 		add_child(status_label)
+
+
+func _find_existing_pot() -> void:
+	for child in pot_area.get_children():
+		var pot: CookingPot = child as CookingPot
+		if pot != null:
+			active_pot = pot
+			active_pot.current_station = self
+			active_pot.set_on_heat(true)
+			return
+
+
+func _sync_compat_bowl() -> void:
+	if has_pot() and active_pot.content_bowl != null and is_instance_valid(active_pot.content_bowl):
+		active_bowl = active_pot.content_bowl
+	else:
+		active_bowl = null
+	holder_bowl = active_bowl
+	bowl = active_bowl
 
 
 func _update_status_label() -> void:
