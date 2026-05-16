@@ -30,6 +30,8 @@ var spawn_elapsed: float = 0.0
 var tutorial_controller: TutorialController = null
 var next_tutorial_order: Dictionary = {}
 var tutorial_refill_holder_by_order_id: Dictionary = {}
+var dirty_dining_tables: Dictionary = {}
+var held_table_trash: int = 0
 
 var held_bowl: OrderBowl = null
 var held_pot: CookingPot = null
@@ -181,6 +183,9 @@ func interact_with_station_action(station_name: String, action_name: String = "i
 	if station_name == "IngredientDisplay":
 		interact_ingredient_display()
 		return
+	if station_name == "CustomerTrashBin" and (action_name == "interact" or action_name == "sauce_x"):
+		interact_customer_trash_bin()
+		return
 	if action_name != "interact" and action_name != "sauce_x":
 		return
 
@@ -213,7 +218,7 @@ func interact_with_station_action(station_name: String, action_name: String = "i
 			interact_takeout_pickup()
 		"TrashBin":
 			interact_trash_bin()
-		"IngredientDisplay2", "IngredientDisplay3", "IngredientDisplayLocked", "DrinksFridge", "DrinkFridgeLocked", "CustomerTrashBin", "StorageArea", "DrinkStorage", "CookerStationLocked":
+		"IngredientDisplay2", "IngredientDisplay3", "IngredientDisplayLocked", "DrinksFridge", "DrinkFridgeLocked", "StorageArea", "DrinkStorage", "CookerStationLocked":
 			_interact_placeholder(station_name)
 		_:
 			_refresh_ui("这里暂时不能操作：%s" % station_name)
@@ -751,6 +756,9 @@ func interact_packing_bag_area() -> void:
 
 
 func interact_delivery_table(table_id: int) -> void:
+	if held_table_trash != 0:
+		_refresh_ui("先把手里的垃圾扔掉")
+		return
 	if held_dirty_cooker != null:
 		_refresh_ui("先清理脏锅")
 		return
@@ -758,7 +766,14 @@ func interact_delivery_table(table_id: int) -> void:
 		_refresh_ui("先放下锅")
 		return
 	if held_bowl == null:
-		_refresh_ui("先拿着堂食碗")
+		if bool(dirty_dining_tables.get(table_id, false)):
+			dirty_dining_tables.erase(table_id)
+			held_table_trash = table_id
+			_refresh_dining_table_visual(table_id)
+			_refresh_ui("收起桌%d的垃圾，请拿去客用垃圾桶" % table_id)
+			_notify_tutorial("table_trash_picked_up", {"table_id": table_id})
+		else:
+			_refresh_ui("这张桌子现在不需要收拾")
 		return
 	if _reject_overcooked_held_order():
 		return
@@ -775,6 +790,16 @@ func interact_delivery_table(table_id: int) -> void:
 		_refresh_ui("堂食主食不对，不能出餐")
 		return
 	_complete_held_order()
+
+
+func interact_customer_trash_bin() -> void:
+	if held_table_trash == 0:
+		_refresh_ui("没有要扔的桌面垃圾")
+		return
+	var table_id: int = held_table_trash
+	held_table_trash = 0
+	_refresh_ui("已扔掉桌%d的垃圾" % table_id)
+	_notify_tutorial("table_trash_discarded", {"table_id": table_id})
 
 
 func interact_takeout_pickup() -> void:
@@ -951,6 +976,18 @@ func _refresh_surface_slot_containing_bowl(bowl: OrderBowl) -> void:
 			return
 
 
+func _refresh_dining_table_visual(table_id: int) -> void:
+	if table_id < 1 or table_id > 2:
+		return
+	var table_node: Node = get_node_or_null("../Stations/DiningTables/DiningTable%d" % table_id)
+	if table_node == null:
+		return
+	var label: Label = table_node.get_node_or_null("Label") as Label
+	if label == null:
+		return
+	label.text = "桌%d 有垃圾" % table_id if bool(dirty_dining_tables.get(table_id, false)) else "桌%d" % table_id
+
+
 func force_complete_one_order_for_smoke() -> bool:
 	var guard: int = 0
 	while _get_counter_customer() == null and guard < 360:
@@ -993,6 +1030,8 @@ func force_complete_one_order_for_smoke() -> bool:
 
 
 func get_hand_text() -> String:
+	if held_table_trash != 0:
+		return "拿着桌%d的垃圾" % held_table_trash
 	if held_pot != null:
 		var pot_state: String = held_pot.get_content_status_text()
 		if pot_state == "空锅":
@@ -1019,6 +1058,7 @@ func _complete_held_order() -> void:
 		return
 	var completed_order_id: int = bowl.order_id
 	var completed_service_mode: String = bowl.service_mode
+	var completed_table_id: int = bowl.table_id
 	tutorial_refill_holder_by_order_id.erase(completed_order_id)
 	var result: Dictionary = _evaluate_order_quality(bowl)
 	var earned_money: int = int(result.get("money", 0))
@@ -1035,6 +1075,10 @@ func _complete_held_order() -> void:
 	completed_orders += 1
 	money_today += earned_money
 	score_today += earned_score
+	if completed_service_mode == "dine_in" and (completed_table_id == 1 or completed_table_id == 2):
+		dirty_dining_tables[completed_table_id] = true
+		_refresh_dining_table_visual(completed_table_id)
+		_notify_tutorial("dining_table_became_dirty", {"table_id": completed_table_id})
 	_update_score()
 	_refresh_ui("完成订单 #%03d +%d：%s" % [completed_order_id, earned_money, result_message])
 	_notify_tutorial("order_completed", {"order_id": completed_order_id, "service_mode": completed_service_mode})

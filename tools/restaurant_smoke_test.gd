@@ -48,6 +48,11 @@ func _run() -> void:
 		_finish()
 		return
 
+	await _check_dining_table_trash()
+	if not failures.is_empty():
+		_finish()
+		return
+
 	await _check_quality_penalty_delivery_rules()
 	if not failures.is_empty():
 		_finish()
@@ -262,7 +267,7 @@ func _check_tutorial_controller() -> void:
 		_fail("tutorial controller", "direct controller did not build steps")
 		direct_controller.queue_free()
 		return
-	for step_id in ["second_intro", "second_counter", "second_pot", "second_clear_overcook", "second_refill_prepare", "second_refill_pick_bowl", "second_refill", "second_chili", "second_deliver", "third_intro", "third_counter", "third_pack", "third_bag", "third_takeout_table", "third_done"]:
+	for step_id in ["second_intro", "second_counter", "second_pot", "second_clear_overcook", "second_refill_prepare", "second_refill_pick_bowl", "second_refill", "second_chili", "second_deliver", "third_intro", "third_counter", "third_pack", "third_bag", "third_takeout_table", "third_done", "cleanup_intro", "cleanup_table_1", "cleanup_trash_bin", "cleanup_done"]:
 		if not _tutorial_has_step_id(direct_controller, step_id):
 			_fail("tutorial controller", "missing tutorial step %s" % step_id)
 			direct_controller.queue_free()
@@ -601,6 +606,24 @@ func _check_tutorial_controller() -> void:
 	manager.interact_surface_slot("TakeoutPickupSlot1")
 	if int(controller.current_step_index) != _tutorial_step_index(controller, "third_done"):
 		_fail("tutorial controller", "takeout completion should advance tutorial")
+		scene.queue_free()
+		return
+	controller.current_step_index = _tutorial_step_index(controller, "cleanup_table_1")
+	manager.dirty_dining_tables.clear()
+	manager.held_table_trash = 0
+	controller._show_current_step()
+	if not bool(manager.dirty_dining_tables.get(1, false)):
+		_fail("tutorial controller", "cleanup_table_1 should ensure table 1 is dirty")
+		scene.queue_free()
+		return
+	manager.interact_delivery_table(1)
+	if int(manager.held_table_trash) != 1 or manager.dirty_dining_tables.has(1) or int(controller.current_step_index) != _tutorial_step_index(controller, "cleanup_trash_bin"):
+		_fail("tutorial controller", "table trash pickup should advance cleanup tutorial")
+		scene.queue_free()
+		return
+	manager.interact_customer_trash_bin()
+	if int(manager.held_table_trash) != 0 or int(controller.current_step_index) != _tutorial_step_index(controller, "cleanup_done"):
+		_fail("tutorial controller", "table trash discard should advance cleanup tutorial")
 		scene.queue_free()
 		return
 	scene.queue_free()
@@ -1461,9 +1484,85 @@ func _check_delivery_paths() -> void:
 		_fail("delivery paths", "dine-in should complete at the assigned table")
 		scene.queue_free()
 		return
+	if not bool(manager.dirty_dining_tables.get(2, false)):
+		_fail("delivery paths", "completed dine-in table should become dirty")
+		scene.queue_free()
+		return
 
 	scene.queue_free()
 	_pass("delivery paths")
+
+
+func _check_dining_table_trash() -> void:
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("table trash", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	var dine_bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(dine_bowl)
+	dine_bowl.setup_order(510, {"spinach": 1}, "none", "mild", "dine_in", 1)
+	dine_bowl.status = OrderBowl.STATUS_COOKED
+	_complete_sauce_requirements(manager, dine_bowl)
+	manager.interact_delivery_table(1)
+	if not bool(manager.dirty_dining_tables.get(1, false)):
+		_fail("table trash", "dine-in table 1 should become dirty after delivery")
+		scene.queue_free()
+		return
+	var table_1_label: Label = scene.get_node_or_null("Stations/DiningTables/DiningTable1/Label") as Label
+	if table_1_label == null or not table_1_label.text.contains("垃圾"):
+		_fail("table trash", "dirty table label should mention trash")
+		scene.queue_free()
+		return
+	if int(manager.held_table_trash) != 0:
+		_fail("table trash", "delivering dine-in should not put trash in hand")
+		scene.queue_free()
+		return
+
+	manager.interact_delivery_table(1)
+	if int(manager.held_table_trash) != 1 or manager.dirty_dining_tables.has(1):
+		_fail("table trash", "empty-hand interaction should pick up table 1 trash")
+		scene.queue_free()
+		return
+	if not manager.get_hand_text().contains("桌1"):
+		_fail("table trash", "hand text should describe held table trash")
+		scene.queue_free()
+		return
+	if table_1_label.text.contains("垃圾"):
+		_fail("table trash", "table label should return to clean after pickup")
+		scene.queue_free()
+		return
+
+	manager.interact_customer_trash_bin()
+	if int(manager.held_table_trash) != 0:
+		_fail("table trash", "customer trash bin should discard held table trash")
+		scene.queue_free()
+		return
+
+	manager.dirty_dining_tables.clear()
+	var takeout_bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(takeout_bowl)
+	takeout_bowl.setup_order(511, {"spinach": 1}, "none", "mild", "takeout", 0)
+	takeout_bowl.status = OrderBowl.STATUS_COOKED
+	_complete_sauce_requirements(manager, takeout_bowl)
+	manager.interact_packing_area()
+	manager.interact_packing_bag_area()
+	manager.interact_surface_slot("TakeoutPickupSlot1")
+	if not manager.dirty_dining_tables.is_empty():
+		_fail("table trash", "takeout completion should not dirty dining tables")
+		scene.queue_free()
+		return
+
+	scene.queue_free()
+	_pass("table trash")
 
 
 func _check_quality_penalty_delivery_rules() -> void:

@@ -334,6 +334,30 @@ func _build_day_1_steps() -> void:
 			"text": "外带流程完成。按 H 继续。",
 			"target_station": "",
 			"wait_type": "confirm"
+		},
+		{
+			"id": "cleanup_intro",
+			"text": "现在收拾堂食桌。按 H 继续。",
+			"target_station": "",
+			"wait_type": "confirm"
+		},
+		{
+			"id": "cleanup_table_1",
+			"text": "桌1有垃圾。空手到桌1旁边，按 H 收起来。",
+			"target_station": "DiningTable1",
+			"wait_type": "table_trash_picked_up"
+		},
+		{
+			"id": "cleanup_trash_bin",
+			"text": "拿着垃圾去客用垃圾桶，按 H 扔掉。",
+			"target_station": "CustomerTrashBin",
+			"wait_type": "table_trash_discarded"
+		},
+		{
+			"id": "cleanup_done",
+			"text": "桌面收拾完成。当前教学到这里。",
+			"target_station": "",
+			"wait_type": "confirm"
 		}
 	]
 
@@ -374,6 +398,10 @@ func _event_completes_wait(wait_type: String, event_name: String, payload: Dicti
 			return event_name == "takeout_order_packed" and _is_current_order_bowl(packed_bowl) and packed_bowl.status == OrderBowl.STATUS_PACKED
 		"takeout_order_completed":
 			return event_name == "order_completed" and str(payload.get("service_mode", "")) == "takeout"
+		"table_trash_picked_up":
+			return event_name == "table_trash_picked_up" and int(payload.get("table_id", 0)) == 1
+		"table_trash_discarded":
+			return event_name == "table_trash_discarded" and int(payload.get("table_id", 0)) == 1
 		"overcooked_pot_picked_up":
 			return event_name == "overcooked_pot_picked_up" and int(payload.get("order_id", 0)) == forced_overcook_order_id
 		"tutorial_overcook_cleared":
@@ -433,6 +461,10 @@ func _prepare_step(step_id: String) -> void:
 		if manager != null:
 			manager.next_tutorial_order = get_third_order_override()
 		_spawn_next_tutorial_customer_if_needed()
+	elif step_id == "cleanup_table_1" and manager != null:
+		if not bool(manager.dirty_dining_tables.get(1, false)) and int(manager.held_table_trash) != 1:
+			manager.dirty_dining_tables[1] = true
+			manager._refresh_dining_table_visual(1)
 
 
 func _spawn_next_tutorial_customer_if_needed() -> void:
