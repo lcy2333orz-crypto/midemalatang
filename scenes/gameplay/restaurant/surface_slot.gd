@@ -40,7 +40,9 @@ func store_item(item: Node2D) -> bool:
 	var bowl: OrderBowl = item as OrderBowl
 	if bowl != null:
 		bowl.visible = true
-		if bowl.is_empty_holder:
+		if bowl.needs_refill:
+			bowl.refresh_visuals()
+		elif bowl.is_empty_holder:
 			bowl.set_empty_holder_visual()
 		else:
 			bowl.set_full_order_visual()
@@ -114,7 +116,10 @@ func refresh_visual() -> void:
 
 	var bowl: OrderBowl = stored_item as OrderBowl
 	if bowl != null:
-		label.text = "空碗 #%03d" % bowl.order_id if bowl.is_empty_holder else "#%03d" % bowl.order_id
+		if bowl.needs_refill:
+			label.text = "待补配 #%03d" % bowl.order_id
+		else:
+			label.text = "空碗 #%03d" % bowl.order_id if bowl.is_empty_holder else "#%03d" % bowl.order_id
 		return
 
 	var pot: CookingPot = stored_item as CookingPot

@@ -45,9 +45,15 @@ func setup(new_manager: RestaurantGameManager, new_ui: RestaurantUI) -> void:
 			ui.hide_tutorial_text()
 		return
 
-	if manager != null:
-		manager.next_tutorial_order = get_first_order_override()
 	_show_current_step()
+
+
+func controls_customer_spawning() -> bool:
+	return enabled
+
+
+func pauses_time() -> bool:
+	return enabled
 
 
 func get_first_order_override() -> Dictionary:
@@ -106,145 +112,157 @@ func _build_day_1_steps() -> void:
 	steps = [
 		{
 			"id": "intro_1",
-			"text": "欢迎来到小猫麻辣烫连锁店培训！",
+			"text": "小猫：欢迎来到培训店。先学会做第一份麻辣烫。",
 			"target_station": "",
 			"wait_type": "confirm"
 		},
 		{
 			"id": "intro_2",
-			"text": "我们的店已经开到了很多地方，不过每家分店都会遇到不一样的麻烦。",
+			"text": "小猫：顾客会自己选菜，然后来到收银台。",
 			"target_station": "",
 			"wait_type": "confirm"
 		},
 		{
 			"id": "intro_3",
-			"text": "先从最基础的营业开始吧。让店铺恢复元气，大家就能拿到更多佣金！",
+			"text": "小猫：看到提示后，按 H 继续。",
 			"target_station": "",
 			"wait_type": "confirm"
 		},
 		{
 			"id": "wait_counter_order",
-			"text": "顾客会自己选择配菜和饮料。等顾客来到收银台后，在收银台按 H 接单。",
+			"text": "等顾客到收银台。站到收银台旁边，按 H 接单。",
 			"target_station": "Counter",
 			"wait_type": "counter_order_created"
 		},
 		{
 			"id": "add_staple",
-			"text": "你拿到了带小票的订单盆。先看订单栏：这单需要指定主食、四种基础小料，不需要辣椒。",
+			"text": "你拿到了订单盆。订单需要主食：粉丝。去主食柜按 H。",
 			"target_station": "StapleArea",
 			"wait_type": "held_bowl_has_staple"
 		},
 		{
 			"id": "put_in_pot",
-			"text": "主食加好了。把订单盆放到操作台，或者直接拿去锅位，把食材倒进锅里。",
+			"text": "主食加好了。把订单盆倒进锅里。",
 			"target_station": "CookerStation1",
 			"wait_type": "bowl_in_pot"
 		},
 		{
 			"id": "scoop_cooked_bowl",
-			"text": "锅在锅位上才会加热。等它变成“已熟”后，用对应空碗盛出来。",
+			"text": "等锅显示“已熟”。拿着对应空碗，对锅按 H 盛出。",
 			"target_station": "CookerStation1",
 			"wait_type": "held_bowl_cooked"
 		},
 		{
 			"id": "mixed_sauces",
-			"text": "现在去小料桶。每份麻辣烫都需要蒜水、麻酱、醋、糖各一次。",
+			"text": "去小料桶。按 H、J、K、L，各加一种小料。",
 			"target_station": "SauceStationMixed",
 			"wait_type": "mixed_sauces_complete"
 		},
 		{
 			"id": "deliver_table_1",
-			"text": "这位顾客不要辣椒。把成品送到桌1。",
+			"text": "这单不要辣椒。把碗送到桌1。",
 			"target_station": "DiningTable1",
 			"wait_type": "dine_order_completed"
 		},
 		{
 			"id": "first_order_done",
-			"text": "店铺元气上升了！元气达标后，这家分店的问题就解决了。",
+			"text": "第一份完成。按 H 继续下一单。",
 			"target_station": "",
 			"wait_type": "confirm"
 		},
 		{
 			"id": "second_intro",
-			"text": "很好，第一份堂食完成了。下一位顾客会要求辣椒。",
+			"text": "下一单会用到辣椒。按 H 继续。",
 			"target_station": "",
 			"wait_type": "confirm"
 		},
 		{
 			"id": "second_counter",
-			"text": "这位顾客需要辣椒。先像刚才一样，在收银台按 H 接单。",
+			"text": "等顾客到收银台。按 H 接单。",
 			"target_station": "Counter",
 			"wait_type": "counter_order_created"
 		},
 		{
 			"id": "second_staple",
-			"text": "这单需要面。先去主食柜加入正确主食。",
+			"text": "这单需要主食：面。去主食柜按 H。",
 			"target_station": "StapleArea",
 			"wait_type": "held_bowl_has_staple"
 		},
 		{
 			"id": "second_pot",
-			"text": "把订单盆倒进锅里。这一次我们会演示糊锅要怎么处理。",
+			"text": "把订单盆倒进锅里。这次会演示食物煮糊后的处理。",
 			"target_station": "CookerStation1",
 			"wait_type": "bowl_in_pot"
 		},
 		{
 			"id": "second_overcooked",
-			"text": "糊掉了！这份餐不能交给顾客。先把糊掉的锅拿起来。",
+			"text": "食物煮糊了。先把锅从锅位上拿起来。",
 			"target_station": "CookerStation1",
 			"wait_type": "overcooked_pot_picked_up"
 		},
 		{
 			"id": "second_clear_overcook",
-			"text": "把糊掉的食物倒掉。盆和小票会保留，等会儿可以按小票补配。",
+			"text": "拿着糊锅去厨房垃圾桶，按 H 倒掉糊掉的食物。",
 			"target_station": "TrashBin",
 			"wait_type": "tutorial_overcook_cleared"
 		},
 		{
+			"id": "second_refill_prepare",
+			"text": "现在你手里是空锅。先把空锅放回锅位。",
+			"target_station": "CookerStation1",
+			"wait_type": "held_pot_placed_on_cooker"
+		},
+		{
+			"id": "second_refill_pick_bowl",
+			"text": "拿起旁边的待补配订单盆。",
+			"target_station": "SurfaceSlot_r1c8",
+			"wait_type": "held_refill_bowl"
+		},
+		{
 			"id": "second_refill",
-			"text": "现在拿着空盆去食材柜。按 H 后，食材柜会按照小票自动补回顾客原本选择的配菜。",
+			"text": "拿着待补配订单盆去食材柜，按 H 补回配菜。",
 			"target_station": "IngredientDisplay",
 			"wait_type": "bowl_refilled"
 		},
 		{
 			"id": "second_restaple",
-			"text": "补配好了。现在要重新加入主食：面。",
+			"text": "补配完成。再去主食柜按 H，重新加入面。",
 			"target_station": "StapleArea",
 			"wait_type": "held_bowl_has_staple"
 		},
 		{
 			"id": "second_recook",
-			"text": "重新把订单盆倒进锅里。这一次正常煮熟后及时盛出来。",
+			"text": "把订单盆重新倒进锅里。",
 			"target_station": "CookerStation1",
 			"wait_type": "bowl_in_pot"
 		},
 		{
 			"id": "second_scoop",
-			"text": "这次煮好了。用对应空碗盛出来。",
+			"text": "等锅显示“已熟”，用对应空碗盛出。",
 			"target_station": "CookerStation1",
 			"wait_type": "held_bowl_cooked"
 		},
 		{
 			"id": "second_mixed_sauces",
-			"text": "照旧去小料桶，把蒜水、麻酱、醋、糖各加一次。",
+			"text": "去小料桶。按 H、J、K、L，各加一种小料。",
 			"target_station": "SauceStationMixed",
 			"wait_type": "mixed_sauces_complete"
 		},
 		{
 			"id": "second_chili",
-			"text": "这位顾客需要 1 次辣椒。去辣椒格按 H 一次。",
+			"text": "这单需要 1 次辣椒。去辣椒格按 H 一次。",
 			"target_station": "SauceStation",
 			"wait_type": "chili_complete"
 		},
 		{
 			"id": "second_deliver",
-			"text": "辣椒加好了。现在把成品送到桌2。",
+			"text": "把这份麻辣烫送到桌2。",
 			"target_station": "DiningTable2",
 			"wait_type": "dine_order_completed"
 		},
 		{
 			"id": "second_done",
-			"text": "糊锅不会立刻扣分，但会浪费时间。正式营业时，顾客等太久才会影响声望。",
+			"text": "第二份完成。按 H 继续。",
 			"target_station": "",
 			"wait_type": "confirm"
 		}
@@ -284,6 +302,11 @@ func _event_completes_wait(wait_type: String, event_name: String, payload: Dicti
 		"tutorial_overcook_cleared":
 			var refill_bowl: OrderBowl = payload.get("bowl", null) as OrderBowl
 			return event_name == "tutorial_overcook_cleared" and _is_current_order_bowl(refill_bowl) and refill_bowl.needs_refill
+		"held_pot_placed_on_cooker":
+			return event_name == "pot_placed_on_cooker"
+		"held_refill_bowl":
+			var picked_bowl: OrderBowl = payload.get("bowl", null) as OrderBowl
+			return event_name == "refill_bowl_picked_up" and _is_current_order_bowl(picked_bowl) and picked_bowl.needs_refill
 		"bowl_refilled":
 			var refilled_bowl: OrderBowl = payload.get("bowl", null) as OrderBowl
 			var refilled: bool = event_name == "bowl_refilled" and _is_current_order_bowl(refilled_bowl) and not refilled_bowl.needs_refill
@@ -318,12 +341,30 @@ func _show_current_step() -> void:
 
 
 func _prepare_step(step_id: String) -> void:
-	if step_id == "second_intro":
+	if step_id == "wait_counter_order":
+		tutorial_order_index = 1
+		if manager != null:
+			manager.next_tutorial_order = get_first_order_override()
+		_spawn_next_tutorial_customer_if_needed()
+	elif step_id == "second_counter":
 		tutorial_order_index = 2
 		if manager != null:
 			manager.next_tutorial_order = get_second_order_override()
-			if manager._get_counter_customer() == null and manager.is_day_open:
-				manager.spawn_customer()
+		_spawn_next_tutorial_customer_if_needed()
+
+
+func _spawn_next_tutorial_customer_if_needed() -> void:
+	if manager == null or not manager.is_day_open:
+		return
+	if manager._get_counter_customer() != null:
+		return
+	if not manager.queued_customers.is_empty():
+		return
+	for customer_node in manager.get_tree().get_nodes_in_group("restaurant_customers"):
+		var customer: RestaurantCustomer = customer_node as RestaurantCustomer
+		if customer != null and is_instance_valid(customer):
+			return
+	manager.spawn_customer()
 
 
 func _finish_tutorial() -> void:
@@ -331,7 +372,7 @@ func _finish_tutorial() -> void:
 	enabled = false
 	_clear_highlight()
 	if ui != null and ui.has_method("show_tutorial_text"):
-		ui.show_tutorial_text("第 2 份糊锅和辣椒教学完成。后续教学还在开发中。")
+		ui.show_tutorial_text("当前教学到这里。")
 
 
 func _is_current_order_bowl(bowl: OrderBowl) -> bool:

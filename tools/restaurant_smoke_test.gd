@@ -262,7 +262,7 @@ func _check_tutorial_controller() -> void:
 		_fail("tutorial controller", "direct controller did not build steps")
 		direct_controller.queue_free()
 		return
-	for step_id in ["second_intro", "second_counter", "second_pot", "second_clear_overcook", "second_refill", "second_chili", "second_deliver"]:
+	for step_id in ["second_intro", "second_counter", "second_pot", "second_clear_overcook", "second_refill_prepare", "second_refill_pick_bowl", "second_refill", "second_chili", "second_deliver"]:
 		if not _tutorial_has_step_id(direct_controller, step_id):
 			_fail("tutorial controller", "missing tutorial step %s" % step_id)
 			direct_controller.queue_free()
@@ -287,6 +287,10 @@ func _check_tutorial_controller() -> void:
 		_fail("tutorial controller", "manager did not connect to tutorial controller")
 		scene.queue_free()
 		return
+	if int(manager.spawn_count) != 0 or get_nodes_in_group("restaurant_customers").size() != 0:
+		_fail("tutorial controller", "tutorial should not auto-spawn customers on scene start")
+		scene.queue_free()
+		return
 
 	ui.show_tutorial_text("欢迎来到小猫麻辣烫连锁店培训！")
 	var tutorial_label: Label = ui.get("tutorial_label") as Label
@@ -300,12 +304,73 @@ func _check_tutorial_controller() -> void:
 		scene.queue_free()
 		return
 
-	controller.current_step_index = 3
+	var time_before: float = float(manager.day_time_remaining)
+	var patience_bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(patience_bowl)
+	patience_bowl.setup_order(929, {"spinach": 1}, "noodle", "mild", "dine_in", 1, 0)
+	manager._hold_bowl(patience_bowl)
+	var patience_before: float = float(patience_bowl.order_patience_current)
+	manager._process(12.0)
+	if not is_equal_approx(float(manager.day_time_remaining), time_before):
+		_fail("tutorial controller", "tutorial pause should stop day timer")
+		scene.queue_free()
+		return
+	if not is_equal_approx(float(patience_bowl.order_patience_current), patience_before):
+		_fail("tutorial controller", "tutorial pause should stop order patience")
+		scene.queue_free()
+		return
+	var time_label: Label = ui.get("time_label") as Label
+	if time_label == null or time_label.text != "教学中":
+		_fail("tutorial controller", "tutorial pause should show 教学中")
+		scene.queue_free()
+		return
+	manager.held_bowl = null
+	patience_bowl.queue_free()
+
+	controller.current_step_index = _tutorial_step_index(controller, "wait_counter_order")
 	controller.enabled = true
 	controller.finished = false
-	controller.notify_event("counter_order_created", {"bowl": manager.held_bowl})
-	if int(controller.current_step_index) != 4:
+	controller._show_current_step()
+	await process_frame
+	if int(manager.spawn_count) != 1:
+		_fail("tutorial controller", "wait_counter_order should spawn the first tutorial customer")
+		scene.queue_free()
+		return
+	manager._process(999.0)
+	if int(manager.spawn_count) != 1:
+		_fail("tutorial controller", "tutorial should not auto-spawn extra customers over time")
+		scene.queue_free()
+		return
+
+	var fake_counter_bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(fake_counter_bowl)
+	fake_counter_bowl.setup_order(928, {"spinach": 1}, "glass_noodle", "mild", "dine_in", 1, 0)
+	controller.enabled = true
+	controller.finished = false
+	controller.notify_event("counter_order_created", {"bowl": fake_counter_bowl})
+	if int(controller.current_step_index) != _tutorial_step_index(controller, "add_staple"):
 		_fail("tutorial controller", "counter_order_created did not advance tutorial")
+		scene.queue_free()
+		return
+
+	for customer_node in get_nodes_in_group("restaurant_customers"):
+		var customer: Node = customer_node as Node
+		if customer != null and is_instance_valid(customer):
+			customer.queue_free()
+	manager.queued_customers.clear()
+	await process_frame
+	var spawn_before_second_intro: int = int(manager.spawn_count)
+	controller.current_step_index = _tutorial_step_index(controller, "second_intro")
+	controller._show_current_step()
+	if int(manager.spawn_count) != spawn_before_second_intro:
+		_fail("tutorial controller", "second_intro should not spawn the second customer")
+		scene.queue_free()
+		return
+	controller.current_step_index = _tutorial_step_index(controller, "second_counter")
+	controller._show_current_step()
+	await process_frame
+	if int(manager.spawn_count) != spawn_before_second_intro + 1:
+		_fail("tutorial controller", "second_counter should spawn the second tutorial customer")
 		scene.queue_free()
 		return
 
@@ -360,14 +425,58 @@ func _check_tutorial_controller() -> void:
 		_fail("tutorial controller", "tutorial forced overcook should keep waiting customer")
 		scene.queue_free()
 		return
+	if manager.held_pot == null or not manager.held_pot.is_empty() or manager.held_bowl != null:
+		_fail("tutorial controller", "tutorial forced overcook should leave empty pot in hand")
+		scene.queue_free()
+		return
+	var refill_slot: SurfaceSlot = manager._get_surface_slot("SurfaceSlot_r1c8")
+	var refill_slot_id: String = "SurfaceSlot_r1c8"
+	var refill_bowl: OrderBowl = refill_slot.get_stored_bowl() if refill_slot != null else null
+	if refill_bowl == null or not refill_bowl.needs_refill:
+		refill_bowl = null
+		refill_slot_id = ""
+		for slot_value in manager.surface_slots_by_id.values():
+			var candidate_slot: SurfaceSlot = slot_value as SurfaceSlot
+			if candidate_slot == null:
+				continue
+			var candidate_bowl: OrderBowl = candidate_slot.get_stored_bowl()
+			if candidate_bowl != null and candidate_bowl.needs_refill:
+				refill_bowl = candidate_bowl
+				refill_slot_id = candidate_slot.slot_id
+				break
+	if refill_bowl == null or not refill_bowl.needs_refill:
+		_fail("tutorial controller", "tutorial forced overcook should place refill bowl on a surface slot")
+		scene.queue_free()
+		return
+
+	if manager.cooker_1.active_pot != null:
+		var old_pot: CookingPot = manager.cooker_1.take_pot()
+		if old_pot != null:
+			old_pot.queue_free()
+	controller.current_step_index = _tutorial_step_index(controller, "second_refill_prepare")
+	manager.interact_cooker(manager.cooker_1)
+	if manager.held_pot != null or manager.cooker_1.active_pot == null:
+		_fail("tutorial controller", "player should be able to place tutorial empty pot back on cooker")
+		scene.queue_free()
+		return
+	if int(controller.current_step_index) != _tutorial_step_index(controller, "second_refill_pick_bowl"):
+		_fail("tutorial controller", "pot_placed_on_cooker did not advance tutorial")
+		scene.queue_free()
+		return
+
+	manager.interact_surface_slot(refill_slot_id)
 	if manager.held_bowl == null or not manager.held_bowl.needs_refill:
-		_fail("tutorial controller", "tutorial forced overcook should return refill bowl")
+		_fail("tutorial controller", "player should be able to pick up refill bowl from surface slot")
+		scene.queue_free()
+		return
+	if int(controller.current_step_index) != _tutorial_step_index(controller, "second_refill"):
+		_fail("tutorial controller", "refill_bowl_picked_up did not advance tutorial")
 		scene.queue_free()
 		return
 
 	controller.current_step_index = _tutorial_step_index(controller, "second_refill")
 	manager.interact_ingredient_display()
-	if manager.held_bowl == null or manager.held_bowl.needs_refill or manager.held_bowl.is_empty_holder or manager.held_bowl.status != OrderBowl.STATUS_WAITING or bool(manager.held_bowl.staple_added):
+	if manager.held_bowl == null or manager.held_bowl.needs_refill or manager.held_bowl.is_empty_holder or manager.held_bowl.status != OrderBowl.STATUS_WAITING or bool(manager.held_bowl.staple_added) or manager.held_bowl.actual_staple_type != "none":
 		_fail("tutorial controller", "tutorial refill did not restore bowl to waiting without staple")
 		scene.queue_free()
 		return

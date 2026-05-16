@@ -29,6 +29,11 @@ func update_time(seconds_remaining: float) -> void:
 	time_label.text = "剩余 %d 秒" % display_seconds
 
 
+func update_time_text(text: String) -> void:
+	_ensure_widgets()
+	time_label.text = text
+
+
 func update_orders(text: String) -> void:
 	var card_texts: Array[String] = []
 	if text.strip_edges() != "":

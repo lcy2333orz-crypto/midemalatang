@@ -61,7 +61,7 @@ func _ready() -> void:
 	tutorial_controller = get_node_or_null("../TutorialController") as TutorialController
 	if tutorial_controller != null:
 		tutorial_controller.setup(self, ui)
-	if is_day_open:
+	if is_day_open and not _is_tutorial_customer_controlled():
 		spawn_customer()
 	_refresh_ui("餐厅营业开始")
 
@@ -86,6 +86,14 @@ func _notify_tutorial(event_name: String, payload: Dictionary = {}) -> void:
 	tutorial_controller.notify_event(event_name, payload)
 
 
+func _is_tutorial_customer_controlled() -> bool:
+	return tutorial_controller != null and tutorial_controller.has_method("controls_customer_spawning") and tutorial_controller.controls_customer_spawning()
+
+
+func _is_tutorial_time_paused() -> bool:
+	return tutorial_controller != null and tutorial_controller.has_method("pauses_time") and tutorial_controller.pauses_time()
+
+
 func _update_day_timer(delta: float) -> void:
 	if not is_day_open:
 		return
@@ -96,16 +104,20 @@ func _update_day_timer(delta: float) -> void:
 
 
 func _process(delta: float) -> void:
-	_update_day_timer(delta)
-	if is_day_open:
-		spawn_elapsed += delta
-	if is_day_open and spawn_count < max_customers and spawn_elapsed >= spawn_interval_seconds:
-		spawn_elapsed = 0.0
-		spawn_customer()
-	_update_order_patience(delta)
-	_handle_queue_patience_failures()
+	var tutorial_time_paused: bool = _is_tutorial_time_paused()
+	var tutorial_customer_controlled: bool = _is_tutorial_customer_controlled()
+	if not tutorial_time_paused:
+		_update_day_timer(delta)
+		if is_day_open and not tutorial_customer_controlled:
+			spawn_elapsed += delta
+		if is_day_open and not tutorial_customer_controlled and spawn_count < max_customers and spawn_elapsed >= spawn_interval_seconds:
+			spawn_elapsed = 0.0
+			spawn_customer()
+		_update_order_patience(delta)
+		_handle_queue_patience_failures()
 	_update_score()
-	_check_day_end()
+	if not tutorial_time_paused:
+		_check_day_end()
 	_refresh_ui()
 
 
@@ -487,6 +499,10 @@ func interact_surface_slot(slot_id: String) -> void:
 		_refresh_ui("桌上的东西不能拿起")
 		return
 	_hold_bowl(bowl)
+	if bowl.needs_refill:
+		_refresh_ui("拿起待补配订单盆 #%03d" % bowl.order_id)
+		_notify_tutorial("refill_bowl_picked_up", {"bowl": bowl})
+		return
 	_refresh_ui("拿起空碗 #%03d" % bowl.order_id if bowl.is_empty_holder else "拿起订单 #%03d" % bowl.order_id)
 
 
@@ -502,8 +518,10 @@ func interact_cooker(cooker: CookerStation) -> void:
 		if cooker.has_pot():
 			_refresh_ui("这个锅位已经有锅")
 			return
+		var placed_pot: CookingPot = held_pot
 		if cooker.place_pot(held_pot):
 			held_pot = null
+			_notify_tutorial("pot_placed_on_cooker", {"cooker": cooker, "pot": placed_pot})
 			_refresh_ui("锅已放回锅位")
 		else:
 			_refresh_ui("无法放下锅")
@@ -797,11 +815,10 @@ func interact_trash_bin() -> void:
 				if _is_tutorial_forced_overcook_order(cleared_order_id):
 					cleared_bowl.mark_needs_refill()
 					held_pot.refresh_visual()
-					_release_empty_held_pot_for_tutorial()
-					_hold_bowl(cleared_bowl)
-					_refresh_ui("食物倒掉了，但盆和小票还在。拿空盆去食材柜补回原来的配菜。")
+					_place_tutorial_refill_bowl(cleared_bowl)
+					_refresh_ui("食物倒掉了。先把空锅放回锅位，再拿起待补配订单盆。")
 					_notify_tutorial("overcooked_pot_cleared", {"order_id": cleared_order_id})
-					_notify_tutorial("tutorial_overcook_cleared", {"bowl": held_bowl})
+					_notify_tutorial("tutorial_overcook_cleared", {"bowl": cleared_bowl})
 					return
 				_clear_waiting_customer_for_order(cleared_order_id)
 				_clear_surface_slot_references(cleared_bowl)
@@ -850,17 +867,26 @@ func _is_tutorial_forced_overcook_order(order_id: int) -> bool:
 	return bool(tutorial_controller.is_forced_overcook_order(order_id))
 
 
-func _release_empty_held_pot_for_tutorial() -> void:
-	if held_pot == null:
-		return
-	var pot: CookingPot = held_pot
-	held_pot = null
-	for cooker in [cooker_1, cooker_2]:
-		if cooker != null and cooker.can_accept_pot():
-			cooker.place_pot(pot)
-			return
-	if bowls_node != null:
-		pot.detach_to_world(bowls_node, takeout_pickup.global_position)
+func _place_tutorial_refill_bowl(bowl: OrderBowl) -> bool:
+	if bowl == null:
+		return false
+	_cache_surface_slots()
+	var target_slot: SurfaceSlot = _get_surface_slot("SurfaceSlot_r1c8")
+	if target_slot == null or not target_slot.is_empty():
+		target_slot = null
+		for slot_value in surface_slots_by_id.values():
+			var slot: SurfaceSlot = slot_value as SurfaceSlot
+			if slot != null and slot.is_empty() and not slot.is_takeout_pickup_slot:
+				target_slot = slot
+				break
+	if target_slot == null or not target_slot.is_empty():
+		push_warning("Tutorial refill bowl slot unavailable; dropping bowl in world.")
+		if bowls_node != null:
+			bowl.detach_to_world(bowls_node, Vector2(480, 287.5))
+		return false
+	target_slot.store_bowl(bowl)
+	target_slot.refresh_visual()
+	return true
 
 
 func force_complete_one_order_for_smoke() -> bool:
@@ -1544,7 +1570,9 @@ func _refresh_ui(message: String = "") -> void:
 		return
 
 	ui.update_status(message)
-	if ui.has_method("update_time"):
+	if _is_tutorial_time_paused() and ui.has_method("update_time_text"):
+		ui.update_time_text("教学中")
+	elif ui.has_method("update_time"):
 		ui.update_time(day_time_remaining)
 
 	var order_cards: Array[String] = []
