@@ -319,6 +319,24 @@ func interact_waiting_order_area() -> void:
 		_refresh_ui("这个碗应该继续往后处理，不能放回待煮区")
 
 
+func _can_add_order_bowl_to_pot(order_bowl: OrderBowl, pot: CookingPot) -> bool:
+	if order_bowl == null or pot == null:
+		return false
+	if order_bowl.is_empty_holder:
+		_refresh_ui("这是空碗，不能倒入锅")
+		return false
+	if order_bowl.status != OrderBowl.STATUS_WAITING:
+		_refresh_ui("这个碗不能放入锅")
+		return false
+	if not order_bowl.is_staple_ready_for_cooking():
+		_refresh_ui("请先加主食")
+		return false
+	if not pot.is_empty():
+		_refresh_ui("锅里已经有东西")
+		return false
+	return true
+
+
 func interact_surface_slot(slot_id: String) -> void:
 	if held_dirty_cooker != null:
 		_refresh_ui("先清理脏锅")
@@ -335,6 +353,29 @@ func interact_surface_slot(slot_id: String) -> void:
 			held_pot.scoop_to_empty_bowl(slot_bowl)
 			slot.refresh_visual()
 			_refresh_ui("已盛出订单 #%03d" % slot_bowl.order_id)
+			return
+		if slot_bowl != null:
+			if _can_add_order_bowl_to_pot(slot_bowl, held_pot):
+				var order_bowl: OrderBowl = slot_bowl
+				var empty_holder: OrderBowl = _create_empty_holder_for_order(order_bowl)
+				var removed_item: Node2D = slot.take_item()
+				if removed_item != order_bowl:
+					_refresh_ui("桌面状态异常")
+					if empty_holder != null:
+						empty_holder.queue_free()
+					return
+				if held_pot.add_order_bowl(order_bowl):
+					if not slot.store_bowl(empty_holder):
+						empty_holder.queue_free()
+						_refresh_ui("无法放下空碗")
+						return
+					slot.refresh_visual()
+					_refresh_ui("已把订单 #%03d 放入锅中" % order_bowl.order_id)
+				else:
+					slot.store_bowl(order_bowl)
+					empty_holder.queue_free()
+					_refresh_ui("无法把订单放入锅")
+				return
 			return
 		if not slot.is_empty():
 			_refresh_ui("这个桌面已经被占用")
@@ -353,6 +394,20 @@ func interact_surface_slot(slot_id: String) -> void:
 			slot_pot.scoop_to_empty_bowl(held_bowl)
 			slot.refresh_visual()
 			_refresh_ui("已盛出订单 #%03d" % held_bowl.order_id)
+			return
+		if slot_pot != null:
+			if _can_add_order_bowl_to_pot(held_bowl, slot_pot):
+				var order_bowl: OrderBowl = held_bowl
+				var empty_holder: OrderBowl = _create_empty_holder_for_order(order_bowl)
+				if slot_pot.add_order_bowl(order_bowl):
+					held_bowl = empty_holder
+					_hold_bowl(held_bowl)
+					slot.refresh_visual()
+					_refresh_ui("已把订单 #%03d 放入锅中" % order_bowl.order_id)
+				else:
+					empty_holder.queue_free()
+					_refresh_ui("无法把订单放入锅")
+				return
 			return
 		if not slot.is_empty():
 			_refresh_ui("这个桌面已经被占用")
@@ -417,14 +472,10 @@ func interact_cooker(cooker: CookerStation) -> void:
 			else:
 				_refresh_ui("锅里没有可盛出的熟食")
 			return
-		if held_bowl.status != OrderBowl.STATUS_WAITING:
-			_refresh_ui("这个碗不能放入锅")
-			return
 		if not cooker.has_pot():
 			_refresh_ui("锅位上没有锅")
 			return
-		if not held_bowl.is_staple_ready_for_cooking():
-			_refresh_ui("请先加主食")
+		if not _can_add_order_bowl_to_pot(held_bowl, cooker.active_pot):
 			return
 		var order_bowl: OrderBowl = held_bowl
 		if cooker.add_bowl_to_pot(order_bowl):

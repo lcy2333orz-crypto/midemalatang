@@ -78,6 +78,26 @@ func _run() -> void:
 		_finish()
 		return
 
+	await _check_add_held_order_bowl_to_table_pot()
+	if not failures.is_empty():
+		_finish()
+		return
+
+	await _check_add_table_order_bowl_to_held_pot()
+	if not failures.is_empty():
+		_finish()
+		return
+
+	await _check_cannot_add_order_to_pot_without_staple()
+	if not failures.is_empty():
+		_finish()
+		return
+
+	await _check_cannot_add_order_to_occupied_pot()
+	if not failures.is_empty():
+		_finish()
+		return
+
 	await _check_empty_bowl_not_discarded_while_pot_has_content()
 	if not failures.is_empty():
 		_finish()
@@ -1230,6 +1250,178 @@ func _check_scoop_from_pot() -> void:
 
 	scene.queue_free()
 	_pass("pot scoop")
+
+
+func _check_add_held_order_bowl_to_table_pot() -> void:
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("held bowl to table pot", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	var pot: CookingPot = manager.cooker_1.active_pot
+	manager.interact_cooker(manager.cooker_1)
+	manager.interact_surface_slot("SurfaceSlot_r1c8")
+	var slot: SurfaceSlot = manager._get_surface_slot("SurfaceSlot_r1c8")
+	if slot == null or slot.get_stored_pot() != pot:
+		_fail("held bowl to table pot", "empty pot should be on the surface slot")
+		scene.queue_free()
+		return
+
+	var order_bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(order_bowl)
+	order_bowl.setup_order(711, {"spinach": 1}, "noodle", "mild", "dine_in", 1)
+	order_bowl.add_required_staple()
+	manager._hold_bowl(order_bowl)
+	manager.interact_surface_slot("SurfaceSlot_r1c8")
+
+	if pot.content_bowl == null or pot.content_bowl.order_id != order_bowl.order_id:
+		_fail("held bowl to table pot", "table pot should contain the order bowl")
+		scene.queue_free()
+		return
+	if manager.held_bowl == null or not manager.held_bowl.is_empty_holder or manager.held_bowl.order_id != order_bowl.order_id:
+		_fail("held bowl to table pot", "player should hold the matching empty bowl")
+		scene.queue_free()
+		return
+	if pot.is_on_heat:
+		_fail("held bowl to table pot", "table pot should not heat after receiving order")
+		scene.queue_free()
+		return
+
+	scene.queue_free()
+	_pass("held bowl to table pot")
+
+
+func _check_add_table_order_bowl_to_held_pot() -> void:
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("table bowl to held pot", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	var slot: SurfaceSlot = manager._get_surface_slot("SurfaceSlot_r1c8")
+	var order_bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(order_bowl)
+	order_bowl.setup_order(712, {"spinach": 1}, "noodle", "mild", "dine_in", 1)
+	order_bowl.add_required_staple()
+	if slot == null or not slot.store_bowl(order_bowl):
+		_fail("table bowl to held pot", "order bowl should be stored on the surface slot")
+		scene.queue_free()
+		return
+
+	var pot: CookingPot = manager.cooker_1.active_pot
+	manager.interact_cooker(manager.cooker_1)
+	manager.interact_surface_slot("SurfaceSlot_r1c8")
+
+	if manager.held_pot != pot or manager.held_pot.content_bowl == null or manager.held_pot.content_bowl.order_id != order_bowl.order_id:
+		_fail("table bowl to held pot", "held pot should contain the table order")
+		scene.queue_free()
+		return
+	var holder: OrderBowl = slot.get_stored_bowl()
+	if holder == null or not holder.is_empty_holder or holder.order_id != order_bowl.order_id:
+		_fail("table bowl to held pot", "surface slot should keep the matching empty bowl")
+		scene.queue_free()
+		return
+	if manager.held_pot.is_on_heat:
+		_fail("table bowl to held pot", "held pot should not heat after receiving order")
+		scene.queue_free()
+		return
+
+	scene.queue_free()
+	_pass("table bowl to held pot")
+
+
+func _check_cannot_add_order_to_pot_without_staple() -> void:
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("order to pot without staple", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	var pot: CookingPot = manager.cooker_1.active_pot
+	manager.interact_cooker(manager.cooker_1)
+	manager.interact_surface_slot("SurfaceSlot_r1c8")
+
+	var order_bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(order_bowl)
+	order_bowl.setup_order(713, {"spinach": 1}, "noodle", "mild", "dine_in", 1)
+	manager._hold_bowl(order_bowl)
+	manager.interact_surface_slot("SurfaceSlot_r1c8")
+
+	if pot.content_bowl != null:
+		_fail("order to pot without staple", "pot should remain empty")
+		scene.queue_free()
+		return
+	if manager.held_bowl != order_bowl or order_bowl.is_empty_holder:
+		_fail("order to pot without staple", "player should still hold the original order bowl")
+		scene.queue_free()
+		return
+
+	scene.queue_free()
+	_pass("order to pot without staple")
+
+
+func _check_cannot_add_order_to_occupied_pot() -> void:
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("order to occupied pot", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	var pot: CookingPot = manager.cooker_1.active_pot
+	manager.interact_cooker(manager.cooker_1)
+	manager.interact_surface_slot("SurfaceSlot_r1c8")
+
+	var first_bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(first_bowl)
+	first_bowl.setup_order(714, {"spinach": 1}, "none", "mild", "dine_in", 1)
+	pot.add_order_bowl(first_bowl)
+
+	var second_bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(second_bowl)
+	second_bowl.setup_order(715, {"spinach": 1}, "none", "mild", "dine_in", 1)
+	manager._hold_bowl(second_bowl)
+	manager.interact_surface_slot("SurfaceSlot_r1c8")
+
+	if pot.content_bowl == null or pot.content_bowl.order_id != first_bowl.order_id:
+		_fail("order to occupied pot", "occupied pot should keep its original order")
+		scene.queue_free()
+		return
+	if manager.held_bowl != second_bowl or second_bowl.is_empty_holder:
+		_fail("order to occupied pot", "second order should stay in player hands")
+		scene.queue_free()
+		return
+
+	scene.queue_free()
+	_pass("order to occupied pot")
 
 
 func _check_empty_bowl_not_discarded_while_pot_has_content() -> void:
