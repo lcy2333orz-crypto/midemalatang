@@ -267,7 +267,7 @@ func _check_tutorial_controller() -> void:
 		_fail("tutorial controller", "direct controller did not build steps")
 		direct_controller.queue_free()
 		return
-	for step_id in ["second_intro", "second_counter", "second_pot", "second_clear_overcook", "second_refill_prepare", "second_refill_pick_bowl", "second_refill", "second_chili", "second_deliver", "third_intro", "third_counter", "third_pack", "third_bag", "third_takeout_table", "third_done", "cleanup_intro", "cleanup_table_1", "cleanup_trash_bin", "cleanup_done"]:
+	for step_id in ["second_intro", "second_counter", "second_pot", "second_clear_overcook", "second_refill_prepare", "second_refill_pick_bowl", "second_refill", "second_chili", "second_deliver", "third_intro", "third_counter", "third_pack", "third_bag", "third_takeout_table", "third_done", "cleanup_intro", "cleanup_table_1", "cleanup_trash_bin", "cleanup_done", "review_intro", "review_counter", "review_do_order", "day1_done"]:
 		if not _tutorial_has_step_id(direct_controller, step_id):
 			_fail("tutorial controller", "missing tutorial step %s" % step_id)
 			direct_controller.queue_free()
@@ -624,6 +624,82 @@ func _check_tutorial_controller() -> void:
 	manager.interact_customer_trash_bin()
 	if int(manager.held_table_trash) != 0 or int(controller.current_step_index) != _tutorial_step_index(controller, "cleanup_done"):
 		_fail("tutorial controller", "table trash discard should advance cleanup tutorial")
+		scene.queue_free()
+		return
+
+	controller._advance_step()
+	if int(controller.current_step_index) != _tutorial_step_index(controller, "review_intro"):
+		_fail("tutorial controller", "cleanup_done should advance to review_intro instead of ending tutorial")
+		scene.queue_free()
+		return
+
+	for customer_node in get_nodes_in_group("restaurant_customers"):
+		var review_cleanup_customer: Node = customer_node as Node
+		if review_cleanup_customer != null and is_instance_valid(review_cleanup_customer):
+			review_cleanup_customer.queue_free()
+	manager.queued_customers.clear()
+	manager.waiting_customers_by_order_id.clear()
+	manager.held_bowl = null
+	manager.held_pot = null
+	manager.next_tutorial_order.clear()
+	await process_frame
+
+	var spawn_before_review_intro: int = int(manager.spawn_count)
+	controller.current_step_index = _tutorial_step_index(controller, "review_intro")
+	controller._show_current_step()
+	if int(manager.spawn_count) != spawn_before_review_intro:
+		_fail("tutorial controller", "review_intro should not spawn the review customer")
+		scene.queue_free()
+		return
+
+	controller.current_step_index = _tutorial_step_index(controller, "review_counter")
+	manager.held_table_trash = 1
+	manager.dirty_dining_tables[1] = true
+	controller._show_current_step()
+	if int(manager.spawn_count) != spawn_before_review_intro:
+		_fail("tutorial controller", "review_counter should not spawn while holding table trash")
+		scene.queue_free()
+		return
+	if not manager.dirty_dining_tables.has(1):
+		_fail("tutorial controller", "review_counter should not clear table while held trash blocks spawning")
+		scene.queue_free()
+		return
+
+	manager.held_table_trash = 0
+	controller._show_current_step()
+	await process_frame
+	if int(manager.spawn_count) != spawn_before_review_intro + 1 or int(controller.tutorial_order_index) != 4:
+		_fail("tutorial controller", "review_counter should spawn one fourth tutorial customer")
+		scene.queue_free()
+		return
+	if manager.dirty_dining_tables.has(1):
+		_fail("tutorial controller", "review_counter should clear table 1 dirty state before review order")
+		scene.queue_free()
+		return
+	if str(manager.next_tutorial_order.get("service_mode", "")) != "dine_in" or int(manager.next_tutorial_order.get("table_id", 0)) != 1 or str(manager.next_tutorial_order.get("staple_type", "")) != "noodle" or int(manager.next_tutorial_order.get("required_chili_count", -1)) != 1:
+		_fail("tutorial controller", "review_counter should prepare fourth dine-in tutorial order override")
+		scene.queue_free()
+		return
+
+	controller.current_step_index = _tutorial_step_index(controller, "review_do_order")
+	controller.tutorial_order_index = 4
+	controller.notify_event("order_completed", {"order_id": 935, "service_mode": "takeout"})
+	if int(controller.current_step_index) != _tutorial_step_index(controller, "review_do_order"):
+		_fail("tutorial controller", "review_do_order should ignore takeout completion")
+		scene.queue_free()
+		return
+	controller.notify_event("order_completed", {"order_id": 936, "service_mode": "dine_in"})
+	if int(controller.current_step_index) != _tutorial_step_index(controller, "day1_done"):
+		_fail("tutorial controller", "review dine-in completion should advance to day1_done")
+		scene.queue_free()
+		return
+	controller._advance_step()
+	if not controller.finished or bool(controller.enabled):
+		_fail("tutorial controller", "day1_done confirm should finish tutorial")
+		scene.queue_free()
+		return
+	if tutorial_label == null or not tutorial_label.text.contains("当前教学到这里"):
+		_fail("tutorial controller", "finished tutorial should show final tutorial text")
 		scene.queue_free()
 		return
 	scene.queue_free()

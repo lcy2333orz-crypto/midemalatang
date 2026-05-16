@@ -84,6 +84,15 @@ func get_third_order_override() -> Dictionary:
 	}
 
 
+func get_fourth_order_override() -> Dictionary:
+	return {
+		"service_mode": "dine_in",
+		"table_id": 1,
+		"staple_type": "noodle",
+		"required_chili_count": 1
+	}
+
+
 func is_forced_overcook_order(order_id: int) -> bool:
 	return order_id > 0 and order_id == forced_overcook_order_id and waiting_for_refill_order_id == order_id
 
@@ -355,7 +364,31 @@ func _build_day_1_steps() -> void:
 		},
 		{
 			"id": "cleanup_done",
-			"text": "桌面收拾完成。当前教学到这里。",
+			"text": "桌面收拾完成。接下来自己完成一单。按 H 继续。",
+			"target_station": "",
+			"wait_type": "confirm"
+		},
+		{
+			"id": "review_intro",
+			"text": "最后复习一次。按订单栏完成这位顾客的麻辣烫。",
+			"target_station": "",
+			"wait_type": "confirm"
+		},
+		{
+			"id": "review_counter",
+			"text": "等顾客到收银台，按 H 接单。",
+			"target_station": "Counter",
+			"wait_type": "counter_order_created"
+		},
+		{
+			"id": "review_do_order",
+			"text": "自己完成这单：主食、烹饪、小料、辣椒、送桌。",
+			"target_station": "",
+			"wait_type": "review_order_completed"
+		},
+		{
+			"id": "day1_done",
+			"text": "Day 1 教学完成。",
 			"target_station": "",
 			"wait_type": "confirm"
 		}
@@ -402,6 +435,8 @@ func _event_completes_wait(wait_type: String, event_name: String, payload: Dicti
 			return event_name == "table_trash_picked_up" and int(payload.get("table_id", 0)) == 1
 		"table_trash_discarded":
 			return event_name == "table_trash_discarded" and int(payload.get("table_id", 0)) == 1
+		"review_order_completed":
+			return event_name == "order_completed" and tutorial_order_index == 4 and str(payload.get("service_mode", "")) == "dine_in"
 		"overcooked_pot_picked_up":
 			return event_name == "overcooked_pot_picked_up" and int(payload.get("order_id", 0)) == forced_overcook_order_id
 		"tutorial_overcook_cleared":
@@ -465,6 +500,17 @@ func _prepare_step(step_id: String) -> void:
 		if not bool(manager.dirty_dining_tables.get(1, false)) and int(manager.held_table_trash) != 1:
 			manager.dirty_dining_tables[1] = true
 			manager._refresh_dining_table_visual(1)
+	elif step_id == "review_counter":
+		tutorial_order_index = 4
+		if manager != null:
+			if int(manager.held_table_trash) != 0:
+				manager._refresh_ui("先把手里的垃圾扔掉")
+				return
+			if manager.dirty_dining_tables.has(1):
+				manager.dirty_dining_tables.erase(1)
+				manager._refresh_dining_table_visual(1)
+			manager.next_tutorial_order = get_fourth_order_override()
+		_spawn_next_tutorial_customer_if_needed()
 
 
 func _spawn_next_tutorial_customer_if_needed() -> void:
@@ -498,6 +544,8 @@ func _is_current_order_bowl(bowl: OrderBowl) -> bool:
 		return bowl.service_mode == "dine_in" and bowl.table_id == 2
 	if tutorial_order_index == 3:
 		return bowl.service_mode == "takeout"
+	if tutorial_order_index == 4:
+		return bowl.service_mode == "dine_in" and bowl.table_id == 1
 	return false
 
 
