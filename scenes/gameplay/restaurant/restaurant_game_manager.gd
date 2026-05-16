@@ -509,6 +509,7 @@ func interact_staple_cabinet() -> void:
 		return
 	if held_bowl.staple_type == "none":
 		held_bowl.staple_added = true
+		held_bowl.actual_staple_type = "none"
 		held_bowl.refresh_visuals()
 		_refresh_ui("这单不需要主食")
 		return
@@ -608,8 +609,6 @@ func interact_packing_area() -> void:
 	if held_bowl.service_mode != "takeout":
 		_refresh_ui("堂食订单要送到桌子")
 		return
-	if not _check_sauce_complete_for_current_bowl("封口"):
-		return
 	if held_bowl.status == OrderBowl.STATUS_PACKED:
 		_refresh_ui("订单已经装袋，请放到外带桌")
 		return
@@ -617,7 +616,11 @@ func interact_packing_area() -> void:
 		_refresh_ui("已经封口，请去袋子区装袋")
 		return
 	held_bowl.mark_sealed()
-	_refresh_ui("订单 #%03d 已封口，请去袋子区装袋" % held_bowl.order_id)
+	var quality: Dictionary = _evaluate_order_quality(held_bowl)
+	if int(quality.get("money", 0)) == 10 and int(quality.get("score", 0)) == 0:
+		_refresh_ui("订单 #%03d 已封口，请去袋子区装袋" % held_bowl.order_id)
+	else:
+		_refresh_ui("订单 #%03d 已封口，但质量有问题" % held_bowl.order_id)
 
 
 func interact_packing_bag_area() -> void:
@@ -634,9 +637,6 @@ func interact_packing_bag_area() -> void:
 		return
 	if held_bowl.service_mode != "takeout":
 		_refresh_ui("堂食订单不用装袋")
-		return
-	if not held_bowl.is_sauced():
-		_refresh_ui("装袋前需要先加小料")
 		return
 	if held_bowl.status == OrderBowl.STATUS_PACKED:
 		_refresh_ui("订单已经装袋，请放到外带桌")
@@ -663,7 +663,14 @@ func interact_delivery_table(table_id: int) -> void:
 	if held_bowl.service_mode != "dine_in" or held_bowl.table_id != table_id:
 		_refresh_ui("不是这张桌")
 		return
-	if not _check_sauce_complete_for_current_bowl("出餐"):
+	if held_bowl.is_empty_holder:
+		_refresh_ui("堂食不能出空碗")
+		return
+	if not held_bowl.has_food_content_for_serving():
+		_refresh_ui("堂食餐品还不能出餐")
+		return
+	if not held_bowl.has_correct_staple():
+		_refresh_ui("堂食主食不对，不能出餐")
 		return
 	_complete_held_order()
 
@@ -815,20 +822,71 @@ func _complete_held_order() -> void:
 		_refresh_ui("订单 #%03d 已煮糊，请拿去垃圾桶" % held_bowl.order_id)
 		return
 	var bowl: OrderBowl = held_bowl
+	if bowl != null and bowl.get_order_patience_ratio() <= 0.0:
+		_fail_order_bowl(bowl, "订单 #%03d 等太久了，顾客离开" % bowl.order_id)
+		return
 	var completed_order_id: int = bowl.order_id
+	var result: Dictionary = _evaluate_order_quality(bowl)
+	var earned_money: int = int(result.get("money", 0))
+	var earned_score: int = int(result.get("score", 0)) + _evaluate_order_timing_score(bowl)
+	var result_message: String = str(result.get("message", "出餐完成"))
 	var customer: RestaurantCustomer = waiting_customers_by_order_id.get(bowl.order_id, null)
 	if customer != null and is_instance_valid(customer):
 		customer.complete_order(exit_point.global_position)
 	waiting_customers_by_order_id.erase(bowl.order_id)
-	_clear_surface_slot_references(bowl)
-	_clear_holder_bowls_for_order(completed_order_id)
+	_clear_all_order_objects(completed_order_id, bowl)
 	bowl.mark_done()
 	bowl.queue_free()
 	held_bowl = null
 	completed_orders += 1
-	money_today += 10
+	money_today += earned_money
+	score_today += earned_score
 	_update_score()
-	_refresh_ui("完成订单 #%03d +1" % completed_order_id)
+	_refresh_ui("完成订单 #%03d +%d：%s" % [completed_order_id, earned_money, result_message])
+
+
+func _evaluate_order_quality(bowl: OrderBowl) -> Dictionary:
+	if bowl == null:
+		return {"money": 0, "score": -3, "message": "空碗出单，顾客很不满意"}
+	if bowl.is_empty_holder:
+		return {"money": 0, "score": -3, "message": "空碗出单，顾客很不满意"}
+	if bowl.is_overcooked():
+		return {"money": 0, "score": -3, "message": "煮糊出单，顾客很不满意"}
+
+	var money: int = 10
+	var score: int = 0
+	var problems: Array[String] = []
+
+	if not bowl.has_correct_staple():
+		money -= 4
+		score -= 2
+		problems.append("主食不对")
+
+	var missing_mixed: int = max(0, bowl.required_mixed_sauces.size() - bowl.get_mixed_sauce_count())
+	if missing_mixed > 0:
+		money -= missing_mixed
+		score -= missing_mixed
+		problems.append("缺小料%d种" % missing_mixed)
+
+	var chili_diff: int = abs(bowl.required_chili_count - bowl.added_chili_count)
+	if chili_diff > 0:
+		money -= chili_diff
+		score -= chili_diff
+		problems.append("辣椒差%d次" % chili_diff)
+
+	money = max(money, 0)
+	var message: String = "出餐完成"
+	if not problems.is_empty():
+		message = "出餐完成，但质量有问题：" + "、".join(problems)
+	return {"money": money, "score": score, "message": message}
+
+
+func _evaluate_order_timing_score(bowl: OrderBowl) -> int:
+	if bowl == null:
+		return 0
+	if bowl.get_order_patience_ratio() > 0.15:
+		return 1
+	return 0
 
 
 func _hold_bowl(bowl: OrderBowl) -> void:
@@ -865,6 +923,7 @@ func _create_empty_holder_for_order(order_bowl: OrderBowl) -> OrderBowl:
 	holder.ingredient_time_required = order_bowl.ingredient_time_required
 	holder.ready_window_seconds = order_bowl.ready_window_seconds
 	holder.staple_added = order_bowl.staple_added
+	holder.actual_staple_type = order_bowl.actual_staple_type
 	holder.set_empty_holder_visual()
 	bowls_node.add_child(holder)
 	return holder
@@ -994,6 +1053,59 @@ func _clear_holder_bowls_for_order(order_id: int) -> void:
 			bowl.queue_free()
 
 
+func _clear_all_order_objects(order_id: int, except_bowl: OrderBowl = null) -> void:
+	if order_id <= 0:
+		return
+
+	if held_bowl != null and is_instance_valid(held_bowl) and held_bowl.order_id == order_id and held_bowl != except_bowl:
+		var clear_held_bowl: OrderBowl = held_bowl
+		held_bowl = null
+		clear_held_bowl.queue_free()
+
+	if held_pot != null and is_instance_valid(held_pot):
+		var held_content: OrderBowl = held_pot.content_bowl
+		if held_content != null and is_instance_valid(held_content) and held_content.order_id == order_id and held_content != except_bowl:
+			var cleared_held_content: OrderBowl = held_pot.clear_content()
+			if cleared_held_content != null:
+				cleared_held_content.queue_free()
+			held_pot.refresh_visual()
+
+	for waiting_bowl in waiting_area.bowls.duplicate():
+		var waiting_order: OrderBowl = waiting_bowl as OrderBowl
+		if waiting_order != null and is_instance_valid(waiting_order) and waiting_order.order_id == order_id and waiting_order != except_bowl:
+			waiting_area.remove_bowl(waiting_order)
+			waiting_order.queue_free()
+
+	for cooker in [cooker_1, cooker_2]:
+		if cooker == null or cooker.active_pot == null:
+			continue
+		var cooker_content: OrderBowl = cooker.active_pot.content_bowl
+		if cooker_content != null and is_instance_valid(cooker_content) and cooker_content.order_id == order_id and cooker_content != except_bowl:
+			var cleared_cooker_content: OrderBowl = cooker.clear_active_bowl()
+			if cleared_cooker_content != null:
+				cleared_cooker_content.queue_free()
+
+	for slot in surface_slots_by_id.values():
+		var surface_slot: SurfaceSlot = slot as SurfaceSlot
+		if surface_slot == null or not is_instance_valid(surface_slot):
+			continue
+		var slot_bowl: OrderBowl = surface_slot.get_stored_bowl()
+		if slot_bowl != null and is_instance_valid(slot_bowl) and slot_bowl.order_id == order_id and slot_bowl != except_bowl:
+			surface_slot.remove_bowl_if_matches(slot_bowl)
+			slot_bowl.queue_free()
+			surface_slot.refresh_visual()
+			continue
+		var slot_pot: CookingPot = surface_slot.get_stored_pot()
+		if slot_pot != null:
+			var slot_content: OrderBowl = slot_pot.content_bowl
+			if slot_content != null and is_instance_valid(slot_content) and slot_content.order_id == order_id and slot_content != except_bowl:
+				var cleared_slot_content: OrderBowl = slot_pot.clear_content()
+				if cleared_slot_content != null:
+					cleared_slot_content.queue_free()
+				slot_pot.refresh_visual()
+				surface_slot.refresh_visual()
+
+
 func _try_complete_takeout_from_surface(slot: SurfaceSlot, bowl: OrderBowl) -> bool:
 	if slot == null or bowl == null or not is_instance_valid(bowl):
 		return false
@@ -1002,19 +1114,28 @@ func _try_complete_takeout_from_surface(slot: SurfaceSlot, bowl: OrderBowl) -> b
 	if bowl.service_mode != "takeout" or bowl.status != OrderBowl.STATUS_PACKED:
 		return false
 
+	if bowl.get_order_patience_ratio() <= 0.0:
+		_fail_order_bowl(bowl, "订单 #%03d 等太久了，顾客离开" % bowl.order_id)
+		return true
+
 	var completed_order_id: int = bowl.order_id
+	var result: Dictionary = _evaluate_order_quality(bowl)
+	var earned_money: int = int(result.get("money", 0))
+	var earned_score: int = int(result.get("score", 0)) + _evaluate_order_timing_score(bowl)
+	var result_message: String = str(result.get("message", "出餐完成"))
 	var customer: RestaurantCustomer = waiting_customers_by_order_id.get(bowl.order_id, null)
 	if customer != null and is_instance_valid(customer):
 		customer.complete_order(exit_point.global_position)
 	waiting_customers_by_order_id.erase(bowl.order_id)
 	slot.remove_bowl_if_matches(bowl)
-	_clear_holder_bowls_for_order(completed_order_id)
+	_clear_all_order_objects(completed_order_id, bowl)
 	bowl.mark_done()
 	bowl.queue_free()
 	completed_orders += 1
-	money_today += 10
+	money_today += earned_money
+	score_today += earned_score
 	_update_score()
-	_refresh_ui("外带订单 #%03d 已完成" % completed_order_id)
+	_refresh_ui("外带订单 #%03d 已完成 +%d：%s" % [completed_order_id, earned_money, result_message])
 	return true
 
 
@@ -1180,6 +1301,7 @@ func _handle_queue_patience_failures() -> void:
 			continue
 		queued_customers.erase(customer)
 		queue_lost_customers_today += 1
+		score_today -= 1
 		customer.complete_order(exit_point.global_position)
 		_refresh_ui("排队顾客等太久离开了")
 
@@ -1217,11 +1339,12 @@ func _fail_order_bowl(bowl: OrderBowl, message: String) -> void:
 
 func _record_failed_order() -> void:
 	failed_orders += 1
+	score_today -= 3
 	_update_score()
 
 
 func _update_score() -> void:
-	score_today = max(0, completed_orders * 10 - failed_orders * 8 - queue_lost_customers_today * 5)
+	pass
 
 
 func _check_day_end() -> void:

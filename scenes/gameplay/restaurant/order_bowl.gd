@@ -31,6 +31,7 @@ var required_chili_count: int = 0
 var added_chili_count: int = 0
 var is_empty_holder: bool = false
 var staple_added: bool = false
+var actual_staple_type: String = "none"
 var cook_time: float = 0.0
 var ingredient_time_required: float = 8.0
 var ready_window_seconds: float = 6.0
@@ -60,6 +61,7 @@ func setup_customer_bowl(new_ingredients: Dictionary) -> void:
 	staple_state = STAPLE_RAW
 	is_empty_holder = false
 	staple_added = true
+	actual_staple_type = "none"
 	sauces.clear()
 	required_chili_count = 0
 	added_chili_count = 0
@@ -88,6 +90,7 @@ func setup_order(
 	staple_state = STAPLE_RAW
 	is_empty_holder = false
 	staple_added = staple_type == "none"
+	actual_staple_type = "none"
 	sauces.clear()
 	required_chili_count = max(0, new_required_chili_count)
 	added_chili_count = 0
@@ -152,13 +155,33 @@ func is_staple_ready_for_cooking() -> bool:
 func add_required_staple() -> bool:
 	if staple_type == "none":
 		staple_added = true
+		actual_staple_type = "none"
 		refresh_visuals()
 		return false
 	if staple_added:
 		return false
 	staple_added = true
+	actual_staple_type = staple_type
 	refresh_visuals()
 	return true
+
+
+func has_correct_staple() -> bool:
+	if staple_type == "none":
+		return true
+	return staple_added and actual_staple_type == staple_type
+
+
+func has_food_content_for_serving() -> bool:
+	if is_empty_holder:
+		return false
+	if is_overcooked():
+		return false
+	return status == STATUS_COOKED or status == STATUS_SAUCED or status == STATUS_SEALED or status == STATUS_PACKED or status == STATUS_READY
+
+
+func can_dine_in_serve() -> bool:
+	return has_food_content_for_serving() and has_correct_staple()
 
 
 func get_staple_requirement_text() -> String:

@@ -43,6 +43,21 @@ func _run() -> void:
 		_finish()
 		return
 
+	await _check_quality_penalty_delivery_rules()
+	if not failures.is_empty():
+		_finish()
+		return
+
+	await _check_takeout_bad_order_cleanup()
+	if not failures.is_empty():
+		_finish()
+		return
+
+	await _check_order_timing_score()
+	if not failures.is_empty():
+		_finish()
+		return
+
 	await _check_surface_slot_place_take()
 	if not failures.is_empty():
 		_finish()
@@ -930,19 +945,6 @@ func _check_delivery_paths() -> void:
 	takeout_bowl.setup_order(501, {"spinach": 1}, "noodle", "hot", "takeout", 0, 1)
 	takeout_bowl.status = OrderBowl.STATUS_COOKED
 	takeout_bowl.add_required_staple()
-	manager.held_bowl = takeout_bowl
-	manager.interact_packing_area()
-	if takeout_bowl.status != OrderBowl.STATUS_COOKED:
-		_fail("delivery paths", "takeout should not seal before mixed sauces")
-		scene.queue_free()
-		return
-	for action_name in ["sauce_x", "sauce_y", "sauce_a", "sauce_b"]:
-		manager.interact_with_station_action("SauceStationMixed", action_name)
-	manager.interact_packing_area()
-	if takeout_bowl.status == OrderBowl.STATUS_SEALED:
-		_fail("delivery paths", "takeout should not seal before required chili")
-		scene.queue_free()
-		return
 	_complete_sauce_requirements(manager, takeout_bowl)
 	manager.interact_packing_area()
 	manager.interact_packing_bag_area()
@@ -957,19 +959,6 @@ func _check_delivery_paths() -> void:
 	dine_bowl.setup_order(502, {"spinach": 1}, "noodle", "hot", "dine_in", 2, 1)
 	dine_bowl.status = OrderBowl.STATUS_COOKED
 	dine_bowl.add_required_staple()
-	manager.held_bowl = dine_bowl
-	manager.interact_delivery_table(2)
-	if manager.held_bowl == null:
-		_fail("delivery paths", "dine-in should not complete before mixed sauces")
-		scene.queue_free()
-		return
-	for action_name in ["sauce_x", "sauce_y", "sauce_a", "sauce_b"]:
-		manager.interact_with_station_action("SauceStationMixed", action_name)
-	manager.interact_delivery_table(2)
-	if manager.held_bowl == null:
-		_fail("delivery paths", "dine-in should not complete before required chili")
-		scene.queue_free()
-		return
 	_complete_sauce_requirements(manager, dine_bowl)
 	manager.interact_delivery_table(1)
 	if manager.held_bowl == null:
@@ -984,6 +973,205 @@ func _check_delivery_paths() -> void:
 
 	scene.queue_free()
 	_pass("delivery paths")
+
+
+func _check_quality_penalty_delivery_rules() -> void:
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("quality delivery", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	var dine_missing_sauce: OrderBowl = OrderBowl.new()
+	scene.add_child(dine_missing_sauce)
+	dine_missing_sauce.setup_order(520, {"spinach": 1}, "none", "mild", "dine_in", 1)
+	dine_missing_sauce.status = OrderBowl.STATUS_COOKED
+	manager._hold_bowl(dine_missing_sauce)
+	manager.interact_delivery_table(1)
+	if int(manager.completed_orders) != 1 or int(manager.money_today) >= 10 or int(manager.failed_orders) != 0:
+		_fail("quality delivery", "dine-in missing sauce should complete with a money penalty")
+		scene.queue_free()
+		return
+
+	var money_after_missing_sauce: int = int(manager.money_today)
+	var dine_missing_chili: OrderBowl = OrderBowl.new()
+	scene.add_child(dine_missing_chili)
+	dine_missing_chili.setup_order(521, {"spinach": 1}, "none", "medium", "dine_in", 1, 2)
+	dine_missing_chili.status = OrderBowl.STATUS_COOKED
+	for sauce_id in ["garlic_water", "sesame_paste", "vinegar", "sugar"]:
+		dine_missing_chili.add_mixed_sauce_once(sauce_id)
+	manager._hold_bowl(dine_missing_chili)
+	manager.interact_delivery_table(1)
+	if int(manager.completed_orders) != 2 or int(manager.money_today) - money_after_missing_sauce >= 10:
+		_fail("quality delivery", "dine-in missing chili should complete with a money penalty")
+		scene.queue_free()
+		return
+
+	var empty_dine: OrderBowl = OrderBowl.new()
+	scene.add_child(empty_dine)
+	empty_dine.setup_order(522, {"spinach": 1}, "none", "mild", "dine_in", 1)
+	empty_dine.set_empty_holder_visual()
+	manager._hold_bowl(empty_dine)
+	var completed_before_empty: int = int(manager.completed_orders)
+	manager.interact_delivery_table(1)
+	if int(manager.completed_orders) != completed_before_empty or manager.held_bowl != empty_dine:
+		_fail("quality delivery", "dine-in empty bowl should not complete")
+		scene.queue_free()
+		return
+
+	var wrong_staple: OrderBowl = OrderBowl.new()
+	scene.add_child(wrong_staple)
+	wrong_staple.setup_order(523, {"spinach": 1}, "noodle", "mild", "dine_in", 1)
+	wrong_staple.status = OrderBowl.STATUS_COOKED
+	wrong_staple.staple_added = true
+	wrong_staple.actual_staple_type = "glass_noodle"
+	manager._hold_bowl(wrong_staple)
+	manager.interact_delivery_table(1)
+	if int(manager.completed_orders) != completed_before_empty or manager.held_bowl != wrong_staple:
+		_fail("quality delivery", "dine-in wrong staple should not complete")
+		scene.queue_free()
+		return
+
+	var takeout_missing_sauce: OrderBowl = OrderBowl.new()
+	scene.add_child(takeout_missing_sauce)
+	takeout_missing_sauce.setup_order(524, {"spinach": 1}, "none", "mild", "takeout", 0)
+	takeout_missing_sauce.status = OrderBowl.STATUS_COOKED
+	manager._hold_bowl(takeout_missing_sauce)
+	manager.interact_packing_area()
+	if takeout_missing_sauce.status != OrderBowl.STATUS_SEALED:
+		_fail("quality delivery", "takeout missing sauce should seal")
+		scene.queue_free()
+		return
+	manager.interact_packing_bag_area()
+	if takeout_missing_sauce.status != OrderBowl.STATUS_PACKED:
+		_fail("quality delivery", "takeout missing sauce should pack")
+		scene.queue_free()
+		return
+
+	scene.queue_free()
+	_pass("quality delivery")
+
+
+func _check_takeout_bad_order_cleanup() -> void:
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("bad takeout cleanup", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	var pot_content: OrderBowl = OrderBowl.new()
+	scene.add_child(pot_content)
+	pot_content.setup_order(900, {"spinach": 1}, "none", "mild", "takeout", 0)
+	pot_content.status = OrderBowl.STATUS_COOKED
+	manager.cooker_1.active_pot.add_order_bowl(pot_content)
+
+	var empty_takeout: OrderBowl = OrderBowl.new()
+	scene.add_child(empty_takeout)
+	empty_takeout.setup_order(900, {"spinach": 1}, "none", "mild", "takeout", 0)
+	empty_takeout.set_empty_holder_visual()
+	manager._hold_bowl(empty_takeout)
+	manager.interact_packing_area()
+	manager.interact_packing_bag_area()
+	manager.interact_surface_slot("TakeoutPickupSlot1")
+	if int(manager.completed_orders) != 1 or int(manager.money_today) != 0:
+		_fail("bad takeout cleanup", "empty takeout should complete with zero money")
+		scene.queue_free()
+		return
+	if manager.cooker_1.active_pot.content_bowl != null:
+		_fail("bad takeout cleanup", "matching pot content should be cleared")
+		scene.queue_free()
+		return
+	for tracked_bowl in manager._get_tracked_order_bowls():
+		if tracked_bowl != null and tracked_bowl.order_id == 900:
+			_fail("bad takeout cleanup", "completed bad order should not remain tracked")
+			scene.queue_free()
+			return
+
+	var wrong_staple_takeout: OrderBowl = OrderBowl.new()
+	scene.add_child(wrong_staple_takeout)
+	wrong_staple_takeout.setup_order(901, {"spinach": 1}, "noodle", "mild", "takeout", 0)
+	wrong_staple_takeout.status = OrderBowl.STATUS_COOKED
+	wrong_staple_takeout.staple_added = true
+	wrong_staple_takeout.actual_staple_type = "glass_noodle"
+	var money_before_wrong_staple: int = int(manager.money_today)
+	manager._hold_bowl(wrong_staple_takeout)
+	manager.interact_packing_area()
+	manager.interact_packing_bag_area()
+	manager.interact_surface_slot("TakeoutPickupSlot1")
+	if int(manager.completed_orders) != 2 or int(manager.money_today) - money_before_wrong_staple >= 10:
+		_fail("bad takeout cleanup", "wrong staple takeout should complete with a money penalty")
+		scene.queue_free()
+		return
+
+	scene.queue_free()
+	_pass("bad takeout cleanup")
+
+
+func _check_order_timing_score() -> void:
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("order timing", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	var early_bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(early_bowl)
+	early_bowl.setup_order(530, {"spinach": 1}, "none", "mild", "dine_in", 1)
+	early_bowl.status = OrderBowl.STATUS_COOKED
+	_complete_sauce_requirements(manager, early_bowl)
+	manager.interact_delivery_table(1)
+	if int(manager.money_today) != 10 or int(manager.score_today) != 1:
+		_fail("order timing", "early perfect order should give full money and good review")
+		scene.queue_free()
+		return
+
+	var late_bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(late_bowl)
+	late_bowl.setup_order(531, {"spinach": 1}, "none", "mild", "dine_in", 1)
+	late_bowl.status = OrderBowl.STATUS_COOKED
+	late_bowl.order_patience_current = late_bowl.order_patience_max * 0.1
+	_complete_sauce_requirements(manager, late_bowl)
+	manager.interact_delivery_table(1)
+	if int(manager.money_today) != 20 or int(manager.score_today) != 1:
+		_fail("order timing", "late perfect order should give money without extra good review")
+		scene.queue_free()
+		return
+
+	var expired_bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(expired_bowl)
+	expired_bowl.setup_order(532, {"spinach": 1}, "none", "mild", "dine_in", 1)
+	expired_bowl.status = OrderBowl.STATUS_COOKED
+	expired_bowl.order_patience_current = 0.0
+	_complete_sauce_requirements(manager, expired_bowl)
+	manager.interact_delivery_table(1)
+	if int(manager.completed_orders) != 2 or int(manager.failed_orders) != 1:
+		_fail("order timing", "expired order should fail instead of completing")
+		scene.queue_free()
+		return
+
+	scene.queue_free()
+	_pass("order timing")
 
 
 func _check_surface_slot_place_take() -> void:
@@ -1752,19 +1940,6 @@ func _check_takeout_pickup_slot_completion() -> void:
 	bowl.status = OrderBowl.STATUS_COOKED
 	manager._hold_bowl(bowl)
 	var completed_before: int = int(manager.completed_orders)
-	manager.interact_packing_area()
-	if bowl.status != OrderBowl.STATUS_COOKED:
-		_fail("takeout slot", "sealing should require sauce")
-		scene.queue_free()
-		return
-
-	for action_name in ["sauce_x", "sauce_y", "sauce_a", "sauce_b"]:
-		manager.interact_with_station_action("SauceStationMixed", action_name)
-	manager.interact_packing_area()
-	if bowl.status == OrderBowl.STATUS_SEALED:
-		_fail("takeout slot", "sealing should require required chili")
-		scene.queue_free()
-		return
 	_complete_sauce_requirements(manager, bowl)
 	manager.interact_packing_area()
 	if bowl.status != OrderBowl.STATUS_SEALED:

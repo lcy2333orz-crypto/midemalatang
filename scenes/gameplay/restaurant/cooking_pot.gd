@@ -163,6 +163,7 @@ func _copy_content_to_bowl(target: OrderBowl, source: OrderBowl) -> void:
 	target.added_chili_count = source.added_chili_count
 	target.is_empty_holder = false
 	target.staple_added = source.staple_added
+	target.actual_staple_type = source.actual_staple_type
 	target.cook_time = source.cook_time
 	target.ingredient_time_required = source.ingredient_time_required
 	target.ready_window_seconds = source.ready_window_seconds
