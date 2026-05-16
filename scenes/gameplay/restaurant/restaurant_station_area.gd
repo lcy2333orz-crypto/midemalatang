@@ -37,8 +37,10 @@ func get_interaction_priority() -> int:
 
 
 func get_interaction_prompt() -> String:
-	if station_name == "SauceStation" or station_name == "SauceStationMixed":
-		return "[H/J/K/L] 小料"
+	if station_name == "SauceStation":
+		return "[H] 辣椒"
+	if station_name == "SauceStationMixed":
+		return "[H/J/K/L] 小料桶"
 	return "[H] %s" % _get_label_text()
 
 

@@ -148,7 +148,10 @@ func interact_with_station(station_name: String) -> void:
 
 
 func interact_with_station_action(station_name: String, action_name: String = "interact") -> void:
-	if (station_name == "SauceStation" or station_name == "SauceStationMixed"):
+	if station_name == "SauceStation":
+		interact_chili_station_action(action_name)
+		return
+	if station_name == "SauceStationMixed":
 		interact_sauce_station_action(action_name)
 		return
 	if action_name != "interact" and action_name != "sauce_x":
@@ -169,8 +172,6 @@ func interact_with_station_action(station_name: String, action_name: String = "i
 			interact_cooker(cooker_2)
 		"StapleArea", "StapleCabinet":
 			interact_staple_cabinet()
-		"SauceStation":
-			interact_sauce_station_action(action_name)
 		"PackingArea":
 			interact_packing_area()
 		"PackingBagArea":
@@ -258,7 +259,8 @@ func _create_order_from_customer(customer: RestaurantCustomer) -> void:
 	var order_id: int = next_order_id
 	next_order_id += 1
 	var staple_type: String = _random_staple()
-	var spice_level: String = _random_spice()
+	var required_chili_count: int = _random_chili_count()
+	var spice_level: String = _spice_level_from_chili_count(required_chili_count)
 	var service_mode: String = _random_service_mode()
 	var table_id: int = _next_table_id() if service_mode == "dine_in" else 0
 
@@ -268,7 +270,8 @@ func _create_order_from_customer(customer: RestaurantCustomer) -> void:
 		staple_type,
 		spice_level,
 		service_mode,
-		table_id
+		table_id,
+		required_chili_count
 	)
 
 	_hold_bowl(bowl)
@@ -283,7 +286,7 @@ func _create_order_from_customer(customer: RestaurantCustomer) -> void:
 	_refresh_ui("订单 #%03d 已生成：%s / %s / %s" % [
 		order_id,
 		_staple_text(staple_type),
-		_spice_text(spice_level),
+		"辣椒%d下" % required_chili_count,
 		_service_text(service_mode, table_id)
 	])
 	refresh_queue_positions()
@@ -487,14 +490,56 @@ func interact_sauce_station_action(action_name: String = "interact") -> void:
 		return
 	var sauce_id: String = _sauce_id_for_action(action_name)
 	var sauce_name: String = _sauce_display_text(sauce_id)
-	if held_bowl.sauces.has(sauce_id):
+	if held_bowl.has_mixed_sauce(sauce_id):
 		_refresh_ui("已经加过：%s" % sauce_name)
 		return
-	held_bowl.sauces.append(sauce_id)
-	if held_bowl.status == OrderBowl.STATUS_COOKED:
-		held_bowl.status = OrderBowl.STATUS_SAUCED
-	held_bowl.refresh_visuals()
-	_refresh_ui("已加小料：%s" % sauce_name)
+	if not held_bowl.add_mixed_sauce_once(sauce_id):
+		return
+	var mixed_sauce_count: int = held_bowl.get_mixed_sauce_count()
+	_refresh_ui("已加小料：%s（%d/4）" % [sauce_name, mixed_sauce_count])
+
+
+func interact_chili_station_action(action_name: String = "interact") -> void:
+	if held_dirty_cooker != null:
+		_refresh_ui("先清理脏锅")
+		return
+	if held_pot != null:
+		_refresh_ui("先放下锅")
+		return
+	if held_bowl == null:
+		_refresh_ui("先拿着煮好的碗")
+		return
+	if _reject_overcooked_held_order():
+		return
+	if held_bowl.status != OrderBowl.STATUS_COOKED and held_bowl.status != OrderBowl.STATUS_SAUCED:
+		_refresh_ui("煮熟后才能加小料")
+		return
+	if action_name == "sauce_y" or action_name == "sauce_a" or action_name == "sauce_b":
+		_refresh_ui("这个辣椒格位置暂未开放")
+		return
+	if held_bowl.required_chili_count <= 0:
+		_refresh_ui("这单不要辣椒")
+		return
+	if held_bowl.added_chili_count >= held_bowl.required_chili_count:
+		_refresh_ui("辣椒已经够了")
+		return
+	if held_bowl.add_chili_once():
+		_refresh_ui("已加辣椒：%d/%d" % [held_bowl.added_chili_count, held_bowl.required_chili_count])
+
+
+func _check_sauce_complete_for_current_bowl(action_text: String) -> bool:
+	if held_bowl == null:
+		return false
+	if not held_bowl.has_all_required_mixed_sauces():
+		_refresh_ui("%s前还缺必加小料：小料%d/4" % [action_text, held_bowl.get_mixed_sauce_count()])
+		return false
+	if not held_bowl.has_exact_chili():
+		if held_bowl.added_chili_count < held_bowl.required_chili_count:
+			_refresh_ui("%s前辣椒还不够：%d/%d" % [action_text, held_bowl.added_chili_count, held_bowl.required_chili_count])
+		else:
+			_refresh_ui("%s前辣椒数量不对：%d/%d" % [action_text, held_bowl.added_chili_count, held_bowl.required_chili_count])
+		return false
+	return true
 
 
 func interact_packing_area() -> void:
@@ -512,8 +557,7 @@ func interact_packing_area() -> void:
 	if held_bowl.service_mode != "takeout":
 		_refresh_ui("堂食订单要送到桌子")
 		return
-	if not held_bowl.is_sauced():
-		_refresh_ui("打包前需要先加小料")
+	if not _check_sauce_complete_for_current_bowl("封口"):
 		return
 	if held_bowl.status == OrderBowl.STATUS_PACKED:
 		_refresh_ui("订单已经装袋，请放到外带桌")
@@ -568,8 +612,7 @@ func interact_delivery_table(table_id: int) -> void:
 	if held_bowl.service_mode != "dine_in" or held_bowl.table_id != table_id:
 		_refresh_ui("不是这张桌")
 		return
-	if not held_bowl.is_sauced():
-		_refresh_ui("出餐前需要先加小料")
+	if not _check_sauce_complete_for_current_bowl("出餐"):
 		return
 	_complete_held_order()
 
@@ -683,7 +726,11 @@ func force_complete_one_order_for_smoke() -> bool:
 	if cooker_1.active_bowl.status != OrderBowl.STATUS_COOKED:
 		return false
 	interact_cooker(cooker_1)
-	interact_sauce_station()
+	for action_name in ["sauce_x", "sauce_y", "sauce_a", "sauce_b"]:
+		interact_with_station_action("SauceStationMixed", action_name)
+	if held_bowl != null:
+		for i in range(held_bowl.required_chili_count):
+			interact_with_station_action("SauceStation", "sauce_x")
 
 	if held_bowl == null:
 		return false
@@ -759,7 +806,8 @@ func _create_empty_holder_for_order(order_bowl: OrderBowl) -> OrderBowl:
 		order_bowl.staple_type,
 		order_bowl.spice_level,
 		order_bowl.service_mode,
-		order_bowl.table_id
+		order_bowl.table_id,
+		order_bowl.required_chili_count
 	)
 	holder.order_patience_max = order_bowl.order_patience_max
 	holder.order_patience_current = order_bowl.order_patience_current
@@ -941,6 +989,23 @@ func _random_staple() -> String:
 func _random_spice() -> String:
 	var options: Array[String] = ["mild", "medium", "hot"]
 	return options[randi() % options.size()]
+
+
+func _random_chili_count() -> int:
+	var options: Array[int] = [0, 1, 2, 3]
+	return options[randi() % options.size()]
+
+
+func _spice_level_from_chili_count(chili_count: int) -> String:
+	match chili_count:
+		0:
+			return "none"
+		1:
+			return "mild"
+		2:
+			return "medium"
+		_:
+			return "hot"
 
 
 func _random_service_mode() -> String:
@@ -1203,10 +1268,13 @@ func _refresh_ui(message: String = "") -> void:
 
 func _get_order_card_text(target_bowl: OrderBowl) -> String:
 	var patience_percent: int = int(round(target_bowl.get_order_patience_ratio() * 100.0))
-	return "#%03d\n%s\n主食：%s\n目标：%s\n位置：%s\n耐心：%d%%" % [
+	return "#%03d\n%s\n主食：%s\n小料：%d/4\n辣椒：%d/%d\n目标：%s\n位置：%s\n耐心：%d%%" % [
 		target_bowl.order_id,
 		_service_text(target_bowl.service_mode, target_bowl.table_id),
 		_staple_text(target_bowl.staple_type),
+		target_bowl.get_mixed_sauce_count(),
+		target_bowl.added_chili_count,
+		target_bowl.required_chili_count,
 		_delivery_destination_text(target_bowl),
 		_get_bowl_location_text(target_bowl),
 		patience_percent
@@ -1241,6 +1309,8 @@ func _staple_text(staple_type: String) -> String:
 
 func _spice_text(spice_level: String) -> String:
 	match spice_level:
+		"none":
+			return "不要辣"
 		"mild":
 			return "微辣"
 		"medium":

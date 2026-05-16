@@ -26,6 +26,9 @@ const STATUS_DONE = "done"
 
 var ingredients: Dictionary = {}
 var sauces: Array[String] = []
+var required_mixed_sauces: Array[String] = ["garlic_water", "sesame_paste", "vinegar", "sugar"]
+var required_chili_count: int = 0
+var added_chili_count: int = 0
 var is_empty_holder: bool = false
 var staple_added: bool = false
 var cook_time: float = 0.0
@@ -58,6 +61,8 @@ func setup_customer_bowl(new_ingredients: Dictionary) -> void:
 	is_empty_holder = false
 	staple_added = true
 	sauces.clear()
+	required_chili_count = 0
+	added_chili_count = 0
 	cook_time = 0.0
 	order_patience_current = order_patience_max
 	_sync_cooking_thresholds()
@@ -70,7 +75,8 @@ func setup_order(
 	new_staple_type: String,
 	new_spice_level: String,
 	new_service_mode: String,
-	new_table_id: int
+	new_table_id: int,
+	new_required_chili_count: int = 0
 ) -> void:
 	order_id = new_order_id
 	ingredients = new_ingredients.duplicate(true)
@@ -83,6 +89,8 @@ func setup_order(
 	is_empty_holder = false
 	staple_added = staple_type == "none"
 	sauces.clear()
+	required_chili_count = max(0, new_required_chili_count)
+	added_chili_count = 0
 	cook_time = 0.0
 	order_patience_current = order_patience_max
 	_sync_cooking_thresholds()
@@ -205,20 +213,72 @@ func _sync_cooking_thresholds() -> void:
 
 
 func add_next_sauce() -> void:
-	var sauce_cycle: Array[String] = ["garlic_water", "sesame_paste", "vinegar", "sugar"]
-	for sauce in sauce_cycle:
-		if not sauces.has(sauce):
-			sauces.append(sauce)
-			break
+	for sauce in required_mixed_sauces:
+		if add_mixed_sauce_once(sauce):
+			return
 
-	if not sauces.is_empty() and status == STATUS_COOKED:
-		status = STATUS_SAUCED
 
+func set_required_chili_count(count: int) -> void:
+	required_chili_count = max(0, count)
+	added_chili_count = clamp(added_chili_count, 0, required_chili_count)
 	refresh_visuals()
 
 
+func has_mixed_sauce(sauce_id: String) -> bool:
+	return sauces.has(sauce_id)
+
+
+func add_mixed_sauce_once(sauce_id: String) -> bool:
+	if not required_mixed_sauces.has(sauce_id):
+		return false
+	if sauces.has(sauce_id):
+		return false
+	sauces.append(sauce_id)
+	if status == STATUS_COOKED:
+		status = STATUS_SAUCED
+	refresh_visuals()
+	return true
+
+
+func has_all_required_mixed_sauces() -> bool:
+	for sauce in required_mixed_sauces:
+		if not sauces.has(sauce):
+			return false
+	return true
+
+
+func get_mixed_sauce_count() -> int:
+	var count: int = 0
+	for sauce in required_mixed_sauces:
+		if sauces.has(sauce):
+			count += 1
+	return count
+
+
+func add_chili_once() -> bool:
+	if added_chili_count >= required_chili_count:
+		return false
+	added_chili_count += 1
+	if status == STATUS_COOKED:
+		status = STATUS_SAUCED
+	refresh_visuals()
+	return true
+
+
+func needs_more_chili() -> bool:
+	return added_chili_count < required_chili_count
+
+
+func has_exact_chili() -> bool:
+	return added_chili_count == required_chili_count
+
+
+func is_sauce_complete() -> bool:
+	return has_all_required_mixed_sauces() and has_exact_chili()
+
+
 func is_sauced() -> bool:
-	return not sauces.is_empty()
+	return is_sauce_complete()
 
 
 func mark_packed() -> void:
@@ -251,7 +311,15 @@ func get_summary_text() -> String:
 	var id_text: String = "C" if order_id <= 0 else "#%03d" % order_id
 	if is_empty_holder:
 		return "%s 空碗" % id_text
-	return "%s %s %s %s" % [id_text, _get_service_display_text(), get_staple_requirement_text(), get_order_status_text()]
+	return "%s %s %s %s 小料%d/4 辣椒%d/%d" % [
+		id_text,
+		_get_service_display_text(),
+		get_staple_requirement_text(),
+		get_order_status_text(),
+		get_mixed_sauce_count(),
+		added_chili_count,
+		required_chili_count
+	]
 
 
 func get_detail_text() -> String:
@@ -286,6 +354,8 @@ func _get_service_display_text() -> String:
 
 func _get_spice_display_text() -> String:
 	match spice_level:
+		"none":
+			return "不要辣"
 		"mild":
 			return "微辣"
 		"medium":

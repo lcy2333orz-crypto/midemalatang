@@ -153,7 +153,7 @@ func _ensure_widgets() -> void:
 
 func _create_order_card(card_text: String) -> Panel:
 	var card: Panel = Panel.new()
-	card.custom_minimum_size = Vector2(110, 118)
+	card.custom_minimum_size = Vector2(120, 146)
 
 	var box: VBoxContainer = VBoxContainer.new()
 	box.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -177,7 +177,7 @@ func _create_order_card(card_text: String) -> Panel:
 	info_label.text = "\n".join(label_lines)
 	info_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	info_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	info_label.add_theme_font_size_override("font_size", 12)
+	info_label.add_theme_font_size_override("font_size", 11)
 	box.add_child(info_label)
 
 	var patience_bar: ProgressBar = ProgressBar.new()

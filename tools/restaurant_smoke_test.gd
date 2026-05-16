@@ -28,6 +28,11 @@ func _run() -> void:
 		_finish()
 		return
 
+	await _check_chili_station_actions()
+	if not failures.is_empty():
+		_finish()
+		return
+
 	await _check_order_loop()
 	if not failures.is_empty():
 		_finish()
@@ -260,19 +265,25 @@ func _check_interaction_prompts() -> void:
 
 	var counter_area: RestaurantStationArea = scene.get_node_or_null("Stations/Counter/InteractionArea") as RestaurantStationArea
 	var sauce_area: RestaurantStationArea = scene.get_node_or_null("Stations/SauceStation/InteractionArea") as RestaurantStationArea
-	if counter_area == null or sauce_area == null:
+	var mixed_area: RestaurantStationArea = scene.get_node_or_null("LockedPlaceholders/SauceStationMixed/InteractionArea") as RestaurantStationArea
+	if counter_area == null or sauce_area == null or mixed_area == null:
 		_fail("interaction prompts", "missing prompt station area")
 		scene.queue_free()
 		return
 
 	var counter_prompt: String = counter_area.get_interaction_prompt()
 	var sauce_prompt: String = sauce_area.get_interaction_prompt()
+	var mixed_prompt: String = mixed_area.get_interaction_prompt()
 	if not counter_prompt.contains("[H]") or counter_prompt.contains("[E]"):
 		_fail("interaction prompts", "normal prompt should use [H], got %s" % counter_prompt)
 		scene.queue_free()
 		return
-	if not sauce_prompt.contains("H/J/K/L") or sauce_prompt.contains("[E]"):
-		_fail("interaction prompts", "sauce prompt should show H/J/K/L, got %s" % sauce_prompt)
+	if not sauce_prompt.contains("[H]") or not sauce_prompt.contains("辣椒") or sauce_prompt.contains("H/J/K/L") or sauce_prompt.contains("[E]"):
+		_fail("interaction prompts", "chili prompt should show [H] 辣椒, got %s" % sauce_prompt)
+		scene.queue_free()
+		return
+	if not mixed_prompt.contains("H/J/K/L") or not mixed_prompt.contains("小料桶") or mixed_prompt.contains("[E]"):
+		_fail("interaction prompts", "mixed sauce prompt should show H/J/K/L 小料桶, got %s" % mixed_prompt)
 		scene.queue_free()
 		return
 
@@ -308,25 +319,77 @@ func _check_sauce_action_buttons() -> void:
 	}
 	for action_name in expected:
 		var sauce_id: String = expected[action_name]
-		manager.interact_with_station_action("SauceStation", action_name)
+		manager.interact_with_station_action("SauceStationMixed", action_name)
 		if not bowl.sauces.has(sauce_id):
 			_fail("sauce actions", "%s did not add %s" % [action_name, sauce_id])
 			scene.queue_free()
 			return
 
 	var sauce_count: int = bowl.sauces.size()
-	manager.interact_with_station_action("SauceStation", "sauce_x")
+	manager.interact_with_station_action("SauceStationMixed", "sauce_x")
 	if bowl.sauces.size() != sauce_count:
 		_fail("sauce actions", "duplicate sauce should not be added")
 		scene.queue_free()
 		return
-	if not bowl.is_sauced():
-		_fail("sauce actions", "bowl should be sauced after one sauce")
+	if not bowl.has_all_required_mixed_sauces():
+		_fail("sauce actions", "bowl should have all required mixed sauces")
 		scene.queue_free()
 		return
 
 	scene.queue_free()
 	_pass("sauce actions")
+
+
+func _check_chili_station_actions() -> void:
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("chili actions", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	var no_chili_bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(no_chili_bowl)
+	no_chili_bowl.setup_order(911, {"spinach": 1}, "none", "none", "dine_in", 1, 0)
+	no_chili_bowl.status = OrderBowl.STATUS_COOKED
+	manager._hold_bowl(no_chili_bowl)
+	manager.interact_with_station_action("SauceStation", "sauce_x")
+	if no_chili_bowl.added_chili_count != 0:
+		_fail("chili actions", "zero-chili order should not add chili")
+		scene.queue_free()
+		return
+
+	var chili_bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(chili_bowl)
+	chili_bowl.setup_order(912, {"spinach": 1}, "none", "medium", "dine_in", 1, 2)
+	chili_bowl.status = OrderBowl.STATUS_COOKED
+	manager._hold_bowl(chili_bowl)
+	manager.interact_with_station_action("SauceStation", "sauce_x")
+	manager.interact_with_station_action("SauceStation", "sauce_x")
+	if chili_bowl.added_chili_count != 2:
+		_fail("chili actions", "two chili actions should add exactly two")
+		scene.queue_free()
+		return
+	manager.interact_with_station_action("SauceStation", "sauce_x")
+	if chili_bowl.added_chili_count != 2:
+		_fail("chili actions", "third chili action should not exceed required count")
+		scene.queue_free()
+		return
+	for action_name in ["sauce_y", "sauce_a", "sauce_b"]:
+		manager.interact_with_station_action("SauceStation", action_name)
+		if chili_bowl.added_chili_count != 2:
+			_fail("chili actions", "%s should not add chili" % action_name)
+			scene.queue_free()
+			return
+
+	scene.queue_free()
+	_pass("chili actions")
 
 
 func _assert_greybox_labels(scene: Node) -> void:
@@ -844,11 +907,23 @@ func _check_delivery_paths() -> void:
 
 	var takeout_bowl: OrderBowl = OrderBowl.new()
 	scene.add_child(takeout_bowl)
-	takeout_bowl.setup_order(501, {"spinach": 1}, "noodle", "hot", "takeout", 0)
+	takeout_bowl.setup_order(501, {"spinach": 1}, "noodle", "hot", "takeout", 0, 1)
 	takeout_bowl.status = OrderBowl.STATUS_COOKED
 	takeout_bowl.add_required_staple()
 	manager.held_bowl = takeout_bowl
-	manager.interact_sauce_station()
+	manager.interact_packing_area()
+	if takeout_bowl.status != OrderBowl.STATUS_COOKED:
+		_fail("delivery paths", "takeout should not seal before mixed sauces")
+		scene.queue_free()
+		return
+	for action_name in ["sauce_x", "sauce_y", "sauce_a", "sauce_b"]:
+		manager.interact_with_station_action("SauceStationMixed", action_name)
+	manager.interact_packing_area()
+	if takeout_bowl.status == OrderBowl.STATUS_SEALED:
+		_fail("delivery paths", "takeout should not seal before required chili")
+		scene.queue_free()
+		return
+	_complete_sauce_requirements(manager, takeout_bowl)
 	manager.interact_packing_area()
 	manager.interact_packing_bag_area()
 	manager.interact_surface_slot("TakeoutPickupSlot1")
@@ -859,11 +934,23 @@ func _check_delivery_paths() -> void:
 
 	var dine_bowl: OrderBowl = OrderBowl.new()
 	scene.add_child(dine_bowl)
-	dine_bowl.setup_order(502, {"spinach": 1}, "noodle", "hot", "dine_in", 2)
+	dine_bowl.setup_order(502, {"spinach": 1}, "noodle", "hot", "dine_in", 2, 1)
 	dine_bowl.status = OrderBowl.STATUS_COOKED
 	dine_bowl.add_required_staple()
 	manager.held_bowl = dine_bowl
-	manager.interact_sauce_station()
+	manager.interact_delivery_table(2)
+	if manager.held_bowl == null:
+		_fail("delivery paths", "dine-in should not complete before mixed sauces")
+		scene.queue_free()
+		return
+	for action_name in ["sauce_x", "sauce_y", "sauce_a", "sauce_b"]:
+		manager.interact_with_station_action("SauceStationMixed", action_name)
+	manager.interact_delivery_table(2)
+	if manager.held_bowl == null:
+		_fail("delivery paths", "dine-in should not complete before required chili")
+		scene.queue_free()
+		return
+	_complete_sauce_requirements(manager, dine_bowl)
 	manager.interact_delivery_table(1)
 	if manager.held_bowl == null:
 		_fail("delivery paths", "dine-in should not complete at the wrong table")
@@ -1469,7 +1556,7 @@ func _check_takeout_pickup_slot_completion() -> void:
 
 	var bowl: OrderBowl = OrderBowl.new()
 	scene.add_child(bowl)
-	bowl.setup_order(603, {"spinach": 1}, "none", "mild", "takeout", 0)
+	bowl.setup_order(603, {"spinach": 1}, "none", "mild", "takeout", 0, 1)
 	bowl.status = OrderBowl.STATUS_COOKED
 	manager._hold_bowl(bowl)
 	var completed_before: int = int(manager.completed_orders)
@@ -1479,7 +1566,14 @@ func _check_takeout_pickup_slot_completion() -> void:
 		scene.queue_free()
 		return
 
-	manager.interact_sauce_station_action("sauce_x")
+	for action_name in ["sauce_x", "sauce_y", "sauce_a", "sauce_b"]:
+		manager.interact_with_station_action("SauceStationMixed", action_name)
+	manager.interact_packing_area()
+	if bowl.status == OrderBowl.STATUS_SEALED:
+		_fail("takeout slot", "sealing should require required chili")
+		scene.queue_free()
+		return
+	_complete_sauce_requirements(manager, bowl)
 	manager.interact_packing_area()
 	if bowl.status != OrderBowl.STATUS_SEALED:
 		_fail("takeout slot", "sauced takeout should become sealed")
@@ -1669,7 +1763,8 @@ func _check_order_card_destination() -> void:
 		return
 
 	var takeout_bowl: OrderBowl = OrderBowl.new()
-	takeout_bowl.setup_order(401, {"spinach": 1}, "noodle", "hot", "takeout", 0)
+	takeout_bowl.setup_order(401, {"spinach": 1}, "noodle", "hot", "takeout", 0, 2)
+	takeout_bowl.add_mixed_sauce_once("garlic_water")
 	var takeout_text: String = manager._get_order_card_text(takeout_bowl)
 	if not takeout_text.contains("外带桌"):
 		_fail("order card destination", "takeout card should show pickup destination")
@@ -1679,9 +1774,13 @@ func _check_order_card_destination() -> void:
 		_fail("order card destination", "takeout card should keep id and patience")
 		scene.queue_free()
 		return
+	if not takeout_text.contains("小料：1/4") or not takeout_text.contains("辣椒：0/2"):
+		_fail("order card destination", "takeout card should show sauce and chili progress")
+		scene.queue_free()
+		return
 
 	var dine_bowl: OrderBowl = OrderBowl.new()
-	dine_bowl.setup_order(402, {"spinach": 1}, "noodle", "hot", "dine_in", 2)
+	dine_bowl.setup_order(402, {"spinach": 1}, "noodle", "hot", "dine_in", 2, 3)
 	var dine_text: String = manager._get_order_card_text(dine_bowl)
 	if not dine_text.contains("桌2"):
 		_fail("order card destination", "dine-in card should show table destination")
@@ -2025,6 +2124,16 @@ func _pass(step_name: String) -> void:
 func _fail(step_name: String, reason: String) -> void:
 	failures.append("%s: %s" % [step_name, reason])
 	push_error("Restaurant smoke failed at %s: %s" % [step_name, reason])
+
+
+func _complete_sauce_requirements(manager: RestaurantGameManager, bowl: OrderBowl) -> void:
+	if manager == null or bowl == null:
+		return
+	manager.held_bowl = bowl
+	for action_name in ["sauce_x", "sauce_y", "sauce_a", "sauce_b"]:
+		manager.interact_with_station_action("SauceStationMixed", action_name)
+	for i in range(bowl.required_chili_count):
+		manager.interact_with_station_action("SauceStation", "sauce_x")
 
 
 func _finish() -> void:
