@@ -472,6 +472,10 @@ func _check_tutorial_controller() -> void:
 		_fail("tutorial controller", "tutorial forced overcook should clear cooked content instead of turning it into refill bowl")
 		scene.queue_free()
 		return
+	if _count_empty_holders_for_order(manager, 931) != 1:
+		_fail("tutorial controller", "tutorial forced overcook should leave exactly one holder for the order")
+		scene.queue_free()
+		return
 
 	controller.current_step_index = _tutorial_step_index(controller, "second_refill_prepare")
 	manager.interact_cooker(manager.cooker_1)
@@ -505,6 +509,27 @@ func _check_tutorial_controller() -> void:
 		scene.queue_free()
 		return
 
+	var missing_holder_pot: CookingPot = CookingPot.new()
+	scene.add_child(missing_holder_pot)
+	var missing_holder_bowl: OrderBowl = OrderBowl.new()
+	missing_holder_bowl.setup_order(934, {"spinach": 1}, "noodle", "mild", "dine_in", 2, 1)
+	missing_holder_bowl.add_required_staple()
+	missing_holder_pot.add_order_bowl(missing_holder_bowl)
+	missing_holder_bowl.force_overcooked_for_tutorial()
+	controller.forced_overcook_order_id = 934
+	controller.waiting_for_refill_order_id = 934
+	manager.held_bowl = null
+	manager.held_pot = missing_holder_pot
+	manager.interact_trash_bin()
+	if missing_holder_bowl != null and is_instance_valid(missing_holder_bowl) and not missing_holder_bowl.is_queued_for_deletion():
+		_fail("tutorial controller", "missing-holder tutorial overcook should clear cooked content")
+		scene.queue_free()
+		return
+	if _count_empty_holders_for_order(manager, 934) != 0:
+		_fail("tutorial controller", "missing-holder tutorial overcook should not create a refill holder")
+		scene.queue_free()
+		return
+
 	var normal_pot: CookingPot = CookingPot.new()
 	scene.add_child(normal_pot)
 	var normal_overcooked_bowl: OrderBowl = OrderBowl.new()
@@ -527,8 +552,14 @@ func _check_tutorial_controller() -> void:
 		if cleanup_customer != null and is_instance_valid(cleanup_customer):
 			cleanup_customer.queue_free()
 	manager.queued_customers.clear()
+	manager.waiting_customers_by_order_id.clear()
+	manager.held_bowl = null
+	manager.held_pot = null
 	await process_frame
 	var spawn_before_third_intro: int = int(manager.spawn_count)
+	var stale_customer_scene: PackedScene = load("res://scenes/gameplay/restaurant/restaurant_customer.tscn")
+	var stale_customer: RestaurantCustomer = stale_customer_scene.instantiate() as RestaurantCustomer
+	scene.add_child(stale_customer)
 	controller.current_step_index = _tutorial_step_index(controller, "third_intro")
 	controller._show_current_step()
 	if int(manager.spawn_count) != spawn_before_third_intro:
@@ -632,6 +663,41 @@ func _find_surface_slot_holding_bowl(manager: RestaurantGameManager, bowl: Order
 		if slot != null and slot.get_stored_bowl() == bowl:
 			return slot.slot_id
 	return ""
+
+
+func _count_empty_holders_for_order(manager: RestaurantGameManager, order_id: int) -> int:
+	if manager == null:
+		return 0
+	var seen: Dictionary = {}
+	var count: int = 0
+	var candidates: Array[OrderBowl] = []
+	if manager.held_bowl != null:
+		candidates.append(manager.held_bowl)
+	for slot_value in manager.surface_slots_by_id.values():
+		var slot: SurfaceSlot = slot_value as SurfaceSlot
+		if slot != null:
+			var slot_bowl: OrderBowl = slot.get_stored_bowl()
+			if slot_bowl != null:
+				candidates.append(slot_bowl)
+	for waiting_bowl in manager.waiting_area.bowls:
+		var waiting_order: OrderBowl = waiting_bowl as OrderBowl
+		if waiting_order != null:
+			candidates.append(waiting_order)
+	if manager.bowls_node != null:
+		for child in manager.bowls_node.get_children():
+			var world_bowl: OrderBowl = child as OrderBowl
+			if world_bowl != null:
+				candidates.append(world_bowl)
+	for bowl in candidates:
+		if bowl == null or not is_instance_valid(bowl) or bowl.is_queued_for_deletion():
+			continue
+		var instance_id: int = bowl.get_instance_id()
+		if seen.has(instance_id):
+			continue
+		seen[instance_id] = true
+		if bowl.order_id == order_id and bowl.is_empty_holder:
+			count += 1
+	return count
 
 
 func _check_input_mappings() -> void:
@@ -856,7 +922,6 @@ func _assert_greybox_labels(scene: Node) -> void:
 		"Stations/StorageArea/Label": "冰箱",
 		"Stations/DiningTables/DiningTable1/Label": "桌1",
 		"Stations/DiningTables/DiningTable2/Label": "桌2",
-		"Stations/WaitingOrderArea/Label": "待煮区旧",
 		"SurfaceSlots/SurfaceSlot_r1c8/Label": "空桌 r1c8",
 		"SurfaceSlots/SurfaceSlot_r1c9/Label": "空桌 r1c9",
 		"SurfaceSlots/SurfaceSlot_r1c10/Label": "空桌 r1c10",
@@ -888,6 +953,16 @@ func _assert_greybox_labels(scene: Node) -> void:
 			continue
 		if label.text != expected:
 			_fail("greybox labels", "%s expected '%s' but was '%s'" % [path, expected, label.text])
+	var old_waiting_visual: CanvasItem = scene.get_node_or_null("Stations/WaitingOrderArea/Visual") as CanvasItem
+	var old_waiting_label: CanvasItem = scene.get_node_or_null("Stations/WaitingOrderArea/Label") as CanvasItem
+	var old_waiting_area: Area2D = scene.get_node_or_null("Stations/WaitingOrderArea/InteractionArea") as Area2D
+	var old_waiting_shape: CollisionShape2D = scene.get_node_or_null("Stations/WaitingOrderArea/InteractionArea/CollisionShape2D") as CollisionShape2D
+	var old_waiting_solid_shape: CollisionShape2D = scene.get_node_or_null("Stations/WaitingOrderArea/SolidBody/CollisionShape2D") as CollisionShape2D
+	if old_waiting_visual == null or old_waiting_label == null or old_waiting_area == null or old_waiting_shape == null or old_waiting_solid_shape == null:
+		_fail("greybox labels", "missing old WaitingOrderArea nodes")
+		return
+	if old_waiting_visual.visible or old_waiting_label.visible or old_waiting_area.monitoring or not old_waiting_shape.disabled or not old_waiting_solid_shape.disabled:
+		_fail("greybox labels", "old WaitingOrderArea should be hidden and non-interactive")
 
 
 func _assert_independent_cell_bodies(scene: Node) -> void:
@@ -1051,22 +1126,22 @@ func _assert_small_shared_interaction_shape(scene: Node) -> void:
 
 	var counter_shape: CollisionShape2D = scene.get_node_or_null("Stations/Counter/InteractionArea/CollisionShape2D") as CollisionShape2D
 	var staple_shape: CollisionShape2D = scene.get_node_or_null("Stations/StapleArea/InteractionArea/CollisionShape2D") as CollisionShape2D
-	_assert_front_right_shape(counter_shape, "Counter")
-	_assert_front_right_shape(staple_shape, "StapleArea")
+	_assert_centered_station_shape(counter_shape, "Counter")
+	_assert_centered_station_shape(staple_shape, "StapleArea")
 
 
-func _assert_front_right_shape(shape_node: CollisionShape2D, label: String) -> void:
+func _assert_centered_station_shape(shape_node: CollisionShape2D, label: String) -> void:
 	if shape_node == null:
-		_fail("interaction shape", "%s missing front interaction shape" % label)
+		_fail("interaction shape", "%s missing centered interaction shape" % label)
 		return
 	var rect: RectangleShape2D = shape_node.shape as RectangleShape2D
 	if rect == null:
-		_fail("interaction shape", "%s front shape is not RectangleShape2D" % label)
+		_fail("interaction shape", "%s centered shape is not RectangleShape2D" % label)
 		return
-	if rect.size.x > 32.0 or rect.size.y > 36.0:
-		_fail("interaction shape", "%s front shape too large: %s" % [label, rect.size])
-	if shape_node.position.x <= 25.0:
-		_fail("interaction shape", "%s front shape should be offset right" % label)
+	if absf(shape_node.position.x) > 0.1 or absf(shape_node.position.y) > 0.1:
+		_fail("interaction shape", "%s centered shape should not be offset: %s" % [label, shape_node.position])
+	if rect.size.x < 40.0 or rect.size.x > 52.0 or rect.size.y < 34.0 or rect.size.y > 44.0:
+		_fail("interaction shape", "%s centered shape should be about one grid cell: %s" % [label, rect.size])
 
 
 func _assert_removed_station_interaction_areas(scene: Node) -> void:
@@ -2197,15 +2272,15 @@ func _check_staple_interaction_not_blocked_by_counter() -> void:
 		scene.queue_free()
 		return
 
-	if counter_shape.position.x <= 25.0 or staple_shape.position.x <= 25.0:
-		_fail("staple interaction", "counter and staple interaction shapes should be offset to the right")
+	if absf(counter_shape.position.x) > 0.1 or absf(staple_shape.position.x) > 0.1 or absf(counter_shape.position.y) > 0.1 or absf(staple_shape.position.y) > 0.1:
+		_fail("staple interaction", "counter and staple interaction shapes should be centered")
 		scene.queue_free()
 		return
 
 	var counter_rect: RectangleShape2D = counter_shape.shape as RectangleShape2D
 	var staple_rect: RectangleShape2D = staple_shape.shape as RectangleShape2D
-	if counter_rect == null or staple_rect == null or counter_rect.size.x > 32.0 or counter_rect.size.y > 36.0 or staple_rect.size.x > 32.0 or staple_rect.size.y > 36.0:
-		_fail("staple interaction", "counter and staple interaction shapes should be narrow")
+	if counter_rect == null or staple_rect == null or counter_rect.size.x < 40.0 or counter_rect.size.x > 52.0 or counter_rect.size.y < 34.0 or counter_rect.size.y > 44.0 or staple_rect.size.x < 40.0 or staple_rect.size.x > 52.0 or staple_rect.size.y < 34.0 or staple_rect.size.y > 44.0:
+		_fail("staple interaction", "counter and staple interaction shapes should be centered and about one grid cell")
 		scene.queue_free()
 		return
 	if counter_area.get_interaction_priority() != 120 or staple_area.get_interaction_priority() != 125:

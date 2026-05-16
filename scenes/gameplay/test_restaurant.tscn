@@ -32,6 +32,9 @@ size = Vector2(55, 55)
 [sub_resource type="RectangleShape2D" id="Shape_interact_front_right"]
 size = Vector2(28, 34)
 
+[sub_resource type="RectangleShape2D" id="Shape_interact_station_center"]
+size = Vector2(44, 40)
+
 [sub_resource type="RectangleShape2D" id="Shape_interact_surface"]
 size = Vector2(60, 60)
 
@@ -1354,8 +1357,7 @@ station_label = "收银台"
 interaction_priority = 120
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/Counter/InteractionArea"]
-position = Vector2(35, 0)
-shape = SubResource("Shape_interact_front_right")
+shape = SubResource("Shape_interact_station_center")
 
 [node name="DiningTables" type="Node2D" parent="Stations"]
 
@@ -1519,10 +1521,12 @@ position = Vector2(480, 422.5)
 script = ExtResource("4_waiting_area")
 
 [node name="Visual" type="Polygon2D" parent="Stations/WaitingOrderArea"]
+visible = false
 color = Color(0.98, 0.86, 0.28, 1)
 polygon = PackedVector2Array(-22, -22, 22, -22, 22, 22, -22, 22)
 
 [node name="Label" type="Label" parent="Stations/WaitingOrderArea"]
+visible = false
 offset_left = -72.0
 offset_top = -12.0
 offset_right = 72.0
@@ -1535,15 +1539,18 @@ theme_override_font_sizes/font_size = 8
 [node name="SolidBody" type="StaticBody2D" parent="Stations/WaitingOrderArea"]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/WaitingOrderArea/SolidBody"]
+disabled = true
 shape = SubResource("Shape_solid_wide")
 
 [node name="InteractionArea" type="Area2D" parent="Stations/WaitingOrderArea"]
+monitoring = false
 collision_layer = 2
 script = ExtResource("3_station_area")
 station_name = "WaitingOrderArea"
 station_label = "待煮区旧"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/WaitingOrderArea/InteractionArea"]
+disabled = true
 shape = SubResource("Shape_interact_wide")
 
 [node name="CookerStations" type="Node2D" parent="Stations"]
@@ -1675,8 +1682,7 @@ station_label = "主食柜"
 interaction_priority = 125
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/StapleArea/InteractionArea"]
-position = Vector2(35, 0)
-shape = SubResource("Shape_interact_front_right")
+shape = SubResource("Shape_interact_station_center")
 
 [node name="SauceStation" type="Node2D" parent="Stations"]
 position = Vector2(705, 512.5)

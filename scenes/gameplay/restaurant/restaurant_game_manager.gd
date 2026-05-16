@@ -577,6 +577,10 @@ func _try_take_overcooked_pot_from_cooker(cooker: CookerStation) -> bool:
 		held_bowl = null
 		_place_tutorial_refill_bowl(original_holder)
 		_refresh_ui("先把空盆放在操作台上，然后拿起糊锅。")
+	elif not tutorial_refill_holder_by_order_id.has(active_order_id):
+		var existing_holder: OrderBowl = _find_existing_empty_holder_for_order(active_order_id)
+		if existing_holder != null:
+			tutorial_refill_holder_by_order_id[active_order_id] = existing_holder
 	var pot: CookingPot = cooker.take_pot()
 	if pot == null:
 		return false
@@ -823,19 +827,22 @@ func interact_trash_bin() -> void:
 				cleared_order_id = cleared_bowl.order_id
 				if _is_tutorial_forced_overcook_order(cleared_order_id):
 					var original_holder: OrderBowl = tutorial_refill_holder_by_order_id.get(cleared_order_id, null) as OrderBowl
+					if original_holder == null or not is_instance_valid(original_holder):
+						original_holder = _find_existing_empty_holder_for_order(cleared_order_id)
 					if original_holder != null and is_instance_valid(original_holder):
+						tutorial_refill_holder_by_order_id[cleared_order_id] = original_holder
 						original_holder.mark_needs_refill()
 						_refresh_surface_slot_containing_bowl(original_holder)
-						cleared_bowl.queue_free()
+						if cleared_bowl != original_holder:
+							cleared_bowl.queue_free()
 					else:
-						push_warning("Tutorial forced overcook refill holder was not found; reusing cleared bowl.")
-						original_holder = cleared_bowl
-						original_holder.mark_needs_refill()
-						_place_tutorial_refill_bowl(original_holder)
+						push_warning("Tutorial forced overcook refill holder was not found; cleared bowl will not become a refill bowl.")
+						cleared_bowl.queue_free()
 					held_pot.refresh_visual()
-					_refresh_ui("食物倒掉了。先把空锅放回锅位，再拿起待补配订单盆。")
+					_refresh_ui("食物倒掉了。先把空锅放回锅位，再拿起待补配订单盆。" if original_holder != null else "没有找到原订单盆，请先拿回订单盆")
 					_notify_tutorial("overcooked_pot_cleared", {"order_id": cleared_order_id})
-					_notify_tutorial("tutorial_overcook_cleared", {"bowl": original_holder})
+					if original_holder != null:
+						_notify_tutorial("tutorial_overcook_cleared", {"bowl": original_holder})
 					return
 				_clear_waiting_customer_for_order(cleared_order_id)
 				_clear_surface_slot_references(cleared_bowl)
@@ -904,6 +911,31 @@ func _place_tutorial_refill_bowl(bowl: OrderBowl) -> bool:
 	target_slot.store_bowl(bowl)
 	target_slot.refresh_visual()
 	return true
+
+
+func _find_existing_empty_holder_for_order(order_id: int) -> OrderBowl:
+	if order_id <= 0:
+		return null
+	if held_bowl != null and is_instance_valid(held_bowl) and held_bowl.order_id == order_id and held_bowl.is_empty_holder:
+		return held_bowl
+	_cache_surface_slots()
+	for slot_value in surface_slots_by_id.values():
+		var slot: SurfaceSlot = slot_value as SurfaceSlot
+		if slot == null:
+			continue
+		var slot_bowl: OrderBowl = slot.get_stored_bowl()
+		if slot_bowl != null and is_instance_valid(slot_bowl) and slot_bowl.order_id == order_id and slot_bowl.is_empty_holder:
+			return slot_bowl
+	for waiting_bowl in waiting_area.bowls:
+		var waiting_order: OrderBowl = waiting_bowl as OrderBowl
+		if waiting_order != null and is_instance_valid(waiting_order) and waiting_order.order_id == order_id and waiting_order.is_empty_holder:
+			return waiting_order
+	if bowls_node != null:
+		for child in bowls_node.get_children():
+			var world_bowl: OrderBowl = child as OrderBowl
+			if world_bowl != null and is_instance_valid(world_bowl) and world_bowl.order_id == order_id and world_bowl.is_empty_holder:
+				return world_bowl
+	return null
 
 
 func _refresh_surface_slot_containing_bowl(bowl: OrderBowl) -> void:

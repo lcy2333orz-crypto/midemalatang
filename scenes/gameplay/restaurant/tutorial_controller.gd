@@ -442,10 +442,10 @@ func _spawn_next_tutorial_customer_if_needed() -> void:
 		return
 	if not manager.queued_customers.is_empty():
 		return
-	for customer_node in manager.get_tree().get_nodes_in_group("restaurant_customers"):
-		var customer: RestaurantCustomer = customer_node as RestaurantCustomer
-		if customer != null and is_instance_valid(customer):
-			return
+	if not manager.waiting_customers_by_order_id.is_empty():
+		return
+	if not manager._get_tracked_order_bowls().is_empty():
+		return
 	manager.spawn_customer()
 
 
