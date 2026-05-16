@@ -29,6 +29,7 @@ var spawn_count: int = 0
 var spawn_elapsed: float = 0.0
 var tutorial_controller: TutorialController = null
 var next_tutorial_order: Dictionary = {}
+var tutorial_refill_holder_by_order_id: Dictionary = {}
 
 var held_bowl: OrderBowl = null
 var held_pot: CookingPot = null
@@ -261,7 +262,9 @@ func interact_ingredient_display() -> void:
 	if not held_bowl.needs_refill:
 		_refresh_ui("这只盆不需要补配")
 		return
+	var refill_order_id: int = held_bowl.order_id
 	held_bowl.refill_from_ticket()
+	tutorial_refill_holder_by_order_id.erase(refill_order_id)
 	_refresh_ui("已按小票补回配菜，请重新加入主食")
 	_notify_tutorial("bowl_refilled", {"bowl": held_bowl})
 
@@ -566,10 +569,14 @@ func _try_take_overcooked_pot_from_cooker(cooker: CookerStation) -> bool:
 	if cooker == null or not cooker.has_pot() or not cooker.active_pot.has_overcooked_content():
 		return false
 	var active_order_id: int = cooker.active_pot.content_bowl.order_id
-	if held_bowl == null or not held_bowl.is_empty_holder or held_bowl.order_id != active_order_id:
-		return false
-	held_bowl.queue_free()
-	held_bowl = null
+	if held_bowl != null:
+		if not held_bowl.is_empty_holder or held_bowl.order_id != active_order_id:
+			return false
+		var original_holder: OrderBowl = held_bowl
+		tutorial_refill_holder_by_order_id[active_order_id] = original_holder
+		held_bowl = null
+		_place_tutorial_refill_bowl(original_holder)
+		_refresh_ui("先把空盆放在操作台上，然后拿起糊锅。")
 	var pot: CookingPot = cooker.take_pot()
 	if pot == null:
 		return false
@@ -705,6 +712,7 @@ func interact_packing_area() -> void:
 		_refresh_ui("已经封口，请去袋子区装袋")
 		return
 	held_bowl.mark_sealed()
+	_notify_tutorial("takeout_order_sealed", {"bowl": held_bowl})
 	var quality: Dictionary = _evaluate_order_quality(held_bowl)
 	if int(quality.get("money", 0)) == 10 and int(quality.get("score", 0)) == 0:
 		_refresh_ui("订单 #%03d 已封口，请去袋子区装袋" % held_bowl.order_id)
@@ -734,6 +742,7 @@ func interact_packing_bag_area() -> void:
 		_refresh_ui("请先去封口机打包")
 		return
 	held_bowl.mark_packed()
+	_notify_tutorial("takeout_order_packed", {"bowl": held_bowl})
 	_refresh_ui("订单 #%03d 已装袋，请放到外带桌" % held_bowl.order_id)
 
 
@@ -813,12 +822,20 @@ func interact_trash_bin() -> void:
 			if cleared_bowl != null:
 				cleared_order_id = cleared_bowl.order_id
 				if _is_tutorial_forced_overcook_order(cleared_order_id):
-					cleared_bowl.mark_needs_refill()
+					var original_holder: OrderBowl = tutorial_refill_holder_by_order_id.get(cleared_order_id, null) as OrderBowl
+					if original_holder != null and is_instance_valid(original_holder):
+						original_holder.mark_needs_refill()
+						_refresh_surface_slot_containing_bowl(original_holder)
+						cleared_bowl.queue_free()
+					else:
+						push_warning("Tutorial forced overcook refill holder was not found; reusing cleared bowl.")
+						original_holder = cleared_bowl
+						original_holder.mark_needs_refill()
+						_place_tutorial_refill_bowl(original_holder)
 					held_pot.refresh_visual()
-					_place_tutorial_refill_bowl(cleared_bowl)
 					_refresh_ui("食物倒掉了。先把空锅放回锅位，再拿起待补配订单盆。")
 					_notify_tutorial("overcooked_pot_cleared", {"order_id": cleared_order_id})
-					_notify_tutorial("tutorial_overcook_cleared", {"bowl": cleared_bowl})
+					_notify_tutorial("tutorial_overcook_cleared", {"bowl": original_holder})
 					return
 				_clear_waiting_customer_for_order(cleared_order_id)
 				_clear_surface_slot_references(cleared_bowl)
@@ -889,6 +906,19 @@ func _place_tutorial_refill_bowl(bowl: OrderBowl) -> bool:
 	return true
 
 
+func _refresh_surface_slot_containing_bowl(bowl: OrderBowl) -> void:
+	if bowl == null:
+		return
+	_cache_surface_slots()
+	for slot_value in surface_slots_by_id.values():
+		var slot: SurfaceSlot = slot_value as SurfaceSlot
+		if slot == null:
+			continue
+		if slot.get_stored_bowl() == bowl:
+			slot.refresh_visual()
+			return
+
+
 func force_complete_one_order_for_smoke() -> bool:
 	var guard: int = 0
 	while _get_counter_customer() == null and guard < 360:
@@ -957,6 +987,7 @@ func _complete_held_order() -> void:
 		return
 	var completed_order_id: int = bowl.order_id
 	var completed_service_mode: String = bowl.service_mode
+	tutorial_refill_holder_by_order_id.erase(completed_order_id)
 	var result: Dictionary = _evaluate_order_quality(bowl)
 	var earned_money: int = int(result.get("money", 0))
 	var earned_score: int = int(result.get("score", 0)) + _evaluate_order_timing_score(bowl)
@@ -1193,6 +1224,7 @@ func _clear_holder_bowls_for_order(order_id: int) -> void:
 func _clear_all_order_objects(order_id: int, except_bowl: OrderBowl = null) -> void:
 	if order_id <= 0:
 		return
+	tutorial_refill_holder_by_order_id.erase(order_id)
 
 	if held_bowl != null and is_instance_valid(held_bowl) and held_bowl.order_id == order_id and held_bowl != except_bowl:
 		var clear_held_bowl: OrderBowl = held_bowl

@@ -75,6 +75,15 @@ func get_second_order_override() -> Dictionary:
 	}
 
 
+func get_third_order_override() -> Dictionary:
+	return {
+		"service_mode": "takeout",
+		"table_id": 0,
+		"staple_type": "glass_noodle",
+		"required_chili_count": 0
+	}
+
+
 func is_forced_overcook_order(order_id: int) -> bool:
 	return order_id > 0 and order_id == forced_overcook_order_id and waiting_for_refill_order_id == order_id
 
@@ -265,6 +274,66 @@ func _build_day_1_steps() -> void:
 			"text": "第二份完成。按 H 继续。",
 			"target_station": "",
 			"wait_type": "confirm"
+		},
+		{
+			"id": "third_intro",
+			"text": "下一单是外带。按 H 继续。",
+			"target_station": "",
+			"wait_type": "confirm"
+		},
+		{
+			"id": "third_counter",
+			"text": "等顾客到收银台。按 H 接单。",
+			"target_station": "Counter",
+			"wait_type": "counter_order_created"
+		},
+		{
+			"id": "third_staple",
+			"text": "这单需要主食：粉丝。去主食柜按 H。",
+			"target_station": "StapleArea",
+			"wait_type": "held_bowl_has_staple"
+		},
+		{
+			"id": "third_pot",
+			"text": "把订单盆倒进锅里。",
+			"target_station": "CookerStation1",
+			"wait_type": "bowl_in_pot"
+		},
+		{
+			"id": "third_scoop",
+			"text": "等锅显示“已熟”，用对应空碗盛出。",
+			"target_station": "CookerStation1",
+			"wait_type": "held_bowl_cooked"
+		},
+		{
+			"id": "third_mixed_sauces",
+			"text": "去小料桶。按 H、J、K、L，各加一种小料。",
+			"target_station": "SauceStationMixed",
+			"wait_type": "mixed_sauces_complete"
+		},
+		{
+			"id": "third_pack",
+			"text": "外带单需要先封口。拿着碗去封口机按 H。",
+			"target_station": "PackingArea",
+			"wait_type": "takeout_order_sealed"
+		},
+		{
+			"id": "third_bag",
+			"text": "封口好了。拿着碗去袋子区按 H 装袋。",
+			"target_station": "PackingBagArea",
+			"wait_type": "takeout_order_packed"
+		},
+		{
+			"id": "third_takeout_table",
+			"text": "装袋完成。把外带单放到外带桌。",
+			"target_station": "TakeoutPickupSlot1",
+			"wait_type": "takeout_order_completed"
+		},
+		{
+			"id": "third_done",
+			"text": "外带流程完成。按 H 继续。",
+			"target_station": "",
+			"wait_type": "confirm"
 		}
 	]
 
@@ -297,6 +366,14 @@ func _event_completes_wait(wait_type: String, event_name: String, payload: Dicti
 			return (event_name == "sauce_changed" or event_name == "chili_changed") and _is_current_order_bowl(chili_bowl) and chili_bowl.added_chili_count == chili_bowl.required_chili_count
 		"dine_order_completed":
 			return event_name == "order_completed" and str(payload.get("service_mode", "")) == "dine_in"
+		"takeout_order_sealed":
+			var sealed_bowl: OrderBowl = payload.get("bowl", null) as OrderBowl
+			return event_name == "takeout_order_sealed" and _is_current_order_bowl(sealed_bowl) and sealed_bowl.status == OrderBowl.STATUS_SEALED
+		"takeout_order_packed":
+			var packed_bowl: OrderBowl = payload.get("bowl", null) as OrderBowl
+			return event_name == "takeout_order_packed" and _is_current_order_bowl(packed_bowl) and packed_bowl.status == OrderBowl.STATUS_PACKED
+		"takeout_order_completed":
+			return event_name == "order_completed" and str(payload.get("service_mode", "")) == "takeout"
 		"overcooked_pot_picked_up":
 			return event_name == "overcooked_pot_picked_up" and int(payload.get("order_id", 0)) == forced_overcook_order_id
 		"tutorial_overcook_cleared":
@@ -351,6 +428,11 @@ func _prepare_step(step_id: String) -> void:
 		if manager != null:
 			manager.next_tutorial_order = get_second_order_override()
 		_spawn_next_tutorial_customer_if_needed()
+	elif step_id == "third_counter":
+		tutorial_order_index = 3
+		if manager != null:
+			manager.next_tutorial_order = get_third_order_override()
+		_spawn_next_tutorial_customer_if_needed()
 
 
 func _spawn_next_tutorial_customer_if_needed() -> void:
@@ -380,7 +462,11 @@ func _is_current_order_bowl(bowl: OrderBowl) -> bool:
 		return false
 	if tutorial_order_index == 1:
 		return bowl.service_mode == "dine_in" and bowl.table_id == 1
-	return bowl.service_mode == "dine_in" and bowl.table_id == 2
+	if tutorial_order_index == 2:
+		return bowl.service_mode == "dine_in" and bowl.table_id == 2
+	if tutorial_order_index == 3:
+		return bowl.service_mode == "takeout"
+	return false
 
 
 func _event_matches_current_order(payload: Dictionary) -> bool:
