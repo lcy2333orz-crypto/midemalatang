@@ -33,7 +33,10 @@ size = Vector2(55, 55)
 size = Vector2(28, 34)
 
 [sub_resource type="RectangleShape2D" id="Shape_interact_station_center"]
-size = Vector2(44, 40)
+size = Vector2(58, 18)
+
+[sub_resource type="RectangleShape2D" id="Shape_interact_counter_center"]
+size = Vector2(58, 34)
 
 [sub_resource type="RectangleShape2D" id="Shape_interact_surface"]
 size = Vector2(60, 60)
@@ -1357,7 +1360,8 @@ station_label = "收银台"
 interaction_priority = 120
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/Counter/InteractionArea"]
-shape = SubResource("Shape_interact_station_center")
+position = Vector2(0, 8)
+shape = SubResource("Shape_interact_counter_center")
 
 [node name="DiningTables" type="Node2D" parent="Stations"]
 

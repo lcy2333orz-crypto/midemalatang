@@ -239,7 +239,7 @@ func get_best_station() -> Area2D:
 
 
 
-		if station_priority > best_priority:
+		if best_station == null:
 
 			best_station = station
 
@@ -251,9 +251,23 @@ func get_best_station() -> Area2D:
 
 
 
-		if station_priority == best_priority and distance < best_distance:
+		var distance_delta: float = absf(distance - best_distance)
+
+		if distance_delta > 16.0 and distance < best_distance:
 
 			best_station = station
+
+			best_priority = station_priority
+
+			best_distance = distance
+
+			continue
+
+		if distance_delta <= 16.0 and station_priority > best_priority:
+
+			best_station = station
+
+			best_priority = station_priority
 
 			best_distance = distance
 
@@ -369,8 +383,9 @@ func _update_interaction_prompt() -> void:
 
 
 func _update_highlighted_station(target_station: Area2D) -> void:
-	if highlighted_station == target_station:
-		return
+	for station in nearby_stations:
+		if station != target_station:
+			_set_station_highlight(station, false)
 	if highlighted_station != null and is_instance_valid(highlighted_station):
 		_set_station_highlight(highlighted_station, false)
 	highlighted_station = target_station

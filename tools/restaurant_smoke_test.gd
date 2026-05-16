@@ -1126,7 +1126,7 @@ func _assert_small_shared_interaction_shape(scene: Node) -> void:
 
 	var counter_shape: CollisionShape2D = scene.get_node_or_null("Stations/Counter/InteractionArea/CollisionShape2D") as CollisionShape2D
 	var staple_shape: CollisionShape2D = scene.get_node_or_null("Stations/StapleArea/InteractionArea/CollisionShape2D") as CollisionShape2D
-	_assert_centered_station_shape(counter_shape, "Counter")
+	_assert_counter_station_shape(counter_shape)
 	_assert_centered_station_shape(staple_shape, "StapleArea")
 
 
@@ -1140,8 +1140,22 @@ func _assert_centered_station_shape(shape_node: CollisionShape2D, label: String)
 		return
 	if absf(shape_node.position.x) > 0.1 or absf(shape_node.position.y) > 0.1:
 		_fail("interaction shape", "%s centered shape should not be offset: %s" % [label, shape_node.position])
-	if rect.size.x < 40.0 or rect.size.x > 52.0 or rect.size.y < 34.0 or rect.size.y > 44.0:
-		_fail("interaction shape", "%s centered shape should be about one grid cell: %s" % [label, rect.size])
+	if rect.size.x < 56.0 or rect.size.x > 60.0 or rect.size.y < 16.0 or rect.size.y > 20.0:
+		_fail("interaction shape", "%s centered shape should be about 58x18: %s" % [label, rect.size])
+
+
+func _assert_counter_station_shape(shape_node: CollisionShape2D) -> void:
+	if shape_node == null:
+		_fail("interaction shape", "Counter missing lower interaction shape")
+		return
+	var rect: RectangleShape2D = shape_node.shape as RectangleShape2D
+	if rect == null:
+		_fail("interaction shape", "Counter lower shape is not RectangleShape2D")
+		return
+	if absf(shape_node.position.x) > 0.1 or shape_node.position.y < 6.0 or shape_node.position.y > 10.0:
+		_fail("interaction shape", "Counter lower shape should be centered horizontally and offset downward: %s" % shape_node.position)
+	if rect.size.x < 56.0 or rect.size.x > 60.0 or rect.size.y < 32.0 or rect.size.y > 36.0:
+		_fail("interaction shape", "Counter lower shape should be about 58x34: %s" % rect.size)
 
 
 func _assert_removed_station_interaction_areas(scene: Node) -> void:
@@ -1232,6 +1246,17 @@ func _assert_single_highlight(scene: Node) -> void:
 		_fail("single highlight", "counter should remain restored after clearing highlight")
 	if not _colors_equal(staple_visual.color, staple_base):
 		_fail("single highlight", "staple should be restored after clearing highlight")
+
+	player.set("nearby_stations", [counter_area, staple_area])
+	player.set("global_position", counter_area.global_position + Vector2(8, 0))
+	var nearest_station: Area2D = player.call("get_best_station") as Area2D
+	if nearest_station != counter_area:
+		_fail("single highlight", "nearest station should beat higher priority station")
+
+	player.set("global_position", (counter_area.global_position + staple_area.global_position) * 0.5)
+	var priority_station: Area2D = player.call("get_best_station") as Area2D
+	if priority_station != staple_area:
+		_fail("single highlight", "priority should break near-distance tie")
 
 
 func _colors_equal(a: Color, b: Color) -> bool:
@@ -2272,15 +2297,15 @@ func _check_staple_interaction_not_blocked_by_counter() -> void:
 		scene.queue_free()
 		return
 
-	if absf(counter_shape.position.x) > 0.1 or absf(staple_shape.position.x) > 0.1 or absf(counter_shape.position.y) > 0.1 or absf(staple_shape.position.y) > 0.1:
-		_fail("staple interaction", "counter and staple interaction shapes should be centered")
+	if absf(counter_shape.position.x) > 0.1 or counter_shape.position.y < 6.0 or counter_shape.position.y > 10.0 or absf(staple_shape.position.x) > 0.1 or absf(staple_shape.position.y) > 0.1:
+		_fail("staple interaction", "counter should be offset downward and staple should be centered")
 		scene.queue_free()
 		return
 
 	var counter_rect: RectangleShape2D = counter_shape.shape as RectangleShape2D
 	var staple_rect: RectangleShape2D = staple_shape.shape as RectangleShape2D
-	if counter_rect == null or staple_rect == null or counter_rect.size.x < 40.0 or counter_rect.size.x > 52.0 or counter_rect.size.y < 34.0 or counter_rect.size.y > 44.0 or staple_rect.size.x < 40.0 or staple_rect.size.x > 52.0 or staple_rect.size.y < 34.0 or staple_rect.size.y > 44.0:
-		_fail("staple interaction", "counter and staple interaction shapes should be centered and about one grid cell")
+	if counter_rect == null or staple_rect == null or counter_rect.size.x < 56.0 or counter_rect.size.x > 60.0 or counter_rect.size.y < 32.0 or counter_rect.size.y > 36.0 or staple_rect.size.x < 56.0 or staple_rect.size.x > 60.0 or staple_rect.size.y < 16.0 or staple_rect.size.y > 20.0:
+		_fail("staple interaction", "counter shape should be about 58x34 and staple shape should be about 58x18")
 		scene.queue_free()
 		return
 	if counter_area.get_interaction_priority() != 120 or staple_area.get_interaction_priority() != 125:
