@@ -857,6 +857,11 @@ func _evaluate_order_quality(bowl: OrderBowl) -> Dictionary:
 	var score: int = 0
 	var problems: Array[String] = []
 
+	if not bowl.has_food_content_for_serving():
+		money -= 6
+		score -= 2
+		problems.append("没煮好")
+
 	if not bowl.has_correct_staple():
 		money -= 4
 		score -= 2

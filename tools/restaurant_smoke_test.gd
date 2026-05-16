@@ -1055,6 +1055,43 @@ func _check_quality_penalty_delivery_rules() -> void:
 		scene.queue_free()
 		return
 
+	var raw_takeout: OrderBowl = OrderBowl.new()
+	scene.add_child(raw_takeout)
+	raw_takeout.setup_order(525, {"spinach": 1}, "none", "mild", "takeout", 0)
+	var raw_quality: Dictionary = manager._evaluate_order_quality(raw_takeout)
+	if int(raw_quality.get("money", 10)) >= 10 or not str(raw_quality.get("message", "")).contains("没煮好"):
+		_fail("quality delivery", "raw takeout quality should include 没煮好 penalty")
+		scene.queue_free()
+		return
+	manager._hold_bowl(raw_takeout)
+	manager.interact_packing_area()
+	if raw_takeout.status != OrderBowl.STATUS_SEALED:
+		_fail("quality delivery", "raw takeout should seal")
+		scene.queue_free()
+		return
+	manager.interact_packing_bag_area()
+	if raw_takeout.status != OrderBowl.STATUS_PACKED:
+		_fail("quality delivery", "raw takeout should pack")
+		scene.queue_free()
+		return
+	var money_before_raw_takeout: int = int(manager.money_today)
+	manager.interact_surface_slot("TakeoutPickupSlot1")
+	if int(manager.completed_orders) != 3 or int(manager.money_today) - money_before_raw_takeout >= 10:
+		_fail("quality delivery", "raw takeout should complete with a strong money penalty")
+		scene.queue_free()
+		return
+
+	var raw_dine: OrderBowl = OrderBowl.new()
+	scene.add_child(raw_dine)
+	raw_dine.setup_order(526, {"spinach": 1}, "none", "mild", "dine_in", 1)
+	manager._hold_bowl(raw_dine)
+	var completed_before_raw_dine: int = int(manager.completed_orders)
+	manager.interact_delivery_table(1)
+	if int(manager.completed_orders) != completed_before_raw_dine or manager.held_bowl != raw_dine:
+		_fail("quality delivery", "raw dine-in should not complete")
+		scene.queue_free()
+		return
+
 	scene.queue_free()
 	_pass("quality delivery")
 
@@ -1083,6 +1120,11 @@ func _check_takeout_bad_order_cleanup() -> void:
 	scene.add_child(empty_takeout)
 	empty_takeout.setup_order(900, {"spinach": 1}, "none", "mild", "takeout", 0)
 	empty_takeout.set_empty_holder_visual()
+	var empty_quality: Dictionary = manager._evaluate_order_quality(empty_takeout)
+	if int(empty_quality.get("money", -1)) != 0 or not str(empty_quality.get("message", "")).contains("空碗出单"):
+		_fail("bad takeout cleanup", "empty takeout quality should stay the empty bowl result")
+		scene.queue_free()
+		return
 	manager._hold_bowl(empty_takeout)
 	manager.interact_packing_area()
 	manager.interact_packing_bag_area()
