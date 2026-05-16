@@ -165,6 +165,9 @@ func interact_with_station_action(station_name: String, action_name: String = "i
 	if station_name == "SauceStationMixed":
 		interact_sauce_station_action(action_name)
 		return
+	if station_name == "IngredientDisplay":
+		interact_ingredient_display()
+		return
 	if action_name != "interact" and action_name != "sauce_x":
 		return
 
@@ -197,7 +200,7 @@ func interact_with_station_action(station_name: String, action_name: String = "i
 			interact_takeout_pickup()
 		"TrashBin":
 			interact_trash_bin()
-		"IngredientDisplay", "IngredientDisplay2", "IngredientDisplay3", "IngredientDisplayLocked", "DrinksFridge", "DrinkFridgeLocked", "CustomerTrashBin", "StorageArea", "DrinkStorage", "CookerStationLocked":
+		"IngredientDisplay2", "IngredientDisplay3", "IngredientDisplayLocked", "DrinksFridge", "DrinkFridgeLocked", "CustomerTrashBin", "StorageArea", "DrinkStorage", "CookerStationLocked":
 			_interact_placeholder(station_name)
 		_:
 			_refresh_ui("这里暂时不能操作：%s" % station_name)
@@ -231,6 +234,24 @@ func _interact_placeholder(station_name: String) -> void:
 	_refresh_ui(message)
 	if ui != null and ui.has_method("show_toast"):
 		ui.show_toast(message, 1.4)
+
+
+func interact_ingredient_display() -> void:
+	if held_dirty_cooker != null:
+		_refresh_ui("先清理脏锅")
+		return
+	if held_pot != null:
+		_refresh_ui("先放下锅")
+		return
+	if held_bowl == null:
+		_refresh_ui("先拿着需要补配的空盆")
+		return
+	if not held_bowl.needs_refill:
+		_refresh_ui("这只盆不需要补配")
+		return
+	held_bowl.refill_from_ticket()
+	_refresh_ui("已按小票补回配菜，请重新加入主食")
+	_notify_tutorial("bowl_refilled", {"bowl": held_bowl})
 
 
 func interact_counter() -> void:
@@ -490,6 +511,8 @@ func interact_cooker(cooker: CookerStation) -> void:
 
 	if held_bowl != null:
 		if held_bowl.is_empty_holder:
+			if _try_take_overcooked_pot_from_cooker(cooker):
+				return
 			if cooker.scoop_to_bowl(held_bowl):
 				_refresh_ui("已盛出订单 #%03d" % held_bowl.order_id)
 				_notify_tutorial("held_bowl_cooked", {"bowl": held_bowl})
@@ -516,7 +539,26 @@ func interact_cooker(cooker: CookerStation) -> void:
 		_refresh_ui("锅位上没有锅")
 		return
 	_hold_pot(pot)
+	if pot.has_overcooked_content():
+		_notify_tutorial("overcooked_pot_picked_up", {"order_id": pot.content_bowl.order_id})
 	_refresh_ui("拿起锅")
+
+
+func _try_take_overcooked_pot_from_cooker(cooker: CookerStation) -> bool:
+	if cooker == null or not cooker.has_pot() or not cooker.active_pot.has_overcooked_content():
+		return false
+	var active_order_id: int = cooker.active_pot.content_bowl.order_id
+	if held_bowl == null or not held_bowl.is_empty_holder or held_bowl.order_id != active_order_id:
+		return false
+	held_bowl.queue_free()
+	held_bowl = null
+	var pot: CookingPot = cooker.take_pot()
+	if pot == null:
+		return false
+	_hold_pot(pot)
+	_refresh_ui("拿起煮糊的锅")
+	_notify_tutorial("overcooked_pot_picked_up", {"order_id": active_order_id})
+	return true
 
 
 func interact_staple_cabinet() -> void:
@@ -605,6 +647,7 @@ func interact_chili_station_action(action_name: String = "interact") -> void:
 		return
 	if held_bowl.add_chili_once():
 		_refresh_ui("已加辣椒：%d/%d" % [held_bowl.added_chili_count, held_bowl.required_chili_count])
+		_notify_tutorial("chili_changed", {"bowl": held_bowl})
 
 
 func _check_sauce_complete_for_current_bowl(action_text: String) -> bool:
@@ -751,12 +794,22 @@ func interact_trash_bin() -> void:
 			var cleared_order_id: int = 0
 			if cleared_bowl != null:
 				cleared_order_id = cleared_bowl.order_id
+				if _is_tutorial_forced_overcook_order(cleared_order_id):
+					cleared_bowl.mark_needs_refill()
+					held_pot.refresh_visual()
+					_release_empty_held_pot_for_tutorial()
+					_hold_bowl(cleared_bowl)
+					_refresh_ui("食物倒掉了，但盆和小票还在。拿空盆去食材柜补回原来的配菜。")
+					_notify_tutorial("overcooked_pot_cleared", {"order_id": cleared_order_id})
+					_notify_tutorial("tutorial_overcook_cleared", {"bowl": held_bowl})
+					return
 				_clear_waiting_customer_for_order(cleared_order_id)
 				_clear_surface_slot_references(cleared_bowl)
 				_clear_holder_bowls_for_order(cleared_order_id)
 				cleared_bowl.queue_free()
 				_record_failed_order()
 			held_pot.refresh_visual()
+			_notify_tutorial("overcooked_pot_cleared", {"order_id": cleared_order_id})
 			_refresh_ui("锅已清空" if cleared_order_id <= 0 else "订单 #%03d 煮糊了，顾客离开" % cleared_order_id)
 			return
 		if held_pot.is_empty():
@@ -787,6 +840,27 @@ func interact_trash_bin() -> void:
 	held_bowl = null
 	_record_failed_order()
 	_refresh_ui("已丢弃订单 #%03d" % discarded_order_id)
+
+
+func _is_tutorial_forced_overcook_order(order_id: int) -> bool:
+	if tutorial_controller == null or order_id <= 0:
+		return false
+	if not tutorial_controller.has_method("is_forced_overcook_order"):
+		return false
+	return bool(tutorial_controller.is_forced_overcook_order(order_id))
+
+
+func _release_empty_held_pot_for_tutorial() -> void:
+	if held_pot == null:
+		return
+	var pot: CookingPot = held_pot
+	held_pot = null
+	for cooker in [cooker_1, cooker_2]:
+		if cooker != null and cooker.can_accept_pot():
+			cooker.place_pot(pot)
+			return
+	if bowls_node != null:
+		pot.detach_to_world(bowls_node, takeout_pickup.global_position)
 
 
 func force_complete_one_order_for_smoke() -> bool:
@@ -840,6 +914,8 @@ func get_hand_text() -> String:
 		return "拿着脏锅 #%03d" % held_dirty_cooker.get_active_order_id()
 	if held_bowl == null:
 		return ""
+	if held_bowl.needs_refill:
+		return "拿着待补配订单 #%03d" % held_bowl.order_id
 	if held_bowl.is_empty_holder:
 		return "拿着空碗 #%03d" % held_bowl.order_id
 	return "拿着订单 #%03d" % held_bowl.order_id
@@ -1262,12 +1338,12 @@ func _update_order_patience(delta: float) -> void:
 
 func _get_tracked_order_bowls() -> Array[OrderBowl]:
 	var bowls: Array[OrderBowl] = []
-	if held_bowl != null and is_instance_valid(held_bowl) and not held_bowl.is_empty_holder:
+	if held_bowl != null and is_instance_valid(held_bowl) and (not held_bowl.is_empty_holder or held_bowl.needs_refill):
 		bowls.append(held_bowl)
 	if held_pot != null and is_instance_valid(held_pot) and held_pot.content_bowl != null and is_instance_valid(held_pot.content_bowl):
 		bowls.append(held_pot.content_bowl)
 	for waiting_bowl in waiting_area.bowls:
-		if waiting_bowl != null and is_instance_valid(waiting_bowl) and not waiting_bowl.is_empty_holder and waiting_bowl not in bowls:
+		if waiting_bowl != null and is_instance_valid(waiting_bowl) and (not waiting_bowl.is_empty_holder or waiting_bowl.needs_refill) and waiting_bowl not in bowls:
 			bowls.append(waiting_bowl)
 	for cooker in [cooker_1, cooker_2]:
 		if cooker != null and cooker.active_pot != null and cooker.active_pot.content_bowl != null and is_instance_valid(cooker.active_pot.content_bowl) and cooker.active_pot.content_bowl not in bowls:
@@ -1277,7 +1353,7 @@ func _get_tracked_order_bowls() -> Array[OrderBowl]:
 		if surface_slot == null or not is_instance_valid(surface_slot):
 			continue
 		var slot_bowl: OrderBowl = surface_slot.get_stored_bowl()
-		if slot_bowl != null and is_instance_valid(slot_bowl) and not slot_bowl.is_empty_holder and slot_bowl not in bowls:
+		if slot_bowl != null and is_instance_valid(slot_bowl) and (not slot_bowl.is_empty_holder or slot_bowl.needs_refill) and slot_bowl not in bowls:
 			bowls.append(slot_bowl)
 		var slot_pot: CookingPot = surface_slot.get_stored_pot()
 		if slot_pot != null and slot_pot.content_bowl != null and is_instance_valid(slot_pot.content_bowl) and slot_pot.content_bowl not in bowls:
@@ -1395,7 +1471,7 @@ func _check_day_end() -> void:
 func _has_active_restaurant_work() -> bool:
 	if held_dirty_cooker != null:
 		return true
-	if held_bowl != null and is_instance_valid(held_bowl) and not held_bowl.is_empty_holder:
+	if held_bowl != null and is_instance_valid(held_bowl) and (not held_bowl.is_empty_holder or held_bowl.needs_refill):
 		return true
 	if held_pot != null and is_instance_valid(held_pot) and held_pot.has_content():
 		return true

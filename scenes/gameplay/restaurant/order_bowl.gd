@@ -30,6 +30,7 @@ var required_mixed_sauces: Array[String] = ["garlic_water", "sesame_paste", "vin
 var required_chili_count: int = 0
 var added_chili_count: int = 0
 var is_empty_holder: bool = false
+var needs_refill: bool = false
 var staple_added: bool = false
 var actual_staple_type: String = "none"
 var cook_time: float = 0.0
@@ -60,6 +61,7 @@ func setup_customer_bowl(new_ingredients: Dictionary) -> void:
 	status = STATUS_CUSTOMER_BOWL
 	staple_state = STAPLE_RAW
 	is_empty_holder = false
+	needs_refill = false
 	staple_added = true
 	actual_staple_type = "none"
 	sauces.clear()
@@ -89,6 +91,7 @@ func setup_order(
 	status = STATUS_WAITING
 	staple_state = STAPLE_RAW
 	is_empty_holder = false
+	needs_refill = false
 	staple_added = staple_type == "none"
 	actual_staple_type = "none"
 	sauces.clear()
@@ -132,11 +135,46 @@ func get_order_patience_ratio() -> float:
 
 func set_empty_holder_visual() -> void:
 	is_empty_holder = true
+	needs_refill = false
 	refresh_visuals()
 
 
 func set_full_order_visual() -> void:
 	is_empty_holder = false
+	needs_refill = false
+	refresh_visuals()
+
+
+func force_overcooked_for_tutorial() -> void:
+	status = STATUS_OVERCOOKED
+	staple_state = STAPLE_OVERCOOKED
+	cook_time = staple_overcook_time + 0.1
+	refresh_visuals()
+
+
+func mark_needs_refill() -> void:
+	is_empty_holder = true
+	needs_refill = true
+	status = STATUS_WAITING
+	staple_state = STAPLE_RAW
+	staple_added = false
+	actual_staple_type = "none"
+	sauces.clear()
+	added_chili_count = 0
+	cook_time = 0.0
+	refresh_visuals()
+
+
+func refill_from_ticket() -> void:
+	is_empty_holder = false
+	needs_refill = false
+	status = STATUS_WAITING
+	staple_state = STAPLE_RAW
+	staple_added = staple_type == "none"
+	actual_staple_type = "none"
+	sauces.clear()
+	added_chili_count = 0
+	cook_time = 0.0
 	refresh_visuals()
 
 
@@ -332,6 +370,8 @@ func mark_done() -> void:
 
 func get_summary_text() -> String:
 	var id_text: String = "C" if order_id <= 0 else "#%03d" % order_id
+	if needs_refill:
+		return "%s 待补配" % id_text
 	if is_empty_holder:
 		return "%s 空碗" % id_text
 	return "%s %s %s %s 小料%d/4 辣椒%d/%d" % [
@@ -469,6 +509,12 @@ func _ensure_visuals() -> void:
 
 func refresh_visuals() -> void:
 	_ensure_visuals()
+
+	if needs_refill:
+		bowl_rect.color = Color(0.72, 0.78, 0.86, 1.0)
+		clip_rect.color = Color(1.0, 0.96, 0.55, 1.0)
+		label.text = "补\n%s" % ("C" if order_id <= 0 else "#%03d" % order_id)
+		return
 
 	if is_empty_holder:
 		bowl_rect.color = Color(0.82, 0.82, 0.82, 1.0)

@@ -9,6 +9,9 @@ var enabled: bool = false
 var current_step_index: int = 0
 var steps: Array[Dictionary] = []
 var completed_step_ids: Dictionary = {}
+var tutorial_order_index: int = 1
+var forced_overcook_order_id: int = 0
+var waiting_for_refill_order_id: int = 0
 
 var highlighted_area: RestaurantStationArea = null
 var finished: bool = false
@@ -31,6 +34,9 @@ func setup(new_manager: RestaurantGameManager, new_ui: RestaurantUI) -> void:
 	enabled = tutorial_enabled and int(RestaurantRunState.current_day) == 1
 	current_step_index = 0
 	completed_step_ids.clear()
+	tutorial_order_index = 1
+	forced_overcook_order_id = 0
+	waiting_for_refill_order_id = 0
 	finished = false
 
 	if not enabled:
@@ -53,6 +59,20 @@ func get_first_order_override() -> Dictionary:
 	}
 
 
+func get_second_order_override() -> Dictionary:
+	return {
+		"service_mode": "dine_in",
+		"table_id": 2,
+		"staple_type": "noodle",
+		"required_chili_count": 1,
+		"force_overcook_once": true
+	}
+
+
+func is_forced_overcook_order(order_id: int) -> bool:
+	return order_id > 0 and order_id == forced_overcook_order_id and waiting_for_refill_order_id == order_id
+
+
 func notify_event(event_name: String, payload: Dictionary = {}) -> void:
 	if not enabled or finished:
 		return
@@ -61,7 +81,7 @@ func notify_event(event_name: String, payload: Dictionary = {}) -> void:
 
 	var step: Dictionary = steps[current_step_index]
 	var wait_type: String = str(step.get("wait_type", ""))
-	if not _event_completes_wait(wait_type, event_name, payload):
+	if not _event_completes_wait(wait_type, event_name, payload, step):
 		return
 
 	_advance_step()
@@ -143,27 +163,133 @@ func _build_day_1_steps() -> void:
 			"text": "店铺元气上升了！元气达标后，这家分店的问题就解决了。",
 			"target_station": "",
 			"wait_type": "confirm"
+		},
+		{
+			"id": "second_intro",
+			"text": "很好，第一份堂食完成了。下一位顾客会要求辣椒。",
+			"target_station": "",
+			"wait_type": "confirm"
+		},
+		{
+			"id": "second_counter",
+			"text": "这位顾客需要辣椒。先像刚才一样，在收银台按 H 接单。",
+			"target_station": "Counter",
+			"wait_type": "counter_order_created"
+		},
+		{
+			"id": "second_staple",
+			"text": "这单需要面。先去主食柜加入正确主食。",
+			"target_station": "StapleArea",
+			"wait_type": "held_bowl_has_staple"
+		},
+		{
+			"id": "second_pot",
+			"text": "把订单盆倒进锅里。这一次我们会演示糊锅要怎么处理。",
+			"target_station": "CookerStation1",
+			"wait_type": "bowl_in_pot"
+		},
+		{
+			"id": "second_overcooked",
+			"text": "糊掉了！这份餐不能交给顾客。先把糊掉的锅拿起来。",
+			"target_station": "CookerStation1",
+			"wait_type": "overcooked_pot_picked_up"
+		},
+		{
+			"id": "second_clear_overcook",
+			"text": "把糊掉的食物倒掉。盆和小票会保留，等会儿可以按小票补配。",
+			"target_station": "TrashBin",
+			"wait_type": "tutorial_overcook_cleared"
+		},
+		{
+			"id": "second_refill",
+			"text": "现在拿着空盆去食材柜。按 H 后，食材柜会按照小票自动补回顾客原本选择的配菜。",
+			"target_station": "IngredientDisplay",
+			"wait_type": "bowl_refilled"
+		},
+		{
+			"id": "second_restaple",
+			"text": "补配好了。现在要重新加入主食：面。",
+			"target_station": "StapleArea",
+			"wait_type": "held_bowl_has_staple"
+		},
+		{
+			"id": "second_recook",
+			"text": "重新把订单盆倒进锅里。这一次正常煮熟后及时盛出来。",
+			"target_station": "CookerStation1",
+			"wait_type": "bowl_in_pot"
+		},
+		{
+			"id": "second_scoop",
+			"text": "这次煮好了。用对应空碗盛出来。",
+			"target_station": "CookerStation1",
+			"wait_type": "held_bowl_cooked"
+		},
+		{
+			"id": "second_mixed_sauces",
+			"text": "照旧去小料桶，把蒜水、麻酱、醋、糖各加一次。",
+			"target_station": "SauceStationMixed",
+			"wait_type": "mixed_sauces_complete"
+		},
+		{
+			"id": "second_chili",
+			"text": "这位顾客需要 1 次辣椒。去辣椒格按 H 一次。",
+			"target_station": "SauceStation",
+			"wait_type": "chili_complete"
+		},
+		{
+			"id": "second_deliver",
+			"text": "辣椒加好了。现在把成品送到桌2。",
+			"target_station": "DiningTable2",
+			"wait_type": "dine_order_completed"
+		},
+		{
+			"id": "second_done",
+			"text": "糊锅不会立刻扣分，但会浪费时间。正式营业时，顾客等太久才会影响声望。",
+			"target_station": "",
+			"wait_type": "confirm"
 		}
 	]
 
 
-func _event_completes_wait(wait_type: String, event_name: String, payload: Dictionary) -> bool:
+func _event_completes_wait(wait_type: String, event_name: String, payload: Dictionary, step: Dictionary) -> bool:
 	match wait_type:
 		"counter_order_created":
-			return event_name == "counter_order_created"
+			return event_name == "counter_order_created" and _event_matches_current_order(payload)
 		"held_bowl_has_staple":
 			var bowl: OrderBowl = payload.get("bowl", null) as OrderBowl
-			return event_name == "held_bowl_has_staple" and bowl != null and bowl.is_staple_ready_for_cooking()
+			return event_name == "held_bowl_has_staple" and _is_current_order_bowl(bowl) and bowl.is_staple_ready_for_cooking()
 		"bowl_in_pot":
-			return event_name == "bowl_in_pot"
+			var pot_bowl: OrderBowl = payload.get("bowl", null) as OrderBowl
+			if event_name != "bowl_in_pot" or not _is_current_order_bowl(pot_bowl):
+				return false
+			if str(step.get("id", "")) == "second_pot" and forced_overcook_order_id == 0:
+				forced_overcook_order_id = pot_bowl.order_id
+				waiting_for_refill_order_id = pot_bowl.order_id
+				pot_bowl.force_overcooked_for_tutorial()
+				_refresh_manager_cookers()
+			return true
 		"held_bowl_cooked":
 			var cooked_bowl: OrderBowl = payload.get("bowl", null) as OrderBowl
-			return event_name == "held_bowl_cooked" and cooked_bowl != null and cooked_bowl.status == OrderBowl.STATUS_COOKED
+			return event_name == "held_bowl_cooked" and _is_current_order_bowl(cooked_bowl) and cooked_bowl.status == OrderBowl.STATUS_COOKED
 		"mixed_sauces_complete":
 			var sauced_bowl: OrderBowl = payload.get("bowl", null) as OrderBowl
-			return event_name == "sauce_changed" and sauced_bowl != null and sauced_bowl.has_all_required_mixed_sauces()
+			return event_name == "sauce_changed" and _is_current_order_bowl(sauced_bowl) and sauced_bowl.has_all_required_mixed_sauces()
+		"chili_complete":
+			var chili_bowl: OrderBowl = payload.get("bowl", null) as OrderBowl
+			return (event_name == "sauce_changed" or event_name == "chili_changed") and _is_current_order_bowl(chili_bowl) and chili_bowl.added_chili_count == chili_bowl.required_chili_count
 		"dine_order_completed":
 			return event_name == "order_completed" and str(payload.get("service_mode", "")) == "dine_in"
+		"overcooked_pot_picked_up":
+			return event_name == "overcooked_pot_picked_up" and int(payload.get("order_id", 0)) == forced_overcook_order_id
+		"tutorial_overcook_cleared":
+			var refill_bowl: OrderBowl = payload.get("bowl", null) as OrderBowl
+			return event_name == "tutorial_overcook_cleared" and _is_current_order_bowl(refill_bowl) and refill_bowl.needs_refill
+		"bowl_refilled":
+			var refilled_bowl: OrderBowl = payload.get("bowl", null) as OrderBowl
+			var refilled: bool = event_name == "bowl_refilled" and _is_current_order_bowl(refilled_bowl) and not refilled_bowl.needs_refill
+			if refilled:
+				waiting_for_refill_order_id = 0
+			return refilled
 		_:
 			return false
 
@@ -185,9 +311,19 @@ func _show_current_step() -> void:
 	if not enabled or current_step_index < 0 or current_step_index >= steps.size():
 		return
 	var step: Dictionary = steps[current_step_index]
+	_prepare_step(str(step.get("id", "")))
 	if ui != null and ui.has_method("show_tutorial_text"):
 		ui.show_tutorial_text(str(step.get("text", "")))
 	_set_target_station(str(step.get("target_station", "")))
+
+
+func _prepare_step(step_id: String) -> void:
+	if step_id == "second_intro":
+		tutorial_order_index = 2
+		if manager != null:
+			manager.next_tutorial_order = get_second_order_override()
+			if manager._get_counter_customer() == null and manager.is_day_open:
+				manager.spawn_customer()
 
 
 func _finish_tutorial() -> void:
@@ -195,7 +331,31 @@ func _finish_tutorial() -> void:
 	enabled = false
 	_clear_highlight()
 	if ui != null and ui.has_method("show_tutorial_text"):
-		ui.show_tutorial_text("第 1 份堂食教学完成。后续教学还在开发中。")
+		ui.show_tutorial_text("第 2 份糊锅和辣椒教学完成。后续教学还在开发中。")
+
+
+func _is_current_order_bowl(bowl: OrderBowl) -> bool:
+	if bowl == null:
+		return false
+	if tutorial_order_index == 1:
+		return bowl.service_mode == "dine_in" and bowl.table_id == 1
+	return bowl.service_mode == "dine_in" and bowl.table_id == 2
+
+
+func _event_matches_current_order(payload: Dictionary) -> bool:
+	var bowl: OrderBowl = payload.get("bowl", null) as OrderBowl
+	return _is_current_order_bowl(bowl)
+
+
+func _refresh_manager_cookers() -> void:
+	if manager == null:
+		return
+	for cooker in [manager.cooker_1, manager.cooker_2]:
+		if cooker != null and is_instance_valid(cooker):
+			if cooker.active_pot != null:
+				cooker.active_pot.refresh_visual()
+			cooker._sync_compat_bowl()
+			cooker._update_status_label()
 
 
 func _set_target_station(station_name: String) -> void:

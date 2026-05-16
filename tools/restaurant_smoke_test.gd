@@ -262,6 +262,11 @@ func _check_tutorial_controller() -> void:
 		_fail("tutorial controller", "direct controller did not build steps")
 		direct_controller.queue_free()
 		return
+	for step_id in ["second_intro", "second_counter", "second_pot", "second_clear_overcook", "second_refill", "second_chili", "second_deliver"]:
+		if not _tutorial_has_step_id(direct_controller, step_id):
+			_fail("tutorial controller", "missing tutorial step %s" % step_id)
+			direct_controller.queue_free()
+			return
 	direct_controller.queue_free()
 
 	RestaurantRunState.start_new_run(3)
@@ -303,6 +308,86 @@ func _check_tutorial_controller() -> void:
 		_fail("tutorial controller", "counter_order_created did not advance tutorial")
 		scene.queue_free()
 		return
+
+	var second_pot_index: int = _tutorial_step_index(controller, "second_pot")
+	if second_pot_index < 0:
+		_fail("tutorial controller", "second_pot step was not found")
+		scene.queue_free()
+		return
+	var forced_bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(forced_bowl)
+	forced_bowl.setup_order(930, {"spinach": 1}, "noodle", "mild", "dine_in", 2, 1)
+	controller.tutorial_order_index = 2
+	controller.current_step_index = second_pot_index
+	controller.enabled = true
+	controller.finished = false
+	controller.forced_overcook_order_id = 0
+	controller.waiting_for_refill_order_id = 0
+	controller.notify_event("bowl_in_pot", {"bowl": forced_bowl})
+	if not forced_bowl.is_overcooked() or int(controller.forced_overcook_order_id) != 930:
+		_fail("tutorial controller", "second order did not force overcook")
+		scene.queue_free()
+		return
+	forced_bowl.refill_from_ticket()
+	controller.current_step_index = _tutorial_step_index(controller, "second_recook")
+	controller.notify_event("bowl_in_pot", {"bowl": forced_bowl})
+	if forced_bowl.is_overcooked():
+		_fail("tutorial controller", "second order forced overcook more than once")
+		scene.queue_free()
+		return
+
+	var tutorial_pot: CookingPot = CookingPot.new()
+	scene.add_child(tutorial_pot)
+	var tutorial_overcooked_bowl: OrderBowl = OrderBowl.new()
+	tutorial_overcooked_bowl.setup_order(931, {"spinach": 1}, "noodle", "mild", "dine_in", 2, 1)
+	tutorial_overcooked_bowl.add_required_staple()
+	tutorial_pot.add_order_bowl(tutorial_overcooked_bowl)
+	tutorial_overcooked_bowl.force_overcooked_for_tutorial()
+	var waiting_customer: Node = Node.new()
+	scene.add_child(waiting_customer)
+	manager.waiting_customers_by_order_id[931] = waiting_customer
+	controller.forced_overcook_order_id = 931
+	controller.waiting_for_refill_order_id = 931
+	manager.held_bowl = null
+	manager.held_pot = tutorial_pot
+	var failed_before_tutorial_clear: int = int(manager.failed_orders)
+	manager.interact_trash_bin()
+	if int(manager.failed_orders) != failed_before_tutorial_clear:
+		_fail("tutorial controller", "tutorial forced overcook should not add failure")
+		scene.queue_free()
+		return
+	if not manager.waiting_customers_by_order_id.has(931):
+		_fail("tutorial controller", "tutorial forced overcook should keep waiting customer")
+		scene.queue_free()
+		return
+	if manager.held_bowl == null or not manager.held_bowl.needs_refill:
+		_fail("tutorial controller", "tutorial forced overcook should return refill bowl")
+		scene.queue_free()
+		return
+
+	controller.current_step_index = _tutorial_step_index(controller, "second_refill")
+	manager.interact_ingredient_display()
+	if manager.held_bowl == null or manager.held_bowl.needs_refill or manager.held_bowl.is_empty_holder or manager.held_bowl.status != OrderBowl.STATUS_WAITING or bool(manager.held_bowl.staple_added):
+		_fail("tutorial controller", "tutorial refill did not restore bowl to waiting without staple")
+		scene.queue_free()
+		return
+
+	var normal_pot: CookingPot = CookingPot.new()
+	scene.add_child(normal_pot)
+	var normal_overcooked_bowl: OrderBowl = OrderBowl.new()
+	normal_overcooked_bowl.setup_order(932, {"spinach": 1}, "noodle", "mild", "dine_in", 2, 1)
+	normal_overcooked_bowl.add_required_staple()
+	normal_pot.add_order_bowl(normal_overcooked_bowl)
+	normal_overcooked_bowl.force_overcooked_for_tutorial()
+	controller.waiting_for_refill_order_id = 0
+	manager.held_bowl = null
+	manager.held_pot = normal_pot
+	var failed_before_normal_clear: int = int(manager.failed_orders)
+	manager.interact_trash_bin()
+	if int(manager.failed_orders) != failed_before_normal_clear + 1:
+		_fail("tutorial controller", "normal overcook should still add failure")
+		scene.queue_free()
+		return
 	scene.queue_free()
 	await process_frame
 
@@ -339,6 +424,20 @@ func _check_tutorial_controller() -> void:
 
 	disabled_scene.queue_free()
 	_pass("tutorial controller")
+
+
+func _tutorial_has_step_id(controller: TutorialController, step_id: String) -> bool:
+	return _tutorial_step_index(controller, step_id) >= 0
+
+
+func _tutorial_step_index(controller: TutorialController, step_id: String) -> int:
+	if controller == null:
+		return -1
+	for i in range(controller.steps.size()):
+		var step: Dictionary = controller.steps[i]
+		if str(step.get("id", "")) == step_id:
+			return i
+	return -1
 
 
 func _check_input_mappings() -> void:
