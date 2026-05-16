@@ -7,6 +7,8 @@ var time_label: Label
 var prompt_label: Label
 var hand_label: Label
 var toast_label: Label
+var tutorial_panel: Panel
+var tutorial_label: Label
 var toast_token: int = 0
 
 
@@ -75,6 +77,18 @@ func show_toast(text: String, seconds: float = 1.8) -> void:
 	toast_label.visible = text.strip_edges() != ""
 	if toast_label.visible:
 		get_tree().create_timer(seconds).timeout.connect(_hide_toast.bind(current_token))
+
+
+func show_tutorial_text(text: String) -> void:
+	_ensure_widgets()
+	tutorial_label.text = text
+	tutorial_panel.visible = text.strip_edges() != ""
+
+
+func hide_tutorial_text() -> void:
+	_ensure_widgets()
+	tutorial_label.text = ""
+	tutorial_panel.visible = false
 
 
 func _hide_toast(token: int) -> void:
@@ -149,6 +163,40 @@ func _ensure_widgets() -> void:
 	toast_label.add_theme_color_override("font_outline_color", Color(0.05, 0.04, 0.03, 1.0))
 	toast_label.add_theme_constant_override("outline_size", 4)
 	add_child(toast_label)
+
+	tutorial_panel = Panel.new()
+	tutorial_panel.name = "TutorialPanel"
+	tutorial_panel.visible = false
+	tutorial_panel.position = Vector2(18, 390)
+	tutorial_panel.size = Vector2(470, 118)
+	var tutorial_style: StyleBoxFlat = StyleBoxFlat.new()
+	tutorial_style.bg_color = Color(0.0, 0.0, 0.0, 0.72)
+	tutorial_style.border_color = Color(1.0, 0.92, 0.55, 0.9)
+	tutorial_style.border_width_left = 2
+	tutorial_style.border_width_top = 2
+	tutorial_style.border_width_right = 2
+	tutorial_style.border_width_bottom = 2
+	tutorial_style.corner_radius_top_left = 6
+	tutorial_style.corner_radius_top_right = 6
+	tutorial_style.corner_radius_bottom_left = 6
+	tutorial_style.corner_radius_bottom_right = 6
+	tutorial_panel.add_theme_stylebox_override("panel", tutorial_style)
+	add_child(tutorial_panel)
+
+	tutorial_label = Label.new()
+	tutorial_label.name = "TutorialLabel"
+	tutorial_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tutorial_label.offset_left = 14
+	tutorial_label.offset_top = 10
+	tutorial_label.offset_right = -14
+	tutorial_label.offset_bottom = -10
+	tutorial_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tutorial_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	tutorial_label.add_theme_font_size_override("font_size", 18)
+	tutorial_label.add_theme_color_override("font_color", Color.WHITE)
+	tutorial_label.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 1.0))
+	tutorial_label.add_theme_constant_override("outline_size", 3)
+	tutorial_panel.add_child(tutorial_label)
 
 
 func _create_order_card(card_text: String) -> Panel:

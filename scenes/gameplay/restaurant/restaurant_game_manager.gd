@@ -27,6 +27,8 @@ var summary_transition_requested: bool = false
 var next_order_id: int = 1
 var spawn_count: int = 0
 var spawn_elapsed: float = 0.0
+var tutorial_controller: TutorialController = null
+var next_tutorial_order: Dictionary = {}
 
 var held_bowl: OrderBowl = null
 var held_pot: CookingPot = null
@@ -56,6 +58,9 @@ func _ready() -> void:
 	randomize()
 	_cache_surface_slots()
 	_initialize_day_state()
+	tutorial_controller = get_node_or_null("../TutorialController") as TutorialController
+	if tutorial_controller != null:
+		tutorial_controller.setup(self, ui)
 	if is_day_open:
 		spawn_customer()
 	_refresh_ui("餐厅营业开始")
@@ -73,6 +78,12 @@ func _initialize_day_state() -> void:
 	money_today = 0
 	score_today = 0
 	queue_lost_customers_today = 0
+
+
+func _notify_tutorial(event_name: String, payload: Dictionary = {}) -> void:
+	if tutorial_controller == null:
+		return
+	tutorial_controller.notify_event(event_name, payload)
 
 
 func _update_day_timer(delta: float) -> void:
@@ -263,6 +274,13 @@ func _create_order_from_customer(customer: RestaurantCustomer) -> void:
 	var spice_level: String = _spice_level_from_chili_count(required_chili_count)
 	var service_mode: String = _random_service_mode()
 	var table_id: int = _next_table_id() if service_mode == "dine_in" else 0
+	if not next_tutorial_order.is_empty():
+		staple_type = str(next_tutorial_order.get("staple_type", staple_type))
+		required_chili_count = int(next_tutorial_order.get("required_chili_count", required_chili_count))
+		spice_level = _spice_level_from_chili_count(required_chili_count)
+		service_mode = str(next_tutorial_order.get("service_mode", service_mode))
+		table_id = int(next_tutorial_order.get("table_id", table_id)) if service_mode == "dine_in" else 0
+		next_tutorial_order.clear()
 
 	bowl.setup_order(
 		order_id,
@@ -290,6 +308,7 @@ func _create_order_from_customer(customer: RestaurantCustomer) -> void:
 		_service_text(service_mode, table_id)
 	])
 	refresh_queue_positions()
+	_notify_tutorial("counter_order_created", {"bowl": held_bowl})
 
 
 func interact_waiting_order_area() -> void:
@@ -353,6 +372,7 @@ func interact_surface_slot(slot_id: String) -> void:
 			held_pot.scoop_to_empty_bowl(slot_bowl)
 			slot.refresh_visual()
 			_refresh_ui("已盛出订单 #%03d" % slot_bowl.order_id)
+			_notify_tutorial("held_bowl_cooked", {"bowl": slot_bowl})
 			return
 		if slot_bowl != null:
 			if _can_add_order_bowl_to_pot(slot_bowl, held_pot):
@@ -371,6 +391,7 @@ func interact_surface_slot(slot_id: String) -> void:
 						return
 					slot.refresh_visual()
 					_refresh_ui("已把订单 #%03d 放入锅中" % order_bowl.order_id)
+					_notify_tutorial("bowl_in_pot", {"bowl": order_bowl})
 				else:
 					slot.store_bowl(order_bowl)
 					empty_holder.queue_free()
@@ -394,6 +415,7 @@ func interact_surface_slot(slot_id: String) -> void:
 			slot_pot.scoop_to_empty_bowl(held_bowl)
 			slot.refresh_visual()
 			_refresh_ui("已盛出订单 #%03d" % held_bowl.order_id)
+			_notify_tutorial("held_bowl_cooked", {"bowl": held_bowl})
 			return
 		if slot_pot != null:
 			if _can_add_order_bowl_to_pot(held_bowl, slot_pot):
@@ -404,6 +426,7 @@ func interact_surface_slot(slot_id: String) -> void:
 					_hold_bowl(held_bowl)
 					slot.refresh_visual()
 					_refresh_ui("已把订单 #%03d 放入锅中" % order_bowl.order_id)
+					_notify_tutorial("bowl_in_pot", {"bowl": order_bowl})
 				else:
 					empty_holder.queue_free()
 					_refresh_ui("无法把订单放入锅")
@@ -469,6 +492,7 @@ func interact_cooker(cooker: CookerStation) -> void:
 		if held_bowl.is_empty_holder:
 			if cooker.scoop_to_bowl(held_bowl):
 				_refresh_ui("已盛出订单 #%03d" % held_bowl.order_id)
+				_notify_tutorial("held_bowl_cooked", {"bowl": held_bowl})
 			else:
 				_refresh_ui("锅里没有可盛出的熟食")
 			return
@@ -482,6 +506,7 @@ func interact_cooker(cooker: CookerStation) -> void:
 			held_bowl = _create_empty_holder_for_order(order_bowl)
 			_hold_bowl(held_bowl)
 			_refresh_ui("已把订单 #%03d 放入锅中" % order_bowl.order_id)
+			_notify_tutorial("bowl_in_pot", {"bowl": order_bowl})
 		else:
 			_refresh_ui("锅里已经有东西")
 		return
@@ -512,6 +537,7 @@ func interact_staple_cabinet() -> void:
 		held_bowl.actual_staple_type = "none"
 		held_bowl.refresh_visuals()
 		_refresh_ui("这单不需要主食")
+		_notify_tutorial("held_bowl_has_staple", {"bowl": held_bowl})
 		return
 	if held_bowl.staple_added:
 		_refresh_ui("主食已经加过了")
@@ -519,6 +545,7 @@ func interact_staple_cabinet() -> void:
 
 	held_bowl.add_required_staple()
 	_refresh_ui("已加入主食：%s" % _staple_text(held_bowl.staple_type))
+	_notify_tutorial("held_bowl_has_staple", {"bowl": held_bowl})
 
 
 func interact_sauce_station() -> void:
@@ -549,6 +576,7 @@ func interact_sauce_station_action(action_name: String = "interact") -> void:
 		return
 	var mixed_sauce_count: int = held_bowl.get_mixed_sauce_count()
 	_refresh_ui("已加小料：%s（%d/4）" % [sauce_name, mixed_sauce_count])
+	_notify_tutorial("sauce_changed", {"bowl": held_bowl})
 
 
 func interact_chili_station_action(action_name: String = "interact") -> void:
@@ -826,6 +854,7 @@ func _complete_held_order() -> void:
 		_fail_order_bowl(bowl, "订单 #%03d 等太久了，顾客离开" % bowl.order_id)
 		return
 	var completed_order_id: int = bowl.order_id
+	var completed_service_mode: String = bowl.service_mode
 	var result: Dictionary = _evaluate_order_quality(bowl)
 	var earned_money: int = int(result.get("money", 0))
 	var earned_score: int = int(result.get("score", 0)) + _evaluate_order_timing_score(bowl)
@@ -843,6 +872,7 @@ func _complete_held_order() -> void:
 	score_today += earned_score
 	_update_score()
 	_refresh_ui("完成订单 #%03d +%d：%s" % [completed_order_id, earned_money, result_message])
+	_notify_tutorial("order_completed", {"order_id": completed_order_id, "service_mode": completed_service_mode})
 
 
 func _evaluate_order_quality(bowl: OrderBowl) -> Dictionary:
@@ -1124,6 +1154,7 @@ func _try_complete_takeout_from_surface(slot: SurfaceSlot, bowl: OrderBowl) -> b
 		return true
 
 	var completed_order_id: int = bowl.order_id
+	var completed_service_mode: String = bowl.service_mode
 	var result: Dictionary = _evaluate_order_quality(bowl)
 	var earned_money: int = int(result.get("money", 0))
 	var earned_score: int = int(result.get("score", 0)) + _evaluate_order_timing_score(bowl)
@@ -1141,6 +1172,7 @@ func _try_complete_takeout_from_surface(slot: SurfaceSlot, bowl: OrderBowl) -> b
 	score_today += earned_score
 	_update_score()
 	_refresh_ui("外带订单 #%03d 已完成 +%d：%s" % [completed_order_id, earned_money, result_message])
+	_notify_tutorial("order_completed", {"order_id": completed_order_id, "service_mode": completed_service_mode})
 	return true
 
 

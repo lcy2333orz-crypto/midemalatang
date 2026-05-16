@@ -13,6 +13,11 @@ func _run() -> void:
 		_finish()
 		return
 
+	await _check_tutorial_controller()
+	if not failures.is_empty():
+		_finish()
+		return
+
 	_check_input_mappings()
 	if not failures.is_empty():
 		_finish()
@@ -209,7 +214,8 @@ func _check_scene_loads() -> void:
 		"Stations/SauceStation",
 		"Stations/PackingArea",
 		"Stations/StorageArea",
-		"RestaurantGameManager"
+		"RestaurantGameManager",
+		"TutorialController"
 	]
 
 	for path in required_paths:
@@ -241,6 +247,98 @@ func _check_scene_loads() -> void:
 
 	scene.free()
 	_pass("scene load")
+
+
+func _check_tutorial_controller() -> void:
+	var tutorial_script: Script = load("res://scenes/gameplay/restaurant/tutorial_controller.gd") as Script
+	if tutorial_script == null:
+		_fail("tutorial controller", "tutorial_controller.gd could not be loaded")
+		return
+
+	var direct_controller: TutorialController = TutorialController.new()
+	get_root().add_child(direct_controller)
+	await process_frame
+	if direct_controller.steps.is_empty():
+		_fail("tutorial controller", "direct controller did not build steps")
+		direct_controller.queue_free()
+		return
+	direct_controller.queue_free()
+
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = scene.get_node_or_null("RestaurantGameManager") as RestaurantGameManager
+	var ui: RestaurantUI = scene.get_node_or_null("UI") as RestaurantUI
+	var controller: TutorialController = scene.get_node_or_null("TutorialController") as TutorialController
+	if manager == null or ui == null or controller == null:
+		_fail("tutorial controller", "manager, ui, or tutorial controller was not found")
+		scene.queue_free()
+		return
+	if manager.tutorial_controller != controller:
+		_fail("tutorial controller", "manager did not connect to tutorial controller")
+		scene.queue_free()
+		return
+
+	ui.show_tutorial_text("欢迎来到小猫麻辣烫连锁店培训！")
+	var tutorial_label: Label = ui.get("tutorial_label") as Label
+	var tutorial_panel: Panel = ui.get("tutorial_panel") as Panel
+	if tutorial_label == null or tutorial_panel == null or not bool(tutorial_panel.visible):
+		_fail("tutorial controller", "tutorial text widgets were not shown")
+		scene.queue_free()
+		return
+	if not tutorial_label.text.contains("欢迎来到小猫麻辣烫连锁店培训"):
+		_fail("tutorial controller", "tutorial label did not keep Chinese text")
+		scene.queue_free()
+		return
+
+	controller.current_step_index = 3
+	controller.enabled = true
+	controller.finished = false
+	controller.notify_event("counter_order_created", {"bowl": manager.held_bowl})
+	if int(controller.current_step_index) != 4:
+		_fail("tutorial controller", "counter_order_created did not advance tutorial")
+		scene.queue_free()
+		return
+	scene.queue_free()
+	await process_frame
+
+	RestaurantRunState.start_new_run(3)
+	var disabled_scene: Node = scene_resource.instantiate()
+	var disabled_controller: TutorialController = disabled_scene.get_node_or_null("TutorialController") as TutorialController
+	if disabled_controller != null:
+		disabled_controller.tutorial_enabled = false
+	get_root().add_child(disabled_scene)
+	await process_frame
+	await process_frame
+
+	var disabled_manager: RestaurantGameManager = disabled_scene.get_node_or_null("RestaurantGameManager") as RestaurantGameManager
+	var connected_disabled_controller: TutorialController = disabled_scene.get_node_or_null("TutorialController") as TutorialController
+	if disabled_manager == null or connected_disabled_controller == null:
+		_fail("tutorial controller", "disabled tutorial scene did not load")
+		disabled_scene.queue_free()
+		return
+	if bool(connected_disabled_controller.enabled):
+		_fail("tutorial controller", "disabled tutorial should not enable")
+		disabled_scene.queue_free()
+		return
+	connected_disabled_controller.current_step_index = 3
+	connected_disabled_controller.notify_event("counter_order_created", {})
+	if int(connected_disabled_controller.current_step_index) != 3:
+		_fail("tutorial controller", "disabled tutorial should not advance")
+		disabled_scene.queue_free()
+		return
+	var completed: bool = await disabled_manager.force_complete_one_order_for_smoke()
+	if not completed:
+		_fail("tutorial controller", "disabled tutorial should not block order completion")
+		disabled_scene.queue_free()
+		return
+
+	disabled_scene.queue_free()
+	_pass("tutorial controller")
 
 
 func _check_input_mappings() -> void:

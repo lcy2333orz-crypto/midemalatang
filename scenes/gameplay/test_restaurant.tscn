@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3 uid="uid://b4vixu7ouriwb"]
+[gd_scene load_steps=17 format=3 uid="uid://b4vixu7ouriwb"]
 
 [ext_resource type="PackedScene" uid="uid://c8eg3meju24nj" path="res://scenes/gameplay/player.tscn" id="1_player"]
 [ext_resource type="Script" uid="uid://btc7pfuqyt0tg" path="res://scenes/gameplay/restaurant/restaurant_game_manager.gd" id="2_manager"]
@@ -7,6 +7,7 @@
 [ext_resource type="Script" uid="uid://ci10kx374fy67" path="res://scenes/gameplay/restaurant/cooker_station.gd" id="5_cooker"]
 [ext_resource type="Script" uid="uid://ciidmld6xe4px" path="res://scenes/gameplay/restaurant/restaurant_ui.gd" id="6_ui"]
 [ext_resource type="Script" path="res://scenes/gameplay/restaurant/surface_slot.gd" id="7_surface_slot"]
+[ext_resource type="Script" path="res://scenes/gameplay/restaurant/tutorial_controller.gd" id="8_tutorial"]
 
 [sub_resource type="WorldBoundaryShape2D" id="WorldBoundary_floor"]
 
@@ -1806,3 +1807,6 @@ script = ExtResource("6_ui")
 script = ExtResource("2_manager")
 max_customers = 3
 spawn_interval_seconds = 6.0
+
+[node name="TutorialController" type="Node" parent="."]
+script = ExtResource("8_tutorial")
