@@ -56,6 +56,10 @@ func pauses_time() -> bool:
 	return enabled
 
 
+func protects_cooked_pots() -> bool:
+	return enabled
+
+
 func get_first_order_override() -> Dictionary:
 	return {
 		"service_mode": "dine_in",
@@ -106,6 +110,8 @@ func notify_event(event_name: String, payload: Dictionary = {}) -> void:
 	var step: Dictionary = steps[current_step_index]
 	var wait_type: String = str(step.get("wait_type", ""))
 	if not _event_completes_wait(wait_type, event_name, payload, step):
+		if event_name == "tutorial_bowl_became_cooked" and wait_type == "held_bowl_cooked":
+			_set_target_station(str(step.get("target_station", "")))
 		return
 
 	_advance_step()
@@ -237,20 +243,14 @@ func _build_day_1_steps() -> void:
 			"wait_type": "held_refill_bowl"
 		},
 		{
-			"id": "second_refill",
-			"text": "拿着待补配订单盆去食材柜，按 H 补回配菜。",
-			"target_station": "IngredientDisplay",
-			"wait_type": "bowl_refilled"
-		},
-		{
-			"id": "second_restaple",
-			"text": "补配完成。再去主食柜按 H，重新加入面。",
-			"target_station": "StapleArea",
-			"wait_type": "held_bowl_has_staple"
+			"id": "second_refill_and_staple",
+			"text": "补回配菜，并重新加入主食。两个顺序都可以。",
+			"target_station": "",
+			"wait_type": "refill_and_staple_ready"
 		},
 		{
 			"id": "second_recook",
-			"text": "把订单盆重新倒进锅里。",
+			"text": "配菜和主食都好了。把订单盆重新倒进锅里。",
 			"target_station": "CookerStation1",
 			"wait_type": "bowl_in_pot"
 		},
@@ -453,6 +453,16 @@ func _event_completes_wait(wait_type: String, event_name: String, payload: Dicti
 			if refilled:
 				waiting_for_refill_order_id = 0
 			return refilled
+		"refill_and_staple_ready":
+			var ready_bowl: OrderBowl = payload.get("bowl", null) as OrderBowl
+			if event_name != "bowl_refilled" and event_name != "held_bowl_has_staple":
+				return false
+			if not _is_current_order_bowl(ready_bowl):
+				return false
+			var ready: bool = not ready_bowl.needs_refill and ready_bowl.is_staple_ready_for_cooking()
+			if ready:
+				waiting_for_refill_order_id = 0
+			return ready
 		_:
 			return false
 
@@ -506,9 +516,13 @@ func _prepare_step(step_id: String) -> void:
 			if int(manager.held_table_trash) != 0:
 				manager._refresh_ui("先把手里的垃圾扔掉")
 				return
-			if manager.dirty_dining_tables.has(1):
-				manager.dirty_dining_tables.erase(1)
-				manager._refresh_dining_table_visual(1)
+
+			# 复习单开始前，清掉教程遗留的堂食桌垃圾，避免旧桌面状态干扰。
+			for table_id in [1, 2]:
+				if manager.dirty_dining_tables.has(table_id):
+					manager.dirty_dining_tables.erase(table_id)
+					manager._refresh_dining_table_visual(table_id)
+
 			manager.next_tutorial_order = get_fourth_order_override()
 		_spawn_next_tutorial_customer_if_needed()
 
@@ -516,14 +530,49 @@ func _prepare_step(step_id: String) -> void:
 func _spawn_next_tutorial_customer_if_needed() -> void:
 	if manager == null or not manager.is_day_open:
 		return
+
 	if manager._get_counter_customer() != null:
+		print("Tutorial spawn blocked: counter")
 		return
+
+	# 清理已经无效或已经离开中的顾客引用，避免旧顾客卡住下一位教程顾客。
+	var cleaned_queue: Array[RestaurantCustomer] = []
+	for customer in manager.queued_customers:
+		var restaurant_customer: RestaurantCustomer = customer as RestaurantCustomer
+		if restaurant_customer == null:
+			continue
+		if not is_instance_valid(restaurant_customer):
+			continue
+		if restaurant_customer.current_state == RestaurantCustomer.CustomerState.LEAVING:
+			continue
+		cleaned_queue.append(restaurant_customer)
+	manager.queued_customers = cleaned_queue
+
 	if not manager.queued_customers.is_empty():
+		print("Tutorial spawn blocked: queued")
 		return
+
+	# 清理已经无效或正在离开的等待顾客。
+	var waiting_ids_to_erase: Array[int] = []
+	for order_id in manager.waiting_customers_by_order_id.keys():
+		var waiting_customer: RestaurantCustomer = manager.waiting_customers_by_order_id[order_id] as RestaurantCustomer
+		if waiting_customer == null:
+			waiting_ids_to_erase.append(int(order_id))
+			continue
+		if not is_instance_valid(waiting_customer):
+			waiting_ids_to_erase.append(int(order_id))
+			continue
+		if waiting_customer.current_state == RestaurantCustomer.CustomerState.LEAVING:
+			waiting_ids_to_erase.append(int(order_id))
+			continue
+	for order_id in waiting_ids_to_erase:
+		manager.waiting_customers_by_order_id.erase(order_id)
+
 	if not manager.waiting_customers_by_order_id.is_empty():
+		print("Tutorial spawn blocked: waiting")
 		return
-	if not manager._get_tracked_order_bowls().is_empty():
-		return
+
+	print("Tutorial spawning customer index: ", tutorial_order_index)
 	manager.spawn_customer()
 
 

@@ -166,12 +166,14 @@ func mark_needs_refill() -> void:
 
 
 func refill_from_ticket() -> void:
+	var had_staple_added: bool = staple_added
+	var previous_actual_staple_type: String = actual_staple_type
 	is_empty_holder = false
 	needs_refill = false
 	status = STATUS_WAITING
 	staple_state = STAPLE_RAW
-	staple_added = staple_type == "none"
-	actual_staple_type = "none"
+	staple_added = had_staple_added or staple_type == "none"
+	actual_staple_type = previous_actual_staple_type if had_staple_added else "none"
 	sauces.clear()
 	added_chili_count = 0
 	cook_time = 0.0

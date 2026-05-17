@@ -97,6 +97,14 @@ func _is_tutorial_time_paused() -> bool:
 	return tutorial_controller != null and tutorial_controller.has_method("pauses_time") and tutorial_controller.pauses_time()
 
 
+func _is_tutorial_cooked_pot_protected() -> bool:
+	return tutorial_controller != null and tutorial_controller.has_method("protects_cooked_pots") and tutorial_controller.protects_cooked_pots()
+
+
+func notify_tutorial_bowl_became_cooked(bowl: OrderBowl) -> void:
+	_notify_tutorial("tutorial_bowl_became_cooked", {"bowl": bowl})
+
+
 func _update_day_timer(delta: float) -> void:
 	if not is_day_open:
 		return

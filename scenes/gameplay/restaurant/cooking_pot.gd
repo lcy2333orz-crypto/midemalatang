@@ -17,8 +17,20 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	if is_on_heat and content_bowl != null and is_instance_valid(content_bowl):
-		content_bowl.update_cooking(delta)
+		var manager: RestaurantGameManager = _get_restaurant_manager()
+		var tutorial_protected: bool = manager != null and manager._is_tutorial_cooked_pot_protected()
+		if tutorial_protected and content_bowl.status == OrderBowl.STATUS_COOKED and not content_bowl.is_overcooked():
+			refresh_visual()
+			return
+		var was_cooked: bool = content_bowl.status == OrderBowl.STATUS_COOKED and not content_bowl.is_overcooked()
+		var cook_delta: float = delta
+		if tutorial_protected and content_bowl.status == OrderBowl.STATUS_COOKING:
+			cook_delta = min(delta, max(content_bowl.ingredient_time_required - content_bowl.cook_time, 0.0))
+		content_bowl.update_cooking(cook_delta)
+		var became_cooked: bool = not was_cooked and content_bowl.status == OrderBowl.STATUS_COOKED and not content_bowl.is_overcooked()
 		refresh_visual()
+		if became_cooked and manager != null:
+			manager.notify_tutorial_bowl_became_cooked(content_bowl)
 
 
 func is_empty() -> bool:
@@ -178,6 +190,13 @@ func _copy_content_to_bowl(target: OrderBowl, source: OrderBowl) -> void:
 func _clean_invalid_content() -> void:
 	if content_bowl != null and not is_instance_valid(content_bowl):
 		content_bowl = null
+
+
+func _get_restaurant_manager() -> RestaurantGameManager:
+	var tree: SceneTree = get_tree()
+	if tree == null:
+		return null
+	return tree.get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
 
 
 func _ensure_visuals() -> void:
