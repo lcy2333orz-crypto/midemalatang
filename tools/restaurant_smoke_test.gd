@@ -163,6 +163,11 @@ func _run() -> void:
 		_finish()
 		return
 
+	await _check_unlocked_shop_devices()
+	if not failures.is_empty():
+		_finish()
+		return
+
 	await _check_takeout_pickup_slot_completion()
 	if not failures.is_empty():
 		_finish()
@@ -193,7 +198,12 @@ func _run() -> void:
 		_finish()
 		return
 
-	await _check_summary_scene()
+	_check_run_state_upgrades()
+	if not failures.is_empty():
+		_finish()
+		return
+
+	await _check_night_upgrade_mode()
 	if not failures.is_empty():
 		_finish()
 		return
@@ -257,6 +267,8 @@ func _check_scene_loads() -> void:
 	_assert_greybox_labels(scene)
 	_assert_independent_cell_bodies(scene)
 	_assert_removed_duplicate_cells(scene)
+	if scene.get_node_or_null("Stations/DiningTables/DiningTable3") != null:
+		_fail("scene nodes", "DiningTable3 should not exist in the tutorial/day 1 scene")
 	_assert_character_scale(scene)
 	_assert_single_highlight(scene)
 
@@ -889,6 +901,8 @@ func _check_tutorial_controller() -> void:
 
 	manager.held_table_trash = 0
 	manager.dirty_dining_tables.clear()
+	manager.dirty_dining_tables[2] = true
+	manager._refresh_dining_table_visual(2)
 	manager.queued_customers.clear()
 	manager.waiting_customers_by_order_id.clear()
 	var blocked_counter_customer: RestaurantCustomer = stale_customer_scene.instantiate() as RestaurantCustomer
@@ -945,8 +959,13 @@ func _check_tutorial_controller() -> void:
 		_fail("tutorial controller", "review_counter should spawn one fourth tutorial customer despite leaving customers or tracked bowls")
 		scene.queue_free()
 		return
-	if manager.dirty_dining_tables.has(1):
-		_fail("tutorial controller", "review_counter should clear table 1 dirty state before review order")
+	if not bool(manager.dirty_dining_tables.get(2, false)):
+		_fail("tutorial controller", "review_counter should keep table 2 dirty before the review order")
+		scene.queue_free()
+		return
+	var table_2_label: Label = scene.get_node_or_null("Stations/DiningTables/DiningTable2/Label") as Label
+	if table_2_label == null or not table_2_label.text.contains("有垃圾"):
+		_fail("tutorial controller", "review_counter should not refresh table 2 back to clean")
 		scene.queue_free()
 		return
 	if str(manager.next_tutorial_order.get("service_mode", "")) != "dine_in" or int(manager.next_tutorial_order.get("table_id", 0)) != 1 or str(manager.next_tutorial_order.get("staple_type", "")) != "noodle" or int(manager.next_tutorial_order.get("required_chili_count", -1)) != 1:
@@ -977,12 +996,16 @@ func _check_tutorial_controller() -> void:
 		_fail("tutorial controller", "day1_done confirm should finish tutorial")
 		scene.queue_free()
 		return
-	if tutorial_label == null or not tutorial_label.text.contains("Day 1 教学完成，进入夜间总结"):
-		_fail("tutorial controller", "finished tutorial should show night summary handoff text")
+	if tutorial_label == null or not tutorial_label.text.contains("Day 1") or not tutorial_label.text.contains("夜间准备"):
+		_fail("tutorial controller", "finished tutorial should show night preparation handoff text")
 		scene.queue_free()
 		return
 	if not bool(manager.summary_transition_requested) or RestaurantRunState.last_day_summary.is_empty():
 		_fail("tutorial controller", "finished tutorial should request and record night summary")
+		scene.queue_free()
+		return
+	if not bool(manager.night_upgrade_mode):
+		_fail("tutorial controller", "finished tutorial should enter in-scene night upgrade mode")
 		scene.queue_free()
 		return
 	if int(RestaurantRunState.last_day_summary.get("completed_orders", 0)) != 4:
@@ -1534,7 +1557,6 @@ func _assert_small_shared_interaction_shape(scene: Node) -> void:
 		"Stations/TrashBin/InteractionArea/CollisionShape2D",
 		"Stations/DiningTables/DiningTable1/InteractionArea/CollisionShape2D",
 		"Stations/DiningTables/DiningTable2/InteractionArea/CollisionShape2D",
-		"Stations/DiningTables/DiningTable3/InteractionArea/CollisionShape2D",
 		"Stations/IngredientDisplay/InteractionArea/CollisionShape2D",
 		"Stations/DrinksFridge/InteractionArea/CollisionShape2D",
 		"Stations/StorageArea/InteractionArea/CollisionShape2D",
@@ -1649,7 +1671,6 @@ func _assert_required_interaction_areas(scene: Node) -> void:
 		"Stations/TrashBin/InteractionArea",
 		"Stations/DiningTables/DiningTable1/InteractionArea",
 		"Stations/DiningTables/DiningTable2/InteractionArea",
-		"Stations/DiningTables/DiningTable3/InteractionArea",
 		"Stations/IngredientDisplay/InteractionArea",
 		"Stations/DrinksFridge/InteractionArea",
 		"Stations/StorageArea/InteractionArea",
@@ -3043,7 +3064,6 @@ func _check_placeholder_interactions_do_not_mutate() -> void:
 		"IngredientDisplay2",
 		"DrinkStorage",
 		"CookerStationLocked",
-		"DiningTable3",
 	]
 	for station_name in placeholder_names:
 		manager.interact_with_station(station_name)
@@ -3097,6 +3117,67 @@ func _check_refill_from_open_ingredient_displays() -> void:
 
 	scene.queue_free()
 	_pass("ingredient refill")
+
+
+func _check_unlocked_shop_devices() -> void:
+	RestaurantRunState.start_new_run(3)
+	RestaurantRunState.apply_upgrade("ingredient_display_4")
+	RestaurantRunState.apply_upgrade("drink_fridge_2")
+	RestaurantRunState.apply_upgrade("cooker_3")
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("shop upgrades", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	var ingredient_label: Label = scene.get_node_or_null("LockedPlaceholders/IngredientDisplay4Locked/Label") as Label
+	var drink_label: Label = scene.get_node_or_null("LockedPlaceholders/DrinkFridge2Locked/Label") as Label
+	var cooker_label: Label = scene.get_node_or_null("LockedPlaceholders/Cooker3Locked/Label") as Label
+	if ingredient_label == null or ingredient_label.text != "选菜4":
+		_fail("shop upgrades", "ingredient display upgrade should update the fourth display label")
+		scene.queue_free()
+		return
+	if drink_label == null or drink_label.text != "饮料2":
+		_fail("shop upgrades", "drink fridge upgrade should update the second fridge label")
+		scene.queue_free()
+		return
+	if cooker_label == null or cooker_label.text != "锅位3":
+		_fail("shop upgrades", "third cooker upgrade should update the cooker placeholder label")
+		scene.queue_free()
+		return
+
+	var bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(bowl)
+	bowl.setup_order(630, {"spinach": 1}, "noodle", "mild", "dine_in", 1, 0)
+	bowl.mark_needs_refill()
+	manager._hold_bowl(bowl)
+	manager.interact_with_station_action("IngredientDisplayLocked")
+	if manager.held_bowl == null or manager.held_bowl.needs_refill or manager.held_bowl.is_empty_holder:
+		_fail("shop upgrades", "unlocked fourth ingredient display should refill a needs_refill bowl")
+		scene.queue_free()
+		return
+	manager.held_bowl.queue_free()
+	manager.held_bowl = null
+
+	manager.interact_with_station_action("DrinkFridgeLocked")
+	if manager.ui == null or manager.ui.status_label == null or manager.ui.status_label.text.contains("未解锁"):
+		_fail("shop upgrades", "unlocked drink fridge should not show locked copy")
+		scene.queue_free()
+		return
+	manager.interact_with_station_action("CookerStationLocked")
+	if manager.ui == null or manager.ui.status_label == null or manager.ui.status_label.text.contains("未解锁"):
+		_fail("shop upgrades", "unlocked cooker placeholder should not show locked copy")
+		scene.queue_free()
+		return
+
+	scene.queue_free()
+	_pass("shop upgrades")
 
 
 func _check_takeout_pickup_slot_completion() -> void:
@@ -3624,71 +3705,108 @@ func _check_manual_close_day() -> void:
 	_pass("manual close")
 
 
-func _check_summary_scene() -> void:
-	RestaurantRunState.start_new_run(2)
-	RestaurantRunState.record_day({
-		"day": 1,
-		"max_days": 2,
-		"completed_orders": 2,
-		"failed_orders": 1,
-		"queue_lost_customers": 1,
-		"money_today": 20,
-		"score_today": 7,
-		"review_text": "评价：还能再稳一点。"
-	})
-
-	var scene_resource: PackedScene = load("res://scenes/restaurant_summary/restaurant_night_summary.tscn")
-	if scene_resource == null:
-		_fail("summary scene", "night summary scene could not be loaded")
+func _check_run_state_upgrades() -> void:
+	RestaurantRunState.start_new_run(3)
+	if not RestaurantRunState.unlocked_upgrades.is_empty():
+		_fail("run upgrades", "new run should clear unlocked upgrades")
 		return
+	RestaurantRunState.apply_upgrade("cooker_3")
+	if not RestaurantRunState.has_upgrade("cooker_3"):
+		_fail("run upgrades", "applied upgrade should be marked as unlocked")
+		return
+	RestaurantRunState.apply_upgrade("")
+	if RestaurantRunState.unlocked_upgrades.has(""):
+		_fail("run upgrades", "empty upgrade id should be ignored")
+		return
+	RestaurantRunState.start_new_run(3)
+	if RestaurantRunState.has_upgrade("cooker_3"):
+		_fail("run upgrades", "start_new_run should reset upgrades")
+		return
+	_pass("run upgrades")
 
+
+func _check_night_upgrade_mode() -> void:
+	RestaurantRunState.start_new_run(2)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	if scene_resource == null:
+		_fail("night upgrades", "restaurant scene could not be loaded")
+		return
 	var scene: Node = scene_resource.instantiate()
 	get_root().add_child(scene)
 	await process_frame
+	await process_frame
 
-	var continue_button: Button = scene.get("continue_button") as Button
-	var summary_label: Label = scene.get("summary_label") as Label
-	if continue_button == null or summary_label == null:
-		_fail("summary scene", "summary widgets were not created")
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("night upgrades", "restaurant manager was not found")
 		scene.queue_free()
 		return
-	if continue_button.text != "继续下一天":
-		_fail("summary scene", "incomplete run should continue to next day")
+	manager.auto_change_to_summary = true
+	manager.completed_orders = 2
+	manager.money_today = 20
+	manager._finish_day_and_show_summary()
+	if not bool(manager.night_upgrade_mode) or not bool(manager.summary_transition_requested):
+		_fail("night upgrades", "day finish should enter in-scene night upgrade mode")
 		scene.queue_free()
 		return
-	if not summary_label.text.contains("今日收入：20"):
-		_fail("summary scene", "summary did not show day results")
+	if RestaurantRunState.last_day_summary.is_empty():
+		_fail("night upgrades", "day finish should still record summary data")
 		scene.queue_free()
 		return
-	if not summary_label.text.contains("今天完成了基础培训"):
-		_fail("summary scene", "Day 1 summary should mention basic training completion")
+	var ingredient_label: Label = scene.get_node_or_null("LockedPlaceholders/IngredientDisplay4Locked/Label") as Label
+	if ingredient_label == null or not ingredient_label.text.contains("价格 80") or not ingredient_label.text.contains("解锁配菜柜"):
+		_fail("night upgrades", "available upgrade should show title and price on the map")
+		scene.queue_free()
+		return
+	manager.request_close_day()
+	if RestaurantRunState.current_day != 1:
+		_fail("night upgrades", "night mode should not continue before selecting an upgrade")
+		scene.queue_free()
+		return
+	manager.interact_with_station_action("IngredientDisplayLocked")
+	if not RestaurantRunState.has_upgrade("ingredient_display_4") or str(manager.selected_night_upgrade_id) != "ingredient_display_4":
+		_fail("night upgrades", "selecting highlighted ingredient upgrade should record it")
+		scene.queue_free()
+		return
+	manager.interact_with_station_action("DrinkFridgeLocked")
+	if RestaurantRunState.has_upgrade("drink_fridge_2"):
+		_fail("night upgrades", "night mode should not allow selecting a second upgrade")
+		scene.queue_free()
+		return
+	manager.request_close_day()
+	if RestaurantRunState.current_day != 2:
+		_fail("night upgrades", "selected upgrade should allow continuing to next day")
 		scene.queue_free()
 		return
 	scene.queue_free()
-
-	RestaurantRunState.start_new_run(1)
-	RestaurantRunState.record_day({
-		"day": 1,
-		"max_days": 1,
-		"completed_orders": 1,
-		"failed_orders": 0,
-		"queue_lost_customers": 0,
-		"money_today": 10,
-		"score_today": 10,
-		"review_text": "评价：还能再稳一点。"
-	})
-
-	var final_scene: Node = scene_resource.instantiate()
-	get_root().add_child(final_scene)
 	await process_frame
-	var final_continue: Button = final_scene.get("continue_button") as Button
-	if final_continue == null or final_continue.text != "完成本轮，返回主页":
-		_fail("summary scene", "complete run should return home")
-		final_scene.queue_free()
-		return
 
-	final_scene.queue_free()
-	_pass("summary scene")
+	RestaurantRunState.start_new_run(2)
+	RestaurantRunState.apply_upgrade("ingredient_display_4")
+	RestaurantRunState.apply_upgrade("drink_fridge_2")
+	RestaurantRunState.apply_upgrade("cooker_3")
+	var tidy_scene: Node = scene_resource.instantiate()
+	get_root().add_child(tidy_scene)
+	await process_frame
+	await process_frame
+	var tidy_manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if tidy_manager == null:
+		_fail("night upgrades", "tidy restaurant manager was not found")
+		tidy_scene.queue_free()
+		return
+	tidy_manager._finish_day_and_show_summary()
+	var counter_label: Label = tidy_scene.get_node_or_null("Stations/Counter/Label") as Label
+	if counter_label == null or not counter_label.text.contains("整理店铺"):
+		_fail("night upgrades", "fully upgraded night should show tidy option on the map")
+		tidy_scene.queue_free()
+		return
+	tidy_manager.interact_with_station_action("Counter")
+	if RestaurantRunState.has_upgrade("tidy_shop") or str(tidy_manager.selected_night_upgrade_id) != "tidy_shop":
+		_fail("night upgrades", "tidy option should be selectable without becoming a permanent upgrade")
+		tidy_scene.queue_free()
+		return
+	tidy_scene.queue_free()
+	_pass("night upgrades")
 
 
 func _check_staple_timing() -> void:

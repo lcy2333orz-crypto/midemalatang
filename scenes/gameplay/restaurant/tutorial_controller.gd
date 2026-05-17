@@ -565,13 +565,6 @@ func _prepare_step(step_id: String) -> void:
 			if int(manager.held_table_trash) != 0:
 				manager._refresh_ui("先把手里的垃圾扔掉")
 				return
-
-			# 复习单开始前，清掉教程遗留的堂食桌垃圾，避免旧桌面状态干扰。
-			for table_id in [1, 2]:
-				if manager.dirty_dining_tables.has(table_id):
-					manager.dirty_dining_tables.erase(table_id)
-					manager._refresh_dining_table_visual(table_id)
-
 			manager.next_tutorial_order = get_fourth_order_override()
 		_spawn_next_tutorial_customer_if_needed()
 
@@ -632,7 +625,7 @@ func _finish_tutorial() -> void:
 	enabled = false
 	_clear_highlight()
 	if ui != null and ui.has_method("show_tutorial_text"):
-		ui.show_tutorial_text("Day 1 教学完成，进入夜间总结。")
+		ui.show_tutorial_text("Day 1 教学完成，进入夜间准备。")
 	if manager != null and manager.has_method("finish_tutorial_day"):
 		manager.finish_tutorial_day()
 

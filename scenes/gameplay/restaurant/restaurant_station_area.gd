@@ -24,7 +24,7 @@ func get_interaction_priority() -> int:
 	match station_name:
 		"Counter":
 			return 120
-		"DiningTable1", "DiningTable2", "DiningTable3", "TakeoutPickup":
+		"DiningTable1", "DiningTable2", "TakeoutPickup":
 			return 110
 		"WaitingOrderArea":
 			return 100

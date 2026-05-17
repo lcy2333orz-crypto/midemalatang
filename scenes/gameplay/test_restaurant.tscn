@@ -1427,36 +1427,6 @@ station_label = "桌2"
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/DiningTables/DiningTable2/InteractionArea"]
 shape = SubResource("Shape_interact_square")
 
-[node name="DiningTable3" type="Node2D" parent="Stations/DiningTables"]
-position = Vector2(480, 512.5)
-
-[node name="Visual" type="Polygon2D" parent="Stations/DiningTables/DiningTable3"]
-color = Color(0.65, 0.45, 0.28, 1)
-polygon = PackedVector2Array(-22, -22, 22, -22, 22, 22, -22, 22)
-
-[node name="Label" type="Label" parent="Stations/DiningTables/DiningTable3"]
-offset_left = -48.0
-offset_top = -18.0
-offset_right = 48.0
-offset_bottom = 18.0
-text = "桌3备用"
-horizontal_alignment = 1
-vertical_alignment = 1
-theme_override_font_sizes/font_size = 8
-
-[node name="SolidBody" type="StaticBody2D" parent="Stations/DiningTables/DiningTable3"]
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/DiningTables/DiningTable3/SolidBody"]
-shape = SubResource("Shape_solid_table")
-
-[node name="InteractionArea" type="Area2D" parent="Stations/DiningTables/DiningTable3"]
-collision_layer = 2
-script = ExtResource("3_station_area")
-station_name = "DiningTable3"
-station_label = "桌3备用"
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Stations/DiningTables/DiningTable3/InteractionArea"]
-shape = SubResource("Shape_interact_square")
 
 [node name="DrinksFridge" type="Node2D" parent="Stations"]
 position = Vector2(345, 152.5)

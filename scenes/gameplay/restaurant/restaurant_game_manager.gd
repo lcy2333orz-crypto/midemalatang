@@ -5,6 +5,40 @@ const RestaurantCustomerScene = preload("res://scenes/gameplay/restaurant/restau
 const OrderBowlScene = preload("res://scenes/gameplay/restaurant/order_bowl.tscn")
 const ItemIds = preload("res://gameplay/models/item_ids.gd")
 const NIGHT_SUMMARY_SCENE_PATH = "res://scenes/restaurant_summary/restaurant_night_summary.tscn"
+const NIGHT_UPGRADE_OPTIONS: Array[Dictionary] = [
+	{
+		"id": "ingredient_display_4",
+		"title": "解锁配菜柜",
+		"price": 80,
+		"description": "明天开放第 4 个配菜柜位置。",
+		"station": "IngredientDisplayLocked",
+		"node_path": "../LockedPlaceholders/IngredientDisplay4Locked"
+	},
+	{
+		"id": "drink_fridge_2",
+		"title": "解锁饮料柜",
+		"price": 60,
+		"description": "明天开放第 2 个饮料柜位置。",
+		"station": "DrinkFridgeLocked",
+		"node_path": "../LockedPlaceholders/DrinkFridge2Locked"
+	},
+	{
+		"id": "cooker_3",
+		"title": "解锁第三个锅位",
+		"price": 120,
+		"description": "明天可以使用第 3 个锅位。",
+		"station": "CookerStationLocked",
+		"node_path": "../LockedPlaceholders/Cooker3Locked"
+	},
+]
+const TIDY_SHOP_UPGRADE: Dictionary = {
+	"id": "tidy_shop",
+	"title": "整理店铺",
+	"price": 0,
+	"description": "没有新的设备可解锁，明天继续营业。",
+	"station": "Counter",
+	"node_path": "../Stations/Counter"
+}
 
 @export var max_customers: int = 3
 @export var customer_count_min: int = 0
@@ -26,6 +60,9 @@ var day_time_remaining: float = 90.0
 var is_day_open: bool = true
 var is_ending_day: bool = false
 var summary_transition_requested: bool = false
+var night_upgrade_mode: bool = false
+var selected_night_upgrade_id: String = ""
+var selected_night_upgrade_title: String = ""
 var next_order_id: int = 1
 var spawn_count: int = 0
 var planned_customer_count: int = 3
@@ -71,6 +108,7 @@ func _ready() -> void:
 	if tutorial_controller != null:
 		tutorial_controller.setup(self, ui)
 	_resolve_planned_customer_count()
+	_apply_unlocked_upgrade_state()
 	if is_day_open and not _is_tutorial_customer_controlled():
 		spawn_customer()
 	_refresh_ui("餐厅营业开始")
@@ -83,6 +121,9 @@ func _initialize_day_state() -> void:
 	is_day_open = day_time_remaining > 0.0
 	is_ending_day = false
 	summary_transition_requested = false
+	night_upgrade_mode = false
+	selected_night_upgrade_id = ""
+	selected_night_upgrade_title = ""
 	completed_orders = 0
 	failed_orders = 0
 	money_today = 0
@@ -184,6 +225,9 @@ func _update_day_timer(delta: float) -> void:
 
 func _process(delta: float) -> void:
 	_update_busy_action(delta)
+	if night_upgrade_mode:
+		_refresh_ui()
+		return
 	var tutorial_time_paused: bool = _is_tutorial_time_paused()
 	var tutorial_customer_controlled: bool = _is_tutorial_customer_controlled()
 	if not tutorial_time_paused:
@@ -213,6 +257,9 @@ func spawn_customer() -> RestaurantCustomer:
 
 
 func request_close_day() -> void:
+	if night_upgrade_mode:
+		_continue_after_night_upgrade()
+		return
 	if is_ending_day:
 		_refresh_ui("正在进入结算")
 		if ui != null and ui.has_method("show_toast"):
@@ -254,6 +301,9 @@ func interact_with_station_action(station_name: String, action_name: String = "i
 	if _is_busy():
 		_refresh_ui(_busy_status_text())
 		return
+	if night_upgrade_mode:
+		_interact_night_upgrade_station(station_name)
+		return
 	if station_name == "SauceStation":
 		interact_chili_station_action(action_name)
 		return
@@ -261,6 +311,9 @@ func interact_with_station_action(station_name: String, action_name: String = "i
 		interact_sauce_station_action(action_name)
 		return
 	if station_name == "IngredientDisplay" or station_name == "IngredientDisplay2" or station_name == "IngredientDisplay3":
+		interact_ingredient_display()
+		return
+	if station_name == "IngredientDisplayLocked" and RestaurantRunState.has_upgrade("ingredient_display_4"):
 		interact_ingredient_display()
 		return
 	if station_name == "CustomerTrashBin" and (action_name == "interact" or action_name == "sauce_x"):
@@ -292,8 +345,6 @@ func interact_with_station_action(station_name: String, action_name: String = "i
 			interact_delivery_table(1)
 		"DiningTable2":
 			interact_delivery_table(2)
-		"DiningTable3":
-			_interact_placeholder(station_name)
 		"TakeoutPickup":
 			interact_takeout_pickup()
 		"TrashBin":
@@ -313,6 +364,21 @@ func _get_tutorial_submission_block_message(bowl: OrderBowl) -> String:
 
 
 func _interact_placeholder(station_name: String) -> void:
+	if station_name == "IngredientDisplayLocked" and RestaurantRunState.has_upgrade("ingredient_display_4"):
+		_refresh_ui("第 4 个配菜柜已开放")
+		if ui != null and ui.has_method("show_toast"):
+			ui.show_toast("第 4 个配菜柜已开放", 1.4)
+		return
+	if station_name == "DrinkFridgeLocked" and RestaurantRunState.has_upgrade("drink_fridge_2"):
+		_refresh_ui("饮料流程暂未开放")
+		if ui != null and ui.has_method("show_toast"):
+			ui.show_toast("饮料流程暂未开放", 1.4)
+		return
+	if station_name == "CookerStationLocked" and RestaurantRunState.has_upgrade("cooker_3"):
+		_refresh_ui("第三锅位已解锁，完整功能暂未开放")
+		if ui != null and ui.has_method("show_toast"):
+			ui.show_toast("第三锅位已解锁，完整功能暂未开放", 1.4)
+		return
 	var message: String = "占位功能：%s" % station_name
 	match station_name:
 		"IngredientDisplay", "IngredientDisplay2", "IngredientDisplay3":
@@ -335,11 +401,107 @@ func _interact_placeholder(station_name: String) -> void:
 			message = "饮料库存占位"
 		"CookerStationLocked":
 			message = "锅位还未解锁"
-		"DiningTable3":
-			message = "本关暂不使用桌3"
 	_refresh_ui(message)
 	if ui != null and ui.has_method("show_toast"):
 		ui.show_toast(message, 1.4)
+
+
+func _apply_unlocked_upgrade_state() -> void:
+	if RestaurantRunState.has_upgrade("ingredient_display_4"):
+		_set_placeholder_visual("../LockedPlaceholders/IngredientDisplay4Locked", "选菜4")
+	if RestaurantRunState.has_upgrade("drink_fridge_2"):
+		_set_placeholder_visual("../LockedPlaceholders/DrinkFridge2Locked", "饮料2")
+	if RestaurantRunState.has_upgrade("cooker_3"):
+		_set_placeholder_visual("../LockedPlaceholders/Cooker3Locked", "锅位3")
+
+
+func _set_placeholder_visual(node_path: String, label_text: String) -> void:
+	var placeholder: Node = get_node_or_null(node_path)
+	if placeholder == null:
+		return
+	var label: Label = placeholder.get_node_or_null("Label") as Label
+	if label != null:
+		label.text = label_text
+	var visual: Polygon2D = placeholder.get_node_or_null("Visual") as Polygon2D
+	if visual != null:
+		visual.color = Color(0.32, 0.62, 0.42, 1.0)
+
+
+func _enter_night_upgrade_mode() -> void:
+	night_upgrade_mode = true
+	selected_night_upgrade_id = ""
+	selected_night_upgrade_title = ""
+	_apply_night_upgrade_highlights()
+	_refresh_ui("今天营业结束。选择一个高亮设备升级；选好后按打烊键继续下一天。")
+
+
+func _get_available_night_upgrades() -> Array[Dictionary]:
+	var available: Array[Dictionary] = []
+	for upgrade in NIGHT_UPGRADE_OPTIONS:
+		var upgrade_id: String = str(upgrade.get("id", ""))
+		if not RestaurantRunState.has_upgrade(upgrade_id):
+			available.append(upgrade)
+	if available.is_empty():
+		available.append(TIDY_SHOP_UPGRADE)
+	return available
+
+
+func _get_night_upgrade_for_station(station_name: String) -> Dictionary:
+	for upgrade in _get_available_night_upgrades():
+		if str(upgrade.get("station", "")) == station_name:
+			return upgrade
+	return {}
+
+
+func _apply_night_upgrade_highlights() -> void:
+	_apply_unlocked_upgrade_state()
+	for upgrade in _get_available_night_upgrades():
+		var node_path: String = str(upgrade.get("node_path", ""))
+		var placeholder: Node = get_node_or_null(node_path)
+		if placeholder == null:
+			continue
+		var title: String = str(upgrade.get("title", ""))
+		var price: int = int(upgrade.get("price", 0))
+		var description: String = str(upgrade.get("description", ""))
+		var label: Label = placeholder.get_node_or_null("Label") as Label
+		if label != null:
+			label.text = "%s\n价格 %d\n%s" % [title, price, description]
+			label.add_theme_font_size_override("font_size", 7)
+		var visual: Polygon2D = placeholder.get_node_or_null("Visual") as Polygon2D
+		if visual != null:
+			visual.color = Color(1.0, 0.86, 0.22, 1.0)
+		var area: RestaurantStationArea = placeholder.get_node_or_null("InteractionArea") as RestaurantStationArea
+		if area != null:
+			area.station_label = "%s 价格%d" % [title, price]
+
+
+func _interact_night_upgrade_station(station_name: String) -> void:
+	if selected_night_upgrade_id != "":
+		_refresh_ui("已选择：%s。按打烊键继续下一天。" % selected_night_upgrade_title)
+		return
+	var upgrade: Dictionary = _get_night_upgrade_for_station(station_name)
+	if upgrade.is_empty():
+		_refresh_ui("夜间准备中：请选择高亮的升级位置")
+		return
+	selected_night_upgrade_id = str(upgrade.get("id", ""))
+	selected_night_upgrade_title = str(upgrade.get("title", ""))
+	if selected_night_upgrade_id != "tidy_shop":
+		RestaurantRunState.apply_upgrade(selected_night_upgrade_id)
+		_apply_unlocked_upgrade_state()
+	_refresh_ui("已选择：%s。按打烊键继续下一天。" % selected_night_upgrade_title)
+
+
+func _continue_after_night_upgrade() -> void:
+	if not night_upgrade_mode:
+		return
+	if selected_night_upgrade_id == "":
+		_refresh_ui("先选择一个升级")
+		return
+	if RestaurantRunState.is_run_complete():
+		get_tree().change_scene_to_file("res://scenes/menus/home_menu.tscn")
+		return
+	RestaurantRunState.advance_day()
+	get_tree().change_scene_to_file("res://scenes/gameplay/test_restaurant.tscn")
 
 
 func interact_ingredient_display() -> void:
@@ -1776,6 +1938,8 @@ func _has_active_restaurant_work() -> bool:
 
 func _finish_day_and_show_summary() -> void:
 	is_ending_day = true
+	is_day_open = false
+	spawn_elapsed = 0.0
 	_update_score()
 	var summary: Dictionary = {
 		"day": current_day,
@@ -1789,9 +1953,7 @@ func _finish_day_and_show_summary() -> void:
 	}
 	RestaurantRunState.record_day(summary)
 	summary_transition_requested = true
-	_refresh_ui("今日结束，进入结算")
-	if auto_change_to_summary:
-		call_deferred("_change_to_summary_scene")
+	_enter_night_upgrade_mode()
 
 
 func _change_to_summary_scene() -> void:
@@ -1831,6 +1993,18 @@ func _get_bowl_location_text(target_bowl: OrderBowl) -> String:
 
 func _refresh_ui(message: String = "") -> void:
 	if ui == null:
+		return
+
+	if night_upgrade_mode:
+		if message == "":
+			if selected_night_upgrade_id == "":
+				message = "夜间准备：选择一个高亮设备升级"
+			else:
+				message = "已选择：%s。按打烊键继续下一天。" % selected_night_upgrade_title
+		ui.update_status(message)
+		if ui.has_method("update_time_text"):
+			ui.update_time_text("夜间准备")
+		ui.update_order_cards([])
 		return
 
 	if message == "" and _is_busy():

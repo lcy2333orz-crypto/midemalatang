@@ -7,6 +7,7 @@ var total_completed_orders: int = 0
 var total_failed_orders: int = 0
 var queue_lost_customers: int = 0
 var last_day_summary: Dictionary = {}
+var unlocked_upgrades: Dictionary = {}
 
 
 func start_new_run(new_max_days: int = 3) -> void:
@@ -17,6 +18,7 @@ func start_new_run(new_max_days: int = 3) -> void:
 	total_failed_orders = 0
 	queue_lost_customers = 0
 	last_day_summary = {}
+	unlocked_upgrades = {}
 
 
 func record_day(summary: Dictionary) -> void:
@@ -33,3 +35,14 @@ func advance_day() -> void:
 
 func is_run_complete() -> bool:
 	return current_day >= max_days
+
+
+func has_upgrade(upgrade_id: String) -> bool:
+	return bool(unlocked_upgrades.get(upgrade_id, false))
+
+
+func apply_upgrade(upgrade_id: String) -> void:
+	var normalized_id: String = upgrade_id.strip_edges()
+	if normalized_id == "":
+		return
+	unlocked_upgrades[normalized_id] = true
