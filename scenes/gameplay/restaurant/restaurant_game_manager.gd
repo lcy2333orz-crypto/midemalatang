@@ -1749,6 +1749,15 @@ func _check_day_end() -> void:
 	_finish_day_and_show_summary()
 
 
+func finish_tutorial_day() -> void:
+	if is_ending_day:
+		return
+	is_day_open = false
+	day_time_remaining = 0.0
+	spawn_elapsed = 0.0
+	_finish_day_and_show_summary()
+
+
 func _has_active_restaurant_work() -> bool:
 	if held_dirty_cooker != null:
 		return true

@@ -56,6 +56,8 @@ func _refresh_summary() -> void:
 	var money: int = int(summary.get("money_today", 0))
 	var score: int = int(summary.get("score_today", 0))
 	var review: String = str(summary.get("review_text", _get_review_text(score)))
+	if day == 1:
+		review = "%s\n今天完成了基础培训。" % review
 
 	summary_label.text = "第 %d / %d 天结束\n完成订单：%d\n失败订单：%d\n排队流失：%d\n今日收入：%d\n今日评分：%d\n%s" % [
 		day,

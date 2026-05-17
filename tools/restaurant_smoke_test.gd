@@ -967,13 +967,33 @@ func _check_tutorial_controller() -> void:
 		_fail("tutorial controller", "review dine-in completion should advance to day1_done")
 		scene.queue_free()
 		return
+	manager.completed_orders = 4
+	manager.failed_orders = 0
+	manager.money_today = 40
+	manager.score_today = 12
+	manager.auto_change_to_summary = false
 	controller._advance_step()
 	if not controller.finished or bool(controller.enabled):
 		_fail("tutorial controller", "day1_done confirm should finish tutorial")
 		scene.queue_free()
 		return
-	if tutorial_label == null or not tutorial_label.text.contains("当前教学到这里"):
-		_fail("tutorial controller", "finished tutorial should show final tutorial text")
+	if tutorial_label == null or not tutorial_label.text.contains("Day 1 教学完成，进入夜间总结"):
+		_fail("tutorial controller", "finished tutorial should show night summary handoff text")
+		scene.queue_free()
+		return
+	if not bool(manager.summary_transition_requested) or RestaurantRunState.last_day_summary.is_empty():
+		_fail("tutorial controller", "finished tutorial should request and record night summary")
+		scene.queue_free()
+		return
+	if int(RestaurantRunState.last_day_summary.get("completed_orders", 0)) != 4:
+		_fail("tutorial controller", "tutorial finish summary should record completed orders")
+		scene.queue_free()
+		return
+	var total_money_after_tutorial_finish: int = int(RestaurantRunState.total_money)
+	var total_completed_after_tutorial_finish: int = int(RestaurantRunState.total_completed_orders)
+	manager.finish_tutorial_day()
+	if int(RestaurantRunState.total_money) != total_money_after_tutorial_finish or int(RestaurantRunState.total_completed_orders) != total_completed_after_tutorial_finish:
+		_fail("tutorial controller", "finish_tutorial_day should not record day twice")
 		scene.queue_free()
 		return
 	scene.queue_free()
@@ -1015,6 +1035,26 @@ func _check_tutorial_controller() -> void:
 		return
 
 	disabled_scene.queue_free()
+
+	RestaurantRunState.start_new_run(3)
+	RestaurantRunState.current_day = 2
+	var day_two_scene: Node = scene_resource.instantiate()
+	get_root().add_child(day_two_scene)
+	await process_frame
+	await process_frame
+	var day_two_controller: TutorialController = day_two_scene.get_node_or_null("TutorialController") as TutorialController
+	var day_two_ui: RestaurantUI = day_two_scene.get_node_or_null("UI") as RestaurantUI
+	if day_two_controller == null or bool(day_two_controller.enabled):
+		_fail("tutorial controller", "Day 2 should not enable Day 1 tutorial")
+		day_two_scene.queue_free()
+		return
+	var day_two_tutorial_panel: Panel = day_two_ui.get("tutorial_panel") as Panel if day_two_ui != null else null
+	if day_two_tutorial_panel != null and bool(day_two_tutorial_panel.visible):
+		_fail("tutorial controller", "Day 2 should not show Day 1 tutorial panel")
+		day_two_scene.queue_free()
+		return
+	day_two_scene.queue_free()
+
 	_pass("tutorial controller")
 
 
@@ -3618,6 +3658,10 @@ func _check_summary_scene() -> void:
 		return
 	if not summary_label.text.contains("今日收入：20"):
 		_fail("summary scene", "summary did not show day results")
+		scene.queue_free()
+		return
+	if not summary_label.text.contains("今天完成了基础培训"):
+		_fail("summary scene", "Day 1 summary should mention basic training completion")
 		scene.queue_free()
 		return
 	scene.queue_free()

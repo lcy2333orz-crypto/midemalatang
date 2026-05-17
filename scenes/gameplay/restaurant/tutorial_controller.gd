@@ -632,7 +632,9 @@ func _finish_tutorial() -> void:
 	enabled = false
 	_clear_highlight()
 	if ui != null and ui.has_method("show_tutorial_text"):
-		ui.show_tutorial_text("当前教学到这里。")
+		ui.show_tutorial_text("Day 1 教学完成，进入夜间总结。")
+	if manager != null and manager.has_method("finish_tutorial_day"):
+		manager.finish_tutorial_day()
 
 
 func _is_current_order_bowl(bowl: OrderBowl) -> bool:
