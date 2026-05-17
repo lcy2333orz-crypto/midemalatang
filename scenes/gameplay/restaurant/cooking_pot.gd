@@ -19,7 +19,7 @@ func _process(delta: float) -> void:
 	if is_on_heat and content_bowl != null and is_instance_valid(content_bowl):
 		var manager: RestaurantGameManager = _get_restaurant_manager()
 		var tutorial_protected: bool = manager != null and manager._is_tutorial_cooked_pot_protected()
-		if tutorial_protected and content_bowl.status == OrderBowl.STATUS_COOKED and not content_bowl.is_overcooked():
+		if tutorial_protected and _is_protected_cooked_content(content_bowl):
 			refresh_visual()
 			return
 		var was_cooked: bool = content_bowl.status == OrderBowl.STATUS_COOKED and not content_bowl.is_overcooked()
@@ -31,6 +31,12 @@ func _process(delta: float) -> void:
 		refresh_visual()
 		if became_cooked and manager != null:
 			manager.notify_tutorial_bowl_became_cooked(content_bowl)
+
+
+func _is_protected_cooked_content(bowl: OrderBowl) -> bool:
+	if bowl == null or bowl.is_overcooked():
+		return false
+	return bowl.status == OrderBowl.STATUS_COOKED or bowl.status == OrderBowl.STATUS_READY or bowl.has_food_content_for_serving()
 
 
 func is_empty() -> bool:

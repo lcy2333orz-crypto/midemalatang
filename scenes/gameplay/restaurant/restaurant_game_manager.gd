@@ -7,6 +7,8 @@ const ItemIds = preload("res://gameplay/models/item_ids.gd")
 const NIGHT_SUMMARY_SCENE_PATH = "res://scenes/restaurant_summary/restaurant_night_summary.tscn"
 
 @export var max_customers: int = 3
+@export var customer_count_min: int = 0
+@export var customer_count_max: int = 0
 @export var spawn_interval_seconds: float = 6.0
 @export var day_time_seconds: float = 90.0
 @export var auto_change_to_summary: bool = true
@@ -26,12 +28,16 @@ var is_ending_day: bool = false
 var summary_transition_requested: bool = false
 var next_order_id: int = 1
 var spawn_count: int = 0
+var planned_customer_count: int = 3
 var spawn_elapsed: float = 0.0
 var tutorial_controller: TutorialController = null
 var next_tutorial_order: Dictionary = {}
 var tutorial_refill_holder_by_order_id: Dictionary = {}
 var dirty_dining_tables: Dictionary = {}
 var held_table_trash: int = 0
+var busy_action_name: String = ""
+var busy_action_remaining: float = 0.0
+var busy_action_callback: Callable = Callable()
 
 var held_bowl: OrderBowl = null
 var held_pot: CookingPot = null
@@ -64,6 +70,7 @@ func _ready() -> void:
 	tutorial_controller = get_node_or_null("../TutorialController") as TutorialController
 	if tutorial_controller != null:
 		tutorial_controller.setup(self, ui)
+	_resolve_planned_customer_count()
 	if is_day_open and not _is_tutorial_customer_controlled():
 		spawn_customer()
 	_refresh_ui("餐厅营业开始")
@@ -81,6 +88,8 @@ func _initialize_day_state() -> void:
 	money_today = 0
 	score_today = 0
 	queue_lost_customers_today = 0
+	spawn_count = 0
+	planned_customer_count = max(0, max_customers)
 
 
 func _notify_tutorial(event_name: String, payload: Dictionary = {}) -> void:
@@ -101,6 +110,57 @@ func _is_tutorial_cooked_pot_protected() -> bool:
 	return tutorial_controller != null and tutorial_controller.has_method("protects_cooked_pots") and tutorial_controller.protects_cooked_pots()
 
 
+func _resolve_planned_customer_count() -> void:
+	if tutorial_controller != null and tutorial_controller.has_method("get_planned_customer_count"):
+		var tutorial_customer_count: int = int(tutorial_controller.get_planned_customer_count())
+		if tutorial_customer_count > 0:
+			planned_customer_count = tutorial_customer_count
+			return
+	var min_count: int = int(customer_count_min)
+	var max_count: int = int(customer_count_max)
+	if min_count <= 0 and max_count <= 0:
+		planned_customer_count = max(0, int(max_customers))
+		return
+	min_count = max(0, min_count)
+	max_count = max(min_count, max_count)
+	planned_customer_count = randi_range(min_count, max_count)
+
+
+func _has_any_held_item() -> bool:
+	return held_bowl != null or held_pot != null or held_dirty_cooker != null or int(held_table_trash) != 0
+
+
+func _is_busy() -> bool:
+	return busy_action_remaining > 0.0
+
+
+func _busy_status_text() -> String:
+	if busy_action_name.strip_edges() == "":
+		return "处理中"
+	return "处理中：%s" % busy_action_name
+
+
+func _begin_busy_action(action_name: String, duration: float, callback: Callable) -> void:
+	busy_action_name = action_name
+	busy_action_remaining = max(duration, 0.0)
+	busy_action_callback = callback
+	_refresh_ui(_busy_status_text())
+
+
+func _update_busy_action(delta: float) -> void:
+	if busy_action_remaining <= 0.0:
+		return
+	busy_action_remaining = max(busy_action_remaining - delta, 0.0)
+	if busy_action_remaining > 0.0:
+		_refresh_ui(_busy_status_text())
+		return
+	var callback: Callable = busy_action_callback
+	busy_action_name = ""
+	busy_action_callback = Callable()
+	if callback.is_valid():
+		callback.call()
+
+
 func notify_tutorial_bowl_became_cooked(bowl: OrderBowl) -> void:
 	_notify_tutorial("tutorial_bowl_became_cooked", {"bowl": bowl})
 
@@ -115,13 +175,14 @@ func _update_day_timer(delta: float) -> void:
 
 
 func _process(delta: float) -> void:
+	_update_busy_action(delta)
 	var tutorial_time_paused: bool = _is_tutorial_time_paused()
 	var tutorial_customer_controlled: bool = _is_tutorial_customer_controlled()
 	if not tutorial_time_paused:
 		_update_day_timer(delta)
 		if is_day_open and not tutorial_customer_controlled:
 			spawn_elapsed += delta
-		if is_day_open and not tutorial_customer_controlled and spawn_count < max_customers and spawn_elapsed >= spawn_interval_seconds:
+		if is_day_open and not tutorial_customer_controlled and spawn_count < planned_customer_count and spawn_elapsed >= spawn_interval_seconds:
 			spawn_elapsed = 0.0
 			spawn_customer()
 		_update_order_patience(delta)
@@ -133,7 +194,7 @@ func _process(delta: float) -> void:
 
 
 func spawn_customer() -> RestaurantCustomer:
-	if not is_day_open or spawn_count >= max_customers:
+	if not is_day_open or spawn_count >= planned_customer_count:
 		return null
 
 	var customer: RestaurantCustomer = RestaurantCustomerScene.instantiate() as RestaurantCustomer
@@ -182,6 +243,9 @@ func interact_with_station(station_name: String) -> void:
 
 
 func interact_with_station_action(station_name: String, action_name: String = "interact") -> void:
+	if _is_busy():
+		_refresh_ui(_busy_status_text())
+		return
 	if station_name == "SauceStation":
 		interact_chili_station_action(action_name)
 		return
@@ -283,6 +347,12 @@ func interact_ingredient_display() -> void:
 
 
 func interact_counter() -> void:
+	if _is_busy():
+		_refresh_ui(_busy_status_text())
+		return
+	if held_table_trash != 0:
+		_refresh_ui("先把手里的垃圾扔掉")
+		return
 	if held_dirty_cooker != null:
 		_refresh_ui("先清理脏锅")
 		return
@@ -300,13 +370,20 @@ func interact_counter() -> void:
 		_refresh_ui("收银台前没有顾客")
 		return
 
+	_begin_busy_action("收银", 0.6, Callable(self, "_finish_counter_busy").bind(customer))
+
+
+func _finish_counter_busy(customer: RestaurantCustomer) -> void:
+	if customer == null or not is_instance_valid(customer):
+		_refresh_ui("收银台前没有顾客")
+		return
 	_create_order_from_customer(customer)
 
 
 func _create_order_from_customer(customer: RestaurantCustomer) -> void:
 	if customer == null:
 		return
-	if held_bowl != null or held_pot != null or held_dirty_cooker != null:
+	if _has_any_held_item():
 		_refresh_ui("先放下手里的东西")
 		return
 
@@ -406,6 +483,9 @@ func _can_add_order_bowl_to_pot(order_bowl: OrderBowl, pot: CookingPot) -> bool:
 
 
 func interact_surface_slot(slot_id: String) -> void:
+	if held_table_trash != 0:
+		_refresh_ui("手里有东西，先放下再拿")
+		return
 	if held_dirty_cooker != null:
 		_refresh_ui("先清理脏锅")
 		return
@@ -526,6 +606,10 @@ func interact_cooker(cooker: CookerStation) -> void:
 	if cooker == null:
 		return
 
+	if held_table_trash != 0:
+		_refresh_ui("手里有东西，先放下再拿锅")
+		return
+
 	if held_dirty_cooker != null:
 		_refresh_ui("先清理脏锅")
 		return
@@ -582,15 +666,10 @@ func _try_take_overcooked_pot_from_cooker(cooker: CookerStation) -> bool:
 	if cooker == null or not cooker.has_pot() or not cooker.active_pot.has_overcooked_content():
 		return false
 	var active_order_id: int = cooker.active_pot.content_bowl.order_id
-	if held_bowl != null:
-		if not held_bowl.is_empty_holder or held_bowl.order_id != active_order_id:
-			return false
-		var original_holder: OrderBowl = held_bowl
-		tutorial_refill_holder_by_order_id[active_order_id] = original_holder
-		held_bowl = null
-		_place_tutorial_refill_bowl(original_holder)
-		_refresh_ui("先把空盆放在操作台上，然后拿起糊锅。")
-	elif not tutorial_refill_holder_by_order_id.has(active_order_id):
+	if _has_any_held_item():
+		_refresh_ui("手里有东西，先放下再拿锅")
+		return true
+	if not tutorial_refill_holder_by_order_id.has(active_order_id):
 		var existing_holder: OrderBowl = _find_existing_empty_holder_for_order(active_order_id)
 		if existing_holder != null:
 			tutorial_refill_holder_by_order_id[active_order_id] = existing_holder
@@ -612,6 +691,9 @@ func interact_staple_cabinet() -> void:
 		return
 	if held_bowl == null:
 		_refresh_ui("先拿着订单碗")
+		return
+	if held_bowl.is_empty_holder and not held_bowl.needs_refill:
+		_refresh_ui("空碗不需要加主食")
 		return
 	if held_bowl.status != OrderBowl.STATUS_WAITING:
 		_refresh_ui("只有待处理订单需要加主食")
@@ -708,6 +790,9 @@ func _check_sauce_complete_for_current_bowl(action_text: String) -> bool:
 
 
 func interact_packing_area() -> void:
+	if _is_busy():
+		_refresh_ui(_busy_status_text())
+		return
 	if held_dirty_cooker != null:
 		_refresh_ui("先清理脏锅")
 		return
@@ -728,16 +813,29 @@ func interact_packing_area() -> void:
 	if held_bowl.status == OrderBowl.STATUS_SEALED:
 		_refresh_ui("已经封口，请去袋子区装袋")
 		return
-	held_bowl.mark_sealed()
-	_notify_tutorial("takeout_order_sealed", {"bowl": held_bowl})
-	var quality: Dictionary = _evaluate_order_quality(held_bowl)
+	_begin_busy_action("封口", 0.6, Callable(self, "_finish_packing_area_busy").bind(held_bowl))
+
+
+func _finish_packing_area_busy(target_bowl: OrderBowl) -> void:
+	if target_bowl == null or not is_instance_valid(target_bowl) or held_bowl != target_bowl:
+		_refresh_ui("封口中断，请重新操作")
+		return
+	if target_bowl.service_mode != "takeout" or target_bowl.status == OrderBowl.STATUS_SEALED or target_bowl.status == OrderBowl.STATUS_PACKED:
+		_refresh_ui("这份外带单现在不能封口")
+		return
+	target_bowl.mark_sealed()
+	_notify_tutorial("takeout_order_sealed", {"bowl": target_bowl})
+	var quality: Dictionary = _evaluate_order_quality(target_bowl)
 	if int(quality.get("money", 0)) == 10 and int(quality.get("score", 0)) == 0:
-		_refresh_ui("订单 #%03d 已封口，请去袋子区装袋" % held_bowl.order_id)
+		_refresh_ui("订单 #%03d 已封口，请去袋子区装袋" % target_bowl.order_id)
 	else:
-		_refresh_ui("订单 #%03d 已封口，但质量有问题" % held_bowl.order_id)
+		_refresh_ui("订单 #%03d 已封口，但质量有问题" % target_bowl.order_id)
 
 
 func interact_packing_bag_area() -> void:
+	if _is_busy():
+		_refresh_ui(_busy_status_text())
+		return
 	if held_dirty_cooker != null:
 		_refresh_ui("先清理脏锅")
 		return
@@ -758,9 +856,19 @@ func interact_packing_bag_area() -> void:
 	if held_bowl.status != OrderBowl.STATUS_SEALED:
 		_refresh_ui("请先去封口机打包")
 		return
-	held_bowl.mark_packed()
-	_notify_tutorial("takeout_order_packed", {"bowl": held_bowl})
-	_refresh_ui("订单 #%03d 已装袋，请放到外带桌" % held_bowl.order_id)
+	_begin_busy_action("装袋", 0.4, Callable(self, "_finish_packing_bag_busy").bind(held_bowl))
+
+
+func _finish_packing_bag_busy(target_bowl: OrderBowl) -> void:
+	if target_bowl == null or not is_instance_valid(target_bowl) or held_bowl != target_bowl:
+		_refresh_ui("装袋中断，请重新操作")
+		return
+	if target_bowl.service_mode != "takeout" or target_bowl.status != OrderBowl.STATUS_SEALED:
+		_refresh_ui("这份外带单现在不能装袋")
+		return
+	target_bowl.mark_packed()
+	_notify_tutorial("takeout_order_packed", {"bowl": target_bowl})
+	_refresh_ui("订单 #%03d 已装袋，请放到外带桌" % target_bowl.order_id)
 
 
 func interact_delivery_table(table_id: int) -> void:
@@ -1003,6 +1111,7 @@ func force_complete_one_order_for_smoke() -> bool:
 		guard += 1
 
 	interact_counter()
+	_process(0.7)
 	if held_bowl == null:
 		return false
 	if not held_bowl.is_staple_ready_for_cooking():
@@ -1029,7 +1138,9 @@ func force_complete_one_order_for_smoke() -> bool:
 		return false
 	if held_bowl.service_mode == "takeout":
 		interact_packing_area()
+		_process(0.7)
 		interact_packing_bag_area()
+		_process(0.5)
 		interact_surface_slot("TakeoutPickupSlot1")
 	else:
 		interact_delivery_table(held_bowl.table_id)
@@ -1685,6 +1796,8 @@ func _refresh_ui(message: String = "") -> void:
 	if ui == null:
 		return
 
+	if message == "" and _is_busy():
+		message = _busy_status_text()
 	ui.update_status(message)
 	if _is_tutorial_time_paused() and ui.has_method("update_time_text"):
 		ui.update_time_text("教学中")

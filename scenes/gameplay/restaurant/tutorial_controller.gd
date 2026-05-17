@@ -52,6 +52,12 @@ func controls_customer_spawning() -> bool:
 	return enabled
 
 
+func get_planned_customer_count() -> int:
+	if enabled:
+		return 4
+	return 0
+
+
 func pauses_time() -> bool:
 	return enabled
 
@@ -358,7 +364,7 @@ func _build_day_1_steps() -> void:
 		},
 		{
 			"id": "cleanup_trash_bin",
-			"text": "拿着垃圾去客用垃圾桶，按 H 扔掉。",
+			"text": "拿着垃圾去垃圾桶，按 H 扔掉。",
 			"target_station": "CustomerTrashBin",
 			"wait_type": "table_trash_discarded"
 		},
@@ -573,7 +579,9 @@ func _spawn_next_tutorial_customer_if_needed() -> void:
 		return
 
 	print("Tutorial spawning customer index: ", tutorial_order_index)
-	manager.spawn_customer()
+	var spawned_customer: RestaurantCustomer = manager.spawn_customer()
+	if spawned_customer == null:
+		print("Tutorial spawn failed: planned count reached")
 
 
 func _finish_tutorial() -> void:
