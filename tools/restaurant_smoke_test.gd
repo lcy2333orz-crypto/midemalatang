@@ -18,6 +18,11 @@ func _run() -> void:
 		_finish()
 		return
 
+	await _check_customer_choosing_delay()
+	if not failures.is_empty():
+		_finish()
+		return
+
 	_check_input_mappings()
 	if not failures.is_empty():
 		_finish()
@@ -153,6 +158,11 @@ func _run() -> void:
 		_finish()
 		return
 
+	await _check_refill_from_open_ingredient_displays()
+	if not failures.is_empty():
+		_finish()
+		return
+
 	await _check_takeout_pickup_slot_completion()
 	if not failures.is_empty():
 		_finish()
@@ -277,6 +287,14 @@ func _check_tutorial_controller() -> void:
 			_fail("tutorial controller", "tutorial text should not mention 客用垃圾桶")
 			direct_controller.queue_free()
 			return
+	var detailed_sauce_instruction_count: int = 0
+	for step in direct_controller.steps:
+		if str(step.get("text", "")).contains("按 H、J、K、L，各加一种小料"):
+			detailed_sauce_instruction_count += 1
+	if detailed_sauce_instruction_count > 1:
+		_fail("tutorial controller", "mixed sauce detailed instruction should only appear once")
+		direct_controller.queue_free()
+		return
 	direct_controller.queue_free()
 
 	RestaurantRunState.start_new_run(3)
@@ -360,6 +378,61 @@ func _check_tutorial_controller() -> void:
 		scene.queue_free()
 		return
 	protected_pot.queue_free()
+
+	controller.tutorial_order_index = 3
+	var third_pot: CookingPot = CookingPot.new()
+	scene.add_child(third_pot)
+	var third_bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(third_bowl)
+	third_bowl.setup_order(925, {"spinach": 1}, "glass_noodle", "mild", "takeout", 0, 0)
+	third_bowl.add_required_staple()
+	third_pot.add_order_bowl(third_bowl)
+	third_pot.set_on_heat(true)
+	third_pot._process(third_bowl.ingredient_time_required + third_bowl.ready_window_seconds + 30.0)
+	if third_pot.content_bowl == null or third_pot.content_bowl.is_overcooked():
+		_fail("tutorial controller", "third tutorial order should not naturally overcook")
+		scene.queue_free()
+		return
+	third_pot.queue_free()
+
+	controller.tutorial_order_index = 4
+	var review_pot: CookingPot = CookingPot.new()
+	scene.add_child(review_pot)
+	var review_bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(review_bowl)
+	review_bowl.setup_order(926, {"spinach": 1}, "noodle", "mild", "dine_in", 1, 1)
+	review_bowl.add_required_staple()
+	review_pot.add_order_bowl(review_bowl)
+	review_pot.set_on_heat(true)
+	controller.current_step_index = _tutorial_step_index(controller, "review_do_order")
+	review_pot._process(review_bowl.staple_overcook_time + 0.2)
+	if review_pot.content_bowl == null or not review_pot.content_bowl.is_overcooked():
+		_fail("tutorial controller", "fourth tutorial order should be allowed to naturally overcook")
+		scene.queue_free()
+		return
+	var review_holder: OrderBowl = OrderBowl.new()
+	manager.bowls_node.add_child(review_holder)
+	review_holder.setup_order(926, {"spinach": 1}, "noodle", "mild", "dine_in", 1, 1)
+	review_holder.set_empty_holder_visual()
+	var review_waiting_customer: Node = Node.new()
+	scene.add_child(review_waiting_customer)
+	manager.waiting_customers_by_order_id[926] = review_waiting_customer
+	manager.held_bowl = null
+	manager.held_pot = review_pot
+	var failed_before_review_clear: int = int(manager.failed_orders)
+	manager.interact_trash_bin()
+	if int(manager.failed_orders) != failed_before_review_clear or not manager.waiting_customers_by_order_id.has(926):
+		_fail("tutorial controller", "fourth tutorial overcook trash should not fail order or remove customer")
+		scene.queue_free()
+		return
+	if not review_holder.needs_refill:
+		_fail("tutorial controller", "fourth tutorial overcook trash should keep original holder for refill")
+		scene.queue_free()
+		return
+	manager.waiting_customers_by_order_id.erase(926)
+	manager.held_pot = null
+	review_pot.queue_free()
+	controller.tutorial_order_index = 1
 
 	controller.current_step_index = _tutorial_step_index(controller, "wait_counter_order")
 	controller.enabled = true
@@ -459,22 +532,33 @@ func _check_tutorial_controller() -> void:
 	manager.held_bowl = original_holder
 	manager.held_pot = null
 	controller.current_step_index = _tutorial_step_index(controller, "second_overcooked")
-	if not manager._try_take_overcooked_pot_from_cooker(manager.cooker_1):
-		_fail("tutorial controller", "holding original empty bowl should be handled when trying to take overcooked pot")
-		scene.queue_free()
-		return
-	if manager.held_pot != null or manager.held_bowl != original_holder or manager.cooker_1.active_pot != tutorial_pot:
-		_fail("tutorial controller", "holding original empty bowl should block taking overcooked pot without moving the holder")
-		scene.queue_free()
-		return
-	manager.interact_surface_slot("SurfaceSlot_r1c8")
+	manager.interact_with_station_action("SurfaceSlot_r1c8")
 	var original_holder_slot_id: String = _find_surface_slot_holding_bowl(manager, original_holder)
 	if original_holder_slot_id == "" or manager.held_bowl != null:
-		_fail("tutorial controller", "player should be able to place original holder before taking overcooked pot")
+		_fail("tutorial controller", "second_overcooked should allow freely placing original holder before taking overcooked pot")
 		scene.queue_free()
 		return
-	if not manager._try_take_overcooked_pot_from_cooker(manager.cooker_1):
+	if int(controller.current_step_index) != _tutorial_step_index(controller, "second_overcooked"):
+		_fail("tutorial controller", "placing original holder should not advance second_overcooked")
+		scene.queue_free()
+		return
+	manager.interact_with_station_action(original_holder_slot_id)
+	if manager.held_bowl != original_holder:
+		_fail("tutorial controller", "second_overcooked should not block picking the holder back up")
+		scene.queue_free()
+		return
+	manager.interact_with_station_action(original_holder_slot_id)
+	if manager.held_bowl != null:
+		_fail("tutorial controller", "second_overcooked should allow placing the holder back down again")
+		scene.queue_free()
+		return
+	manager.interact_with_station_action("CookerStation1")
+	if manager.held_pot != tutorial_pot:
 		_fail("tutorial controller", "player should be able to take tutorial overcooked pot after putting down original empty bowl")
+		scene.queue_free()
+		return
+	if int(controller.current_step_index) != _tutorial_step_index(controller, "second_clear_overcook"):
+		_fail("tutorial controller", "taking overcooked pot should advance to clear overcook step")
 		scene.queue_free()
 		return
 	if manager.held_pot != tutorial_pot or manager.held_bowl != null:
@@ -576,6 +660,21 @@ func _check_tutorial_controller() -> void:
 		return
 	manager.held_bowl = null
 
+	var blocked_refill_bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(blocked_refill_bowl)
+	blocked_refill_bowl.setup_order(938, {"spinach": 1}, "noodle", "mild", "dine_in", 2, 1)
+	blocked_refill_bowl.mark_needs_refill()
+	blocked_refill_bowl.add_required_staple()
+	manager._hold_bowl(blocked_refill_bowl)
+	controller.tutorial_order_index = 2
+	controller.current_step_index = _tutorial_step_index(controller, "second_refill_and_staple")
+	manager.interact_with_station_action("CookerStation1")
+	if manager.held_bowl != blocked_refill_bowl or manager.cooker_1.active_bowl == blocked_refill_bowl:
+		_fail("tutorial controller", "second_refill_and_staple should block direct recook before refill is ready")
+		scene.queue_free()
+		return
+	manager.held_bowl = null
+
 	var missing_holder_pot: CookingPot = CookingPot.new()
 	scene.add_child(missing_holder_pot)
 	var missing_holder_bowl: OrderBowl = OrderBowl.new()
@@ -587,9 +686,14 @@ func _check_tutorial_controller() -> void:
 	controller.waiting_for_refill_order_id = 934
 	manager.held_bowl = null
 	manager.held_pot = missing_holder_pot
+	var failed_before_missing_holder_clear: int = int(manager.failed_orders)
 	manager.interact_trash_bin()
 	if missing_holder_bowl != null and is_instance_valid(missing_holder_bowl) and not missing_holder_bowl.is_queued_for_deletion():
 		_fail("tutorial controller", "missing-holder tutorial overcook should clear cooked content")
+		scene.queue_free()
+		return
+	if int(manager.failed_orders) != failed_before_missing_holder_clear:
+		_fail("tutorial controller", "missing-holder tutorial overcook should not add failure")
 		scene.queue_free()
 		return
 	if _count_empty_holders_for_order(manager, 934) != 0:
@@ -604,13 +708,24 @@ func _check_tutorial_controller() -> void:
 	normal_overcooked_bowl.add_required_staple()
 	normal_pot.add_order_bowl(normal_overcooked_bowl)
 	normal_overcooked_bowl.force_overcooked_for_tutorial()
+	var normal_holder: OrderBowl = OrderBowl.new()
+	scene.add_child(normal_holder)
+	normal_holder.setup_order(932, {"spinach": 1}, "noodle", "mild", "dine_in", 2, 1)
+	normal_holder.set_empty_holder_visual()
+	if normal_holder.get_parent() != null:
+		normal_holder.get_parent().remove_child(normal_holder)
+	manager.bowls_node.add_child(normal_holder)
 	controller.waiting_for_refill_order_id = 0
 	manager.held_bowl = null
 	manager.held_pot = normal_pot
 	var failed_before_normal_clear: int = int(manager.failed_orders)
 	manager.interact_trash_bin()
-	if int(manager.failed_orders) != failed_before_normal_clear + 1:
-		_fail("tutorial controller", "normal overcook should still add failure")
+	if int(manager.failed_orders) != failed_before_normal_clear:
+		_fail("tutorial controller", "normal overcook trash should not add failure")
+		scene.queue_free()
+		return
+	if not normal_holder.needs_refill:
+		_fail("tutorial controller", "normal overcook trash should mark original holder as refill bowl")
 		scene.queue_free()
 		return
 
@@ -667,11 +782,54 @@ func _check_tutorial_controller() -> void:
 		_fail("tutorial controller", "takeout_order_packed should pack bowl and advance tutorial")
 		scene.queue_free()
 		return
+	controller.current_step_index = _tutorial_step_index(controller, "third_pack")
+	var completed_before_takeout_gate: int = int(manager.completed_orders)
+	manager.interact_surface_slot("TakeoutPickupSlot1")
+	if int(manager.completed_orders) != completed_before_takeout_gate or manager.held_bowl != takeout_bowl:
+		_fail("tutorial controller", "third tutorial should block takeout submission before takeout table step")
+		scene.queue_free()
+		return
+	controller.current_step_index = _tutorial_step_index(controller, "third_takeout_table")
 	manager.interact_surface_slot("TakeoutPickupSlot1")
 	if int(controller.current_step_index) != _tutorial_step_index(controller, "third_done"):
 		_fail("tutorial controller", "takeout completion should advance tutorial")
 		scene.queue_free()
 		return
+
+	var chili_gate_bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(chili_gate_bowl)
+	chili_gate_bowl.setup_order(941, {"spinach": 1}, "noodle", "mild", "dine_in", 2, 1)
+	chili_gate_bowl.status = OrderBowl.STATUS_COOKED
+	chili_gate_bowl.add_required_staple()
+	for sauce_id in chili_gate_bowl.required_mixed_sauces:
+		chili_gate_bowl.add_mixed_sauce_once(str(sauce_id))
+	var chili_gate_customer: RestaurantCustomer = stale_customer_scene.instantiate() as RestaurantCustomer
+	scene.add_child(chili_gate_customer)
+	manager.waiting_customers_by_order_id[941] = chili_gate_customer
+	manager._hold_bowl(chili_gate_bowl)
+	controller.tutorial_order_index = 2
+	controller.current_step_index = _tutorial_step_index(controller, "second_chili")
+	var completed_before_chili_gate: int = int(manager.completed_orders)
+	manager.interact_with_station_action("DiningTable2")
+	if int(manager.completed_orders) != completed_before_chili_gate or manager.held_bowl != chili_gate_bowl or int(controller.current_step_index) != _tutorial_step_index(controller, "second_chili"):
+		_fail("tutorial controller", "second_chili should block delivery until chili is added")
+		scene.queue_free()
+		return
+	if not manager.waiting_customers_by_order_id.has(941):
+		_fail("tutorial controller", "blocked chili delivery should keep the customer waiting")
+		scene.queue_free()
+		return
+	manager.interact_with_station_action("SauceStation", "sauce_x")
+	if int(controller.current_step_index) != _tutorial_step_index(controller, "second_deliver"):
+		_fail("tutorial controller", "second_chili should advance after adding required chili")
+		scene.queue_free()
+		return
+	manager.interact_with_station_action("DiningTable2")
+	if int(manager.completed_orders) != completed_before_chili_gate + 1 or manager.held_bowl != null:
+		_fail("tutorial controller", "second_deliver should allow delivery after chili is complete")
+		scene.queue_free()
+		return
+
 	controller.current_step_index = _tutorial_step_index(controller, "cleanup_table_1")
 	manager.dirty_dining_tables.clear()
 	manager.held_table_trash = 0
@@ -872,6 +1030,59 @@ func _tutorial_step_index(controller: TutorialController, step_id: String) -> in
 		if str(step.get("id", "")) == step_id:
 			return i
 	return -1
+
+
+func _check_customer_choosing_delay() -> void:
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = scene.get_node_or_null("RestaurantGameManager") as RestaurantGameManager
+	var customer_scene: PackedScene = load("res://scenes/gameplay/restaurant/restaurant_customer.tscn")
+	if manager == null or customer_scene == null:
+		_fail("customer choosing", "manager or customer scene was not found")
+		scene.queue_free()
+		return
+
+	var customer: RestaurantCustomer = customer_scene.instantiate() as RestaurantCustomer
+	scene.add_child(customer)
+	customer.setup(manager, Vector2.ZERO, Vector2.ZERO)
+	customer._physics_process(0.05)
+	if customer.current_state != RestaurantCustomer.CustomerState.CHOOSING:
+		_fail("customer choosing", "customer should enter choosing state at ingredient display")
+		scene.queue_free()
+		return
+	if manager.queued_customers.has(customer) or not customer.get_bowl_ingredients().is_empty():
+		_fail("customer choosing", "customer should not queue or select ingredients immediately")
+		scene.queue_free()
+		return
+	if float(customer.choosing_time_remaining) < 1.0:
+		_fail("customer choosing", "choosing delay should be longer than an instant")
+		scene.queue_free()
+		return
+
+	customer.choosing_time_remaining = 0.01
+	customer._physics_process(0.05)
+	if not manager.queued_customers.has(customer) or customer.get_bowl_ingredients().is_empty():
+		_fail("customer choosing", "customer should queue after choosing time elapses")
+		scene.queue_free()
+		return
+
+	var saw_long_choice: bool = false
+	for i in range(500):
+		if float(customer.call("_random_choosing_duration")) >= 5.0:
+			saw_long_choice = true
+			break
+	if not saw_long_choice:
+		_fail("customer choosing", "random choosing duration should include long-choice samples")
+		scene.queue_free()
+		return
+
+	scene.queue_free()
+	_pass("customer choosing")
 
 
 func _find_surface_slot_holding_bowl(manager: RestaurantGameManager, bowl: OrderBowl) -> String:
@@ -2069,7 +2280,7 @@ func _check_counter_gives_bowl_to_player() -> void:
 		return
 
 	var guard: int = 0
-	while manager._get_counter_customer() == null and guard < 360:
+	while manager._get_counter_customer() == null and guard < 900:
 		await process_frame
 		guard += 1
 
@@ -2534,6 +2745,21 @@ func _check_empty_bowl_not_discarded_while_pot_has_content() -> void:
 		scene.queue_free()
 		return
 
+	var held_order_bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(held_order_bowl)
+	held_order_bowl.setup_order(704, {"spinach": 1}, "none", "mild", "dine_in", 1)
+	manager._hold_bowl(held_order_bowl)
+	failed_before = int(manager.failed_orders)
+	manager.interact_trash_bin()
+	if manager.held_bowl != held_order_bowl or not is_instance_valid(held_order_bowl):
+		_fail("empty bowl trash guard", "trash should not delete a held order bowl")
+		scene.queue_free()
+		return
+	if int(manager.failed_orders) != failed_before:
+		_fail("empty bowl trash guard", "held order bowl trash attempt should not count as failed")
+		scene.queue_free()
+		return
+
 	scene.queue_free()
 	_pass("empty bowl trash guard")
 
@@ -2790,6 +3016,49 @@ func _check_placeholder_interactions_do_not_mutate() -> void:
 	_pass("placeholder interaction")
 
 
+func _check_refill_from_open_ingredient_displays() -> void:
+	RestaurantRunState.start_new_run(3)
+	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
+	var scene: Node = scene_resource.instantiate()
+	get_root().add_child(scene)
+	await process_frame
+	await process_frame
+
+	var manager: RestaurantGameManager = get_first_node_in_group("restaurant_game_manager") as RestaurantGameManager
+	if manager == null:
+		_fail("ingredient refill", "restaurant manager was not found")
+		scene.queue_free()
+		return
+
+	for station_name in ["IngredientDisplay", "IngredientDisplay2", "IngredientDisplay3"]:
+		var bowl: OrderBowl = OrderBowl.new()
+		scene.add_child(bowl)
+		bowl.setup_order(610 + station_name.length(), {"spinach": 1}, "noodle", "mild", "dine_in", 1, 0)
+		bowl.mark_needs_refill()
+		manager._hold_bowl(bowl)
+		manager.interact_with_station_action(station_name)
+		if manager.held_bowl == null or manager.held_bowl.needs_refill or manager.held_bowl.is_empty_holder:
+			_fail("ingredient refill", "%s should refill a needs_refill bowl" % station_name)
+			scene.queue_free()
+			return
+		manager.held_bowl.queue_free()
+		manager.held_bowl = null
+
+	var locked_bowl: OrderBowl = OrderBowl.new()
+	scene.add_child(locked_bowl)
+	locked_bowl.setup_order(620, {"spinach": 1}, "noodle", "mild", "dine_in", 1, 0)
+	locked_bowl.mark_needs_refill()
+	manager._hold_bowl(locked_bowl)
+	manager.interact_with_station_action("IngredientDisplayLocked")
+	if manager.held_bowl == null or not manager.held_bowl.needs_refill:
+		_fail("ingredient refill", "IngredientDisplayLocked should not refill a bowl")
+		scene.queue_free()
+		return
+
+	scene.queue_free()
+	_pass("ingredient refill")
+
+
 func _check_takeout_pickup_slot_completion() -> void:
 	RestaurantRunState.start_new_run(3)
 	var scene_resource: PackedScene = load("res://scenes/gameplay/test_restaurant.tscn")
@@ -2816,7 +3085,31 @@ func _check_takeout_pickup_slot_completion() -> void:
 		_fail("takeout slot", "sauced takeout should not seal instantly")
 		scene.queue_free()
 		return
-	_finish_busy_action(manager, 0.7)
+	if not manager.is_busy_action_active():
+		_fail("takeout slot", "packing area should start a busy action")
+		scene.queue_free()
+		return
+	var player: CharacterBody2D = scene.get_node_or_null("Characters/Player") as CharacterBody2D
+	if player == null:
+		_fail("takeout slot", "player was not found for busy lock check")
+		scene.queue_free()
+		return
+	player.velocity = Vector2(120.0, 0.0)
+	player.call("_physics_process", 0.1)
+	if player.velocity != Vector2.ZERO:
+		_fail("takeout slot", "player should stop moving during busy action")
+		scene.queue_free()
+		return
+	if bool(player.call("try_interact", "interact")):
+		_fail("takeout slot", "player should not interact during busy action")
+		scene.queue_free()
+		return
+	manager._process(0.7)
+	if bowl.status == OrderBowl.STATUS_SEALED:
+		_fail("takeout slot", "packing area should take about 0.8 seconds")
+		scene.queue_free()
+		return
+	manager._process(0.2)
 	if bowl.status != OrderBowl.STATUS_SEALED:
 		_fail("takeout slot", "sauced takeout should become sealed")
 		scene.queue_free()
@@ -2843,7 +3136,12 @@ func _check_takeout_pickup_slot_completion() -> void:
 		_fail("takeout slot", "sealed takeout should not pack instantly")
 		scene.queue_free()
 		return
-	_finish_busy_action(manager, 0.5)
+	manager._process(0.4)
+	if bowl.status == OrderBowl.STATUS_PACKED:
+		_fail("takeout slot", "bag area should take about 0.5 seconds")
+		scene.queue_free()
+		return
+	manager._process(0.2)
 	if bowl.status != OrderBowl.STATUS_PACKED:
 		_fail("takeout slot", "sealed takeout should become packed at bag area")
 		scene.queue_free()
@@ -2882,7 +3180,7 @@ func _check_overcooked_trash_rule() -> void:
 		return
 
 	var guard: int = 0
-	while manager._get_counter_customer() == null and guard < 360:
+	while manager._get_counter_customer() == null and guard < 900:
 		await process_frame
 		guard += 1
 
@@ -2921,11 +3219,15 @@ func _check_overcooked_trash_rule() -> void:
 		scene.queue_free()
 		return
 
-	manager.held_bowl.queue_free()
-	manager.held_bowl = null
+	var original_holder: OrderBowl = manager.held_bowl
+	manager.interact_surface_slot("SurfaceSlot_r1c8")
+	if manager.held_bowl != null or _find_surface_slot_holding_bowl(manager, original_holder) == "":
+		_fail("overcooked trash", "original empty holder should be placed before taking overcooked pot")
+		scene.queue_free()
+		return
 	manager.interact_cooker(manager.cooker_1)
 	if manager.held_bowl != null:
-		_fail("overcooked trash", "empty holder should be cleared when picking up overcooked pot")
+		_fail("overcooked trash", "picking up overcooked pot should not pick up the holder")
 		scene.queue_free()
 		return
 	if manager.held_pot == null or not manager.held_pot.has_overcooked_content():
@@ -2958,8 +3260,18 @@ func _check_overcooked_trash_rule() -> void:
 		_fail("overcooked trash", "discarded overcooked order should not count as completed")
 		scene.queue_free()
 		return
-	if int(manager.failed_orders) != failed_before + 1:
-		_fail("overcooked trash", "discarded overcooked order should count as failed")
+	if int(manager.failed_orders) != failed_before:
+		_fail("overcooked trash", "discarded overcooked food should not count as failed")
+		scene.queue_free()
+		return
+	if original_holder == null or not is_instance_valid(original_holder) or not original_holder.needs_refill:
+		_fail("overcooked trash", "trash should keep original holder and mark it for refill")
+		scene.queue_free()
+		return
+
+	manager.interact_trash_bin()
+	if manager.held_pot == null:
+		_fail("overcooked trash", "empty pot should not be thrown into trash")
 		scene.queue_free()
 		return
 
@@ -2985,6 +3297,10 @@ func _check_overcooked_trash_rule() -> void:
 	manager.interact_trash_bin()
 	if manager.held_pot == null or not manager.held_pot.is_empty():
 		_fail("overcooked trash", "trash should clear the held overcooked pot")
+		scene.queue_free()
+		return
+	if int(manager.failed_orders) != failed_before:
+		_fail("overcooked trash", "trash should not fail an overcooked order without a holder")
 		scene.queue_free()
 		return
 	if manager.cooker_1.active_bowl == null:
@@ -3388,6 +3704,8 @@ func _finish_busy_action(manager: RestaurantGameManager, seconds: float = 1.0) -
 	if manager == null:
 		return
 	manager._process(seconds)
+	if manager.is_busy_action_active():
+		manager._process(float(manager.busy_action_remaining) + 0.05)
 
 
 func _finish() -> void:

@@ -30,6 +30,13 @@ func _physics_process(delta: float) -> void:
 
 	_cleanup_nearby_stations()
 
+	if _is_restaurant_busy_action_active():
+		velocity = Vector2.ZERO
+		move_and_slide()
+		_update_interaction_prompt()
+		_update_hand_state_prompt()
+		_update_held_order_label()
+		return
 
 
 	var direction: Vector2 = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
@@ -63,6 +70,11 @@ func _physics_process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+
+	if _is_restaurant_busy_action_active():
+		if event.is_action_pressed("close_business") or event.is_action_pressed("interact") or event.is_action_pressed("sauce_x") or event.is_action_pressed("sauce_y") or event.is_action_pressed("sauce_a") or event.is_action_pressed("sauce_b"):
+			get_viewport().set_input_as_handled()
+		return
 
 	if event.is_action_pressed("close_business"):
 		if request_restaurant_close_day():
@@ -187,11 +199,19 @@ func _station_accepts_sauce_action(station: Area2D) -> bool:
 
 func _can_interact_now() -> bool:
 
+	if _is_restaurant_busy_action_active():
+		return false
+
 	var now_msec: int = Time.get_ticks_msec()
 
 	var elapsed_seconds: float = float(now_msec - last_interact_time_msec) / 1000.0
 
 	return elapsed_seconds >= interact_cooldown_seconds
+
+
+func _is_restaurant_busy_action_active() -> bool:
+	var restaurant_manager = get_tree().get_first_node_in_group("restaurant_game_manager")
+	return restaurant_manager != null and restaurant_manager.has_method("is_busy_action_active") and restaurant_manager.is_busy_action_active()
 
 
 

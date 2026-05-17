@@ -106,8 +106,12 @@ func _is_tutorial_time_paused() -> bool:
 	return tutorial_controller != null and tutorial_controller.has_method("pauses_time") and tutorial_controller.pauses_time()
 
 
-func _is_tutorial_cooked_pot_protected() -> bool:
-	return tutorial_controller != null and tutorial_controller.has_method("protects_cooked_pots") and tutorial_controller.protects_cooked_pots()
+func _is_tutorial_cooked_pot_protected(bowl: OrderBowl = null) -> bool:
+	if tutorial_controller == null:
+		return false
+	if bowl != null and tutorial_controller.has_method("protects_cooked_pot_for_bowl"):
+		return tutorial_controller.protects_cooked_pot_for_bowl(bowl)
+	return tutorial_controller.has_method("protects_cooked_pots") and tutorial_controller.protects_cooked_pots()
 
 
 func _resolve_planned_customer_count() -> void:
@@ -132,6 +136,10 @@ func _has_any_held_item() -> bool:
 
 func _is_busy() -> bool:
 	return busy_action_remaining > 0.0
+
+
+func is_busy_action_active() -> bool:
+	return _is_busy()
 
 
 func _busy_status_text() -> String:
@@ -252,7 +260,7 @@ func interact_with_station_action(station_name: String, action_name: String = "i
 	if station_name == "SauceStationMixed":
 		interact_sauce_station_action(action_name)
 		return
-	if station_name == "IngredientDisplay":
+	if station_name == "IngredientDisplay" or station_name == "IngredientDisplay2" or station_name == "IngredientDisplay3":
 		interact_ingredient_display()
 		return
 	if station_name == "CustomerTrashBin" and (action_name == "interact" or action_name == "sauce_x"):
@@ -290,10 +298,18 @@ func interact_with_station_action(station_name: String, action_name: String = "i
 			interact_takeout_pickup()
 		"TrashBin":
 			interact_trash_bin()
-		"IngredientDisplay2", "IngredientDisplay3", "IngredientDisplayLocked", "DrinksFridge", "DrinkFridgeLocked", "StorageArea", "DrinkStorage", "CookerStationLocked":
+		"IngredientDisplayLocked", "DrinksFridge", "DrinkFridgeLocked", "StorageArea", "DrinkStorage", "CookerStationLocked":
 			_interact_placeholder(station_name)
 		_:
 			_refresh_ui("这里暂时不能操作：%s" % station_name)
+
+
+func _get_tutorial_submission_block_message(bowl: OrderBowl) -> String:
+	if tutorial_controller == null:
+		return ""
+	if not tutorial_controller.has_method("get_order_submission_block_message"):
+		return ""
+	return str(tutorial_controller.get_order_submission_block_message(bowl))
 
 
 func _interact_placeholder(station_name: String) -> void:
@@ -312,7 +328,7 @@ func _interact_placeholder(station_name: String) -> void:
 		"SauceStationMixed":
 			message = "小料组合操作暂未开放"
 		"CustomerTrashBin":
-			message = "客用垃圾桶占位"
+			message = "垃圾桶占位"
 		"StorageArea":
 			message = "补货流程暂未开放"
 		"DrinkStorage":
@@ -813,7 +829,7 @@ func interact_packing_area() -> void:
 	if held_bowl.status == OrderBowl.STATUS_SEALED:
 		_refresh_ui("已经封口，请去袋子区装袋")
 		return
-	_begin_busy_action("封口", 0.6, Callable(self, "_finish_packing_area_busy").bind(held_bowl))
+	_begin_busy_action("封口中", 0.8, Callable(self, "_finish_packing_area_busy").bind(held_bowl))
 
 
 func _finish_packing_area_busy(target_bowl: OrderBowl) -> void:
@@ -856,7 +872,7 @@ func interact_packing_bag_area() -> void:
 	if held_bowl.status != OrderBowl.STATUS_SEALED:
 		_refresh_ui("请先去封口机打包")
 		return
-	_begin_busy_action("装袋", 0.4, Callable(self, "_finish_packing_bag_busy").bind(held_bowl))
+	_begin_busy_action("装袋中", 0.5, Callable(self, "_finish_packing_bag_busy").bind(held_bowl))
 
 
 func _finish_packing_bag_busy(target_bowl: OrderBowl) -> void:
@@ -886,7 +902,7 @@ func interact_delivery_table(table_id: int) -> void:
 			dirty_dining_tables.erase(table_id)
 			held_table_trash = table_id
 			_refresh_dining_table_visual(table_id)
-			_refresh_ui("收起桌%d的垃圾，请拿去客用垃圾桶" % table_id)
+			_refresh_ui("收起桌%d的垃圾，请拿去垃圾桶" % table_id)
 			_notify_tutorial("table_trash_picked_up", {"table_id": table_id})
 		else:
 			_refresh_ui("这张桌子现在不需要收拾")
@@ -966,33 +982,27 @@ func interact_trash_bin() -> void:
 			var cleared_order_id: int = 0
 			if cleared_bowl != null:
 				cleared_order_id = cleared_bowl.order_id
-				if _is_tutorial_forced_overcook_order(cleared_order_id):
-					var original_holder: OrderBowl = tutorial_refill_holder_by_order_id.get(cleared_order_id, null) as OrderBowl
-					if original_holder == null or not is_instance_valid(original_holder):
-						original_holder = _find_existing_empty_holder_for_order(cleared_order_id)
-					if original_holder != null and is_instance_valid(original_holder):
-						tutorial_refill_holder_by_order_id[cleared_order_id] = original_holder
-						original_holder.mark_needs_refill()
-						_refresh_surface_slot_containing_bowl(original_holder)
-						if cleared_bowl != original_holder:
-							cleared_bowl.queue_free()
-					else:
-						push_warning("Tutorial forced overcook refill holder was not found; cleared bowl will not become a refill bowl.")
+				var original_holder: OrderBowl = _find_original_holder_for_refill(cleared_order_id)
+				if original_holder != null and is_instance_valid(original_holder):
+					tutorial_refill_holder_by_order_id[cleared_order_id] = original_holder
+					original_holder.mark_needs_refill()
+					_refresh_surface_slot_containing_bowl(original_holder)
+					if cleared_bowl != original_holder:
 						cleared_bowl.queue_free()
-					held_pot.refresh_visual()
-					_refresh_ui("食物倒掉了。先把空锅放回锅位，再拿起待补配订单盆。" if original_holder != null else "没有找到原订单盆，请先拿回订单盆")
-					_notify_tutorial("overcooked_pot_cleared", {"order_id": cleared_order_id})
-					if original_holder != null:
-						_notify_tutorial("tutorial_overcook_cleared", {"bowl": original_holder})
-					return
-				_clear_waiting_customer_for_order(cleared_order_id)
-				_clear_surface_slot_references(cleared_bowl)
-				_clear_holder_bowls_for_order(cleared_order_id)
-				cleared_bowl.queue_free()
-				_record_failed_order()
+				else:
+					push_warning("Overcooked order refill holder was not found; no new bowl will be created.")
+					cleared_bowl.queue_free()
 			held_pot.refresh_visual()
 			_notify_tutorial("overcooked_pot_cleared", {"order_id": cleared_order_id})
-			_refresh_ui("锅已清空" if cleared_order_id <= 0 else "订单 #%03d 煮糊了，顾客离开" % cleared_order_id)
+			if cleared_order_id > 0:
+				var refill_holder: OrderBowl = _find_original_holder_for_refill(cleared_order_id)
+				if refill_holder != null and is_instance_valid(refill_holder) and refill_holder.needs_refill:
+					_notify_tutorial("tutorial_overcook_cleared", {"bowl": refill_holder})
+					_refresh_ui("食物倒掉了。先把空锅放回锅位，再拿起待补配订单盆。")
+				else:
+					_refresh_ui("食物已倒掉，但没有找到原订单盆，请找回订单盆继续补单。")
+			else:
+				_refresh_ui("锅已清空")
 			return
 		if held_pot.is_empty():
 			_refresh_ui("锅是空的")
@@ -1011,17 +1021,9 @@ func interact_trash_bin() -> void:
 		if _has_active_content_for_order(held_bowl.order_id):
 			_refresh_ui("这只空碗还要用来盛出锅里的食材")
 			return
-		held_bowl.queue_free()
-		held_bowl = null
-		_refresh_ui("已丢弃空碗")
+		_refresh_ui("订单盆不能扔垃圾桶")
 		return
-	var discarded_order_id: int = held_bowl.order_id
-	_clear_waiting_customer_for_order(discarded_order_id)
-	_clear_surface_slot_references(held_bowl)
-	held_bowl.queue_free()
-	held_bowl = null
-	_record_failed_order()
-	_refresh_ui("已丢弃订单 #%03d" % discarded_order_id)
+	_refresh_ui("订单盆不能扔垃圾桶")
 
 
 func _is_tutorial_forced_overcook_order(order_id: int) -> bool:
@@ -1030,6 +1032,15 @@ func _is_tutorial_forced_overcook_order(order_id: int) -> bool:
 	if not tutorial_controller.has_method("is_forced_overcook_order"):
 		return false
 	return bool(tutorial_controller.is_forced_overcook_order(order_id))
+
+
+func _find_original_holder_for_refill(order_id: int) -> OrderBowl:
+	if order_id <= 0:
+		return null
+	var cached_holder: OrderBowl = tutorial_refill_holder_by_order_id.get(order_id, null) as OrderBowl
+	if cached_holder != null and is_instance_valid(cached_holder) and cached_holder.order_id == order_id and cached_holder.is_empty_holder:
+		return cached_holder
+	return _find_existing_empty_holder_for_order(order_id)
 
 
 func _place_tutorial_refill_bowl(bowl: OrderBowl) -> bool:
@@ -1106,7 +1117,7 @@ func _refresh_dining_table_visual(table_id: int) -> void:
 
 func force_complete_one_order_for_smoke() -> bool:
 	var guard: int = 0
-	while _get_counter_customer() == null and guard < 360:
+	while _get_counter_customer() == null and guard < 900:
 		await get_tree().process_frame
 		guard += 1
 
@@ -1138,9 +1149,9 @@ func force_complete_one_order_for_smoke() -> bool:
 		return false
 	if held_bowl.service_mode == "takeout":
 		interact_packing_area()
-		_process(0.7)
+		_process(0.9)
 		interact_packing_bag_area()
-		_process(0.5)
+		_process(0.6)
 		interact_surface_slot("TakeoutPickupSlot1")
 	else:
 		interact_delivery_table(held_bowl.table_id)
@@ -1174,6 +1185,10 @@ func _complete_held_order() -> void:
 	var bowl: OrderBowl = held_bowl
 	if bowl != null and bowl.get_order_patience_ratio() <= 0.0:
 		_fail_order_bowl(bowl, "订单 #%03d 等太久了，顾客离开" % bowl.order_id)
+		return
+	var tutorial_submission_block: String = _get_tutorial_submission_block_message(bowl)
+	if tutorial_submission_block != "":
+		_refresh_ui(tutorial_submission_block)
 		return
 	var completed_order_id: int = bowl.order_id
 	var completed_service_mode: String = bowl.service_mode
@@ -1308,16 +1323,25 @@ func _clear_held_dirty_cooker() -> void:
 	var cleared_order_id: int = 0
 	if cleared_bowl != null:
 		cleared_order_id = cleared_bowl.order_id
-		_clear_waiting_customer_for_order(cleared_order_id)
-		_clear_surface_slot_references(cleared_bowl)
+		var original_holder: OrderBowl = _find_original_holder_for_refill(cleared_order_id)
+		if original_holder != null and is_instance_valid(original_holder):
+			tutorial_refill_holder_by_order_id[cleared_order_id] = original_holder
+			original_holder.mark_needs_refill()
+			_refresh_surface_slot_containing_bowl(original_holder)
+		else:
+			push_warning("Overcooked order refill holder was not found; no new bowl will be created.")
 		cleared_bowl.queue_free()
-		_record_failed_order()
 
 	held_dirty_cooker = null
 	_clear_dirty_pot_visual()
 
 	if cleared_order_id > 0:
-		_refresh_ui("订单 #%03d 煮糊了，顾客离开" % cleared_order_id)
+		var refill_holder: OrderBowl = _find_original_holder_for_refill(cleared_order_id)
+		if refill_holder != null and is_instance_valid(refill_holder) and refill_holder.needs_refill:
+			_notify_tutorial("tutorial_overcook_cleared", {"bowl": refill_holder})
+			_refresh_ui("食物倒掉了。先把空锅放回锅位，再拿起待补配订单盆。")
+		else:
+			_refresh_ui("食物已倒掉，但没有找到原订单盆，请找回订单盆继续补单。")
 	else:
 		_refresh_ui("脏锅已清理")
 
@@ -1481,6 +1505,10 @@ func _try_complete_takeout_from_surface(slot: SurfaceSlot, bowl: OrderBowl) -> b
 	if bowl.get_order_patience_ratio() <= 0.0:
 		_fail_order_bowl(bowl, "订单 #%03d 等太久了，顾客离开" % bowl.order_id)
 		return true
+	var tutorial_submission_block: String = _get_tutorial_submission_block_message(bowl)
+	if tutorial_submission_block != "":
+		_refresh_ui(tutorial_submission_block)
+		return false
 
 	var completed_order_id: int = bowl.order_id
 	var completed_service_mode: String = bowl.service_mode

@@ -25,6 +25,9 @@ var service_mode: String = "dine_in"
 var table_id: int = 0
 var queue_patience_max: float = 100.0
 var queue_patience_current: float = 100.0
+var choosing_time_remaining: float = 0.0
+var choosing_wander_origin: Vector2 = Vector2.ZERO
+var choosing_wander_target: Vector2 = Vector2.ZERO
 
 var status_label: Label
 var patience_bar: ProgressBar
@@ -38,6 +41,10 @@ func _ready() -> void:
 
 func _physics_process(_delta: float) -> void:
 	_update_queue_patience(_delta)
+
+	if current_state == CustomerState.CHOOSING:
+		_update_choosing(_delta)
+		return
 
 	var to_target: Vector2 = target_position - global_position
 	if to_target.length() > 5.0:
@@ -99,11 +106,7 @@ func get_bowl_ingredients() -> Dictionary:
 
 func _on_reached_target() -> void:
 	if current_state == CustomerState.ENTERING:
-		_select_ingredients()
-		current_state = CustomerState.CHOOSING
-		_set_status("已选")
-		if manager != null and manager.has_method("enqueue_customer"):
-			manager.enqueue_customer(self)
+		_begin_choosing()
 		return
 
 	if current_state == CustomerState.QUEUEING:
@@ -113,6 +116,43 @@ func _on_reached_target() -> void:
 
 	if current_state == CustomerState.LEAVING:
 		queue_free()
+
+
+func _begin_choosing() -> void:
+	current_state = CustomerState.CHOOSING
+	choosing_time_remaining = _random_choosing_duration()
+	choosing_wander_origin = global_position
+	_set_next_choosing_wander_target()
+	_set_status("选菜中")
+
+
+func _update_choosing(delta: float) -> void:
+	choosing_time_remaining = max(choosing_time_remaining - delta, 0.0)
+	if choosing_time_remaining <= 0.0:
+		velocity = Vector2.ZERO
+		move_and_slide()
+		_select_ingredients()
+		_set_status("已选")
+		if manager != null and manager.has_method("enqueue_customer"):
+			manager.enqueue_customer(self)
+		return
+
+	var to_target: Vector2 = choosing_wander_target - global_position
+	if to_target.length() <= 4.0:
+		_set_next_choosing_wander_target()
+		to_target = choosing_wander_target - global_position
+	velocity = to_target.normalized() * (move_speed * 0.35) if to_target.length() > 1.0 else Vector2.ZERO
+	move_and_slide()
+
+
+func _random_choosing_duration() -> float:
+	if randf() < 0.15:
+		return randf_range(5.0, 8.0)
+	return randf_range(1.5, 4.0)
+
+
+func _set_next_choosing_wander_target() -> void:
+	choosing_wander_target = choosing_wander_origin + Vector2(randf_range(-18.0, 18.0), randf_range(-8.0, 8.0))
 
 
 func _select_ingredients() -> void:

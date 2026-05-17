@@ -18,7 +18,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if is_on_heat and content_bowl != null and is_instance_valid(content_bowl):
 		var manager: RestaurantGameManager = _get_restaurant_manager()
-		var tutorial_protected: bool = manager != null and manager._is_tutorial_cooked_pot_protected()
+		var tutorial_protected: bool = manager != null and manager._is_tutorial_cooked_pot_protected(content_bowl)
 		if tutorial_protected and _is_protected_cooked_content(content_bowl):
 			refresh_visual()
 			return

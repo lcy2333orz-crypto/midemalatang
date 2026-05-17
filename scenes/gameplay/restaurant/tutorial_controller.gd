@@ -66,6 +66,49 @@ func protects_cooked_pots() -> bool:
 	return enabled
 
 
+func protects_cooked_pot_for_bowl(bowl: OrderBowl) -> bool:
+	if not enabled:
+		return false
+	if tutorial_order_index == 4 and _is_current_order_bowl(bowl):
+		return false
+	return true
+
+
+func get_order_submission_block_message(bowl: OrderBowl) -> String:
+	if not enabled or finished or tutorial_order_index > 3:
+		return ""
+	if not _is_current_order_bowl(bowl):
+		return ""
+	var step_id: String = _get_current_step_id()
+	match tutorial_order_index:
+		1:
+			if step_id != "deliver_table_1":
+				return "先按教程完成第一单步骤，再交付订单"
+		2:
+			if step_id != "second_deliver":
+				if bowl != null and bowl.added_chili_count < bowl.required_chili_count:
+					return "先把辣椒加够，再交付订单"
+				return "先按教程完成第二单步骤，再交付订单"
+			if bowl != null and not bowl.has_all_required_mixed_sauces():
+				return "先补齐四种小料，再交付订单"
+			if bowl != null and not bowl.has_exact_chili():
+				return "先把辣椒加够，再交付订单"
+		3:
+			if step_id != "third_takeout_table":
+				return "先完成封口和装袋，再放到外带桌"
+			if bowl != null and not bowl.has_all_required_mixed_sauces():
+				return "先补齐四种小料，再交付订单"
+			if bowl != null and bowl.status != OrderBowl.STATUS_PACKED:
+				return "先封口并装袋，再放到外带桌"
+	return ""
+
+
+func _get_current_step_id() -> String:
+	if current_step_index < 0 or current_step_index >= steps.size():
+		return ""
+	return str(steps[current_step_index].get("id", ""))
+
+
 func get_first_order_override() -> Dictionary:
 	return {
 		"service_mode": "dine_in",
@@ -202,25 +245,25 @@ func _build_day_1_steps() -> void:
 		},
 		{
 			"id": "second_intro",
-			"text": "下一单会用到辣椒。按 H 继续。",
+			"text": "下一单会用到辣椒，也会演示煮糊后的处理。",
 			"target_station": "",
 			"wait_type": "confirm"
 		},
 		{
 			"id": "second_counter",
-			"text": "等顾客到收银台。按 H 接单。",
+			"text": "等顾客到收银台后接单。",
 			"target_station": "Counter",
 			"wait_type": "counter_order_created"
 		},
 		{
 			"id": "second_staple",
-			"text": "这单需要主食：面。去主食柜按 H。",
+			"text": "按订单补好主食。",
 			"target_station": "StapleArea",
 			"wait_type": "held_bowl_has_staple"
 		},
 		{
 			"id": "second_pot",
-			"text": "把订单盆倒进锅里。这次会演示食物煮糊后的处理。",
+			"text": "入锅后会演示煮糊处理。",
 			"target_station": "CookerStation1",
 			"wait_type": "bowl_in_pot"
 		},
@@ -262,13 +305,13 @@ func _build_day_1_steps() -> void:
 		},
 		{
 			"id": "second_scoop",
-			"text": "等锅显示“已熟”，用对应空碗盛出。",
+			"text": "熟后用对应空碗盛出。",
 			"target_station": "CookerStation1",
 			"wait_type": "held_bowl_cooked"
 		},
 		{
 			"id": "second_mixed_sauces",
-			"text": "去小料桶。按 H、J、K、L，各加一种小料。",
+			"text": "像第一单一样补齐四种小料。",
 			"target_station": "SauceStationMixed",
 			"wait_type": "mixed_sauces_complete"
 		},
@@ -292,7 +335,7 @@ func _build_day_1_steps() -> void:
 		},
 		{
 			"id": "third_intro",
-			"text": "下一单是外带。按 H 继续。",
+			"text": "下一单是外带。",
 			"target_station": "",
 			"wait_type": "confirm"
 		},
@@ -304,43 +347,43 @@ func _build_day_1_steps() -> void:
 		},
 		{
 			"id": "third_staple",
-			"text": "这单需要主食：粉丝。去主食柜按 H。",
+			"text": "按订单补好主食。",
 			"target_station": "StapleArea",
 			"wait_type": "held_bowl_has_staple"
 		},
 		{
 			"id": "third_pot",
-			"text": "把订单盆倒进锅里。",
+			"text": "像前面一样入锅烹饪。",
 			"target_station": "CookerStation1",
 			"wait_type": "bowl_in_pot"
 		},
 		{
 			"id": "third_scoop",
-			"text": "等锅显示“已熟”，用对应空碗盛出。",
+			"text": "熟后盛出。",
 			"target_station": "CookerStation1",
 			"wait_type": "held_bowl_cooked"
 		},
 		{
 			"id": "third_mixed_sauces",
-			"text": "去小料桶。按 H、J、K、L，各加一种小料。",
+			"text": "补齐四种小料。",
 			"target_station": "SauceStationMixed",
 			"wait_type": "mixed_sauces_complete"
 		},
 		{
 			"id": "third_pack",
-			"text": "外带单需要先封口。拿着碗去封口机按 H。",
+			"text": "外带单需要先封口。",
 			"target_station": "PackingArea",
 			"wait_type": "takeout_order_sealed"
 		},
 		{
 			"id": "third_bag",
-			"text": "封口好了。拿着碗去袋子区按 H 装袋。",
+			"text": "封口后还要装袋。",
 			"target_station": "PackingBagArea",
 			"wait_type": "takeout_order_packed"
 		},
 		{
 			"id": "third_takeout_table",
-			"text": "装袋完成。把外带单放到外带桌。",
+			"text": "装袋完成后，放到外带桌。",
 			"target_station": "TakeoutPickupSlot1",
 			"wait_type": "takeout_order_completed"
 		},
@@ -358,7 +401,7 @@ func _build_day_1_steps() -> void:
 		},
 		{
 			"id": "cleanup_table_1",
-			"text": "桌1有垃圾。空手到桌1旁边，按 H 收起来。",
+			"text": "空手到有垃圾的桌子旁，按 H 收起来。",
 			"target_station": "DiningTable1",
 			"wait_type": "table_trash_picked_up"
 		},
